@@ -1,0 +1,9 @@
+.local/
+.pnpm-store/
+tools/rag/node_modules/
+docs/imported/
+public/assets/
+blender/
+.env*
+*.pem
+*.key
