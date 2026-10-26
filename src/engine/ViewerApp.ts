@@ -64,9 +64,9 @@ export class ViewerApp {
     this.controls.update();
     this.overlay = new ExpressionOverlay(container);
     this.assets = new CharacterAssets({
-      load: async url => {
+      load: async (url, reportProgress) => {
         const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
-        return new GLTFLoader().loadAsync(url);
+        return new GLTFLoader().loadAsync(url, event => reportProgress({ loaded: event.loaded, total: event.lengthComputable ? event.total : undefined }));
       },
       create: (data, definition) => new RiggedCharacter(data, definition),
       release: data => disposeModel(data.scene),

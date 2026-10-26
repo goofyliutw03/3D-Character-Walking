@@ -1,5 +1,7 @@
 # cc-sdd 規劃對應與待辦
 
+追加需求（2026-10-26授權）：[initialization-loading-progress](../specs/initialization-loading-progress/) 已完成實作與本機驗證，13條件、43 tests及production build／browser證據見validation。擴充既有loading契約並重驗rigged／UI；非第七里程碑，不變更原人工驗收狀態。
+
 最新狀態（2026-10-26）：里程碑5已由使用者確認，6 rigged-character-assets完成實作與驗證，待結束確認，見[validation](../specs/rigged-character-assets/validation.md)。三角色GLB與四骨架clips含依使用者授權製作的小孩／Jump衍生，真實載入與失敗／Retry已驗證。以下未開始／initialized屬歷史。六個功能里程碑的實作完成不等於跨GPU／實機／螢幕閱讀器等人工驗收完成。
 
 最新狀態（2026-10-26）：使用者已確認里程碑 4，里程碑 5 character-expressions-ui 依授權完成實作與驗證，待結束確認。20 項條件覆蓋與限制見 [validation](../specs/character-expressions-ui/validation.md)。里程碑 6 未開始；真實載入／資產授權與實機驗收仍保留。以下 initialized 及較舊進度屬歷史，不作目前狀態。

@@ -1,9 +1,10 @@
-import { ViewerApp, type CameraPreset, type CharacterStatus } from './engine/ViewerApp';
+import type { ViewerApp, CameraPreset, CharacterStatus } from './engine/ViewerApp';
 import type { CharacterVariant } from './character/motion';
 import type { MoveDirection } from './input/InputManager';
 import { emotions, speechLimit, type Emotion } from './expression/ExpressionManager';
 import { presentLoading, type LoadingState } from './ui/LoadingFeedback';
 import { SpeechEditor } from './ui/SpeechEditor';
+import { LoadingPanel } from './ui/LoadingPanel';
 import './style.css';
 
 const cameraNames: Record<CameraPreset, string> = {
@@ -83,9 +84,17 @@ app.innerHTML = `
       <div class="scene-badge"><span class="status-dot"></span> LIVE SCENE</div>
       <div class="scene-bottom"><div class="interaction-guide" id="interaction-guide"><span><b>Drag</b> orbit</span><span><b>Scroll</b> zoom</span><span><b>Right drag</b> pan</span></div><button id="reset" class="reset-button" aria-label="Reset camera">↺ <span>Reset view</span></button></div>
       <div id="scene-error" class="error-panel" role="alert" hidden></div>
+      <div id="loading-panel" class="loading-panel" data-state="loading">
+        <p class="loading-eyebrow">GETTING YOUR CITY READY</p>
+        <div class="loading-sculpture" aria-hidden="true"><div class="loading-word">${Array.from({ length: 13 }, (_, layer) => `<span style="--layer:${layer}">LOADING</span>`).join('')}</div></div>
+        <progress max="100" aria-label="Initialization progress"></progress>
+        <p class="loading-message" data-loading-message>Preparing the viewer…</p>
+        <span class="loading-amount" data-loading-amount>Working…</span>
+        <button id="retry-character" type="button" hidden>Retry character</button>
+      </div>
     </section>
   </main>
-  <div class="asset-feedback"><div id="asset-status" class="asset-status" role="status" aria-live="polite" aria-atomic="true">Starting scene…</div><button id="retry-character" type="button" hidden>Retry character</button></div>
+  <div class="asset-feedback"><div id="asset-status" class="asset-status" role="status" aria-live="polite" aria-atomic="true">Starting scene…</div></div>
   <footer><span><span class="status-dot"></span> <span id="renderer-status" role="status">Starting scene…</span></span><span id="camera-status">Camera: Overview</span><span><span id="fps">—</span> FPS <span class="footer-divider">/</span> <span id="scene-metrics">1 unit = 1 meter</span></span></footer>
 `;
 const scene = document.querySelector<HTMLElement>('#scene')!;
@@ -95,16 +104,25 @@ const error = document.querySelector<HTMLElement>('#scene-error')!;
 const assetStatus = document.querySelector<HTMLElement>('#asset-status')!;
 const viewport = document.querySelector<HTMLElement>('.viewport')!;
 const retryCharacter = document.querySelector<HTMLButtonElement>('#retry-character')!;
+const loadingPanel = new LoadingPanel(document.querySelector<HTMLElement>('#loading-panel')!);
 const reportAsset = (state: LoadingState): void => {
   presentLoading(assetStatus, state);
+  loadingPanel.update(state);
   viewport.setAttribute('aria-busy', String(state.phase === 'loading'));
   retryCharacter.hidden = state.phase !== 'error';
   document.querySelector('#character-source')!.textContent = state.phase === 'ready' ? 'RIGGED GLB' : state.phase === 'error' ? 'FALLBACK' : 'LOADING';
   document.querySelector('#character-asset-hint')!.textContent = state.phase === 'error' ? 'Procedural fallback · selected rigged asset unavailable.' : state.message;
 };
-presentLoading(assetStatus, { phase: 'loading', message: 'Starting the local scene…' });
+reportAsset({ phase: 'loading', stage: 'engine', message: 'Preparing the viewer…' });
 const uiEvents = new AbortController();
+const controls = document.querySelectorAll<HTMLButtonElement | HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>('button, input, select, textarea');
+controls.forEach(control => { if (control !== retryCharacter) control.disabled = true; });
 let viewer: ViewerApp | undefined;
+let fatal = false;
+retryCharacter.addEventListener('click', () => {
+  if (fatal) window.location.reload();
+  else viewer?.retryCharacter();
+}, { signal: uiEvents.signal });
 let previousCharacterStatus = '';
 const updateCharacterStatus = (state: CharacterStatus): void => {
   const key = `${state.variant}/${state.action}/${state.running}/${state.following}/${state.cameraView}`;
@@ -128,13 +146,20 @@ const updateCharacterStatus = (state: CharacterStatus): void => {
   document.querySelector('#camera-status')!.textContent = `Camera: ${cameraNames[state.cameraView]}${state.following ? ' · following' : ''}`;
   document.querySelectorAll<HTMLButtonElement>('[data-camera]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.camera === state.cameraView)));
 };
+async function initialize(): Promise<void> {
 try {
+  // Yield for the initial DOM before downloading and constructing the engine.
+  await new Promise<void>(resolve => requestAnimationFrame(() => { setTimeout(resolve, 0); }));
+  if (uiEvents.signal.aborted) return;
+  const { ViewerApp } = await import('./engine/ViewerApp');
+  if (uiEvents.signal.aborted) return;
+  reportAsset({ phase: 'loading', stage: 'scene', message: 'Building the city scene…' });
   viewer = new ViewerApp(scene, message => { status.textContent = message; }, value => { fps.textContent = String(value); }, updateCharacterStatus, reportAsset, metrics => {
     const element = document.querySelector<HTMLElement>('#scene-metrics')!;
     element.textContent = `${metrics.drawCalls} draws · ${(metrics.triangles / 1000).toFixed(1)}k triangles`;
     element.dataset.geometries = String(metrics.geometries); element.dataset.textures = String(metrics.textures);
   });
-  retryCharacter.addEventListener('click', () => viewer?.retryCharacter(), { signal: uiEvents.signal });
+  controls.forEach(control => { control.disabled = false; });
   const speech = document.querySelector<HTMLTextAreaElement>('#speech')!;
   const expressionStatus = document.querySelector<HTMLElement>('#expression-status')!;
   const syncExpression = (announce: boolean): void => {
@@ -173,14 +198,17 @@ try {
   document.querySelector<HTMLSelectElement>('#lighting')!.addEventListener('change', event => viewer?.setEvening((event.target as HTMLSelectElement).value === 'evening'), { signal: uiEvents.signal });
   document.querySelector<HTMLInputElement>('#shadows')!.addEventListener('change', event => viewer?.setShadows((event.target as HTMLInputElement).checked), { signal: uiEvents.signal });
 } catch (cause) {
-  viewport.setAttribute('aria-busy', 'false');
-  presentLoading(assetStatus, { phase: 'error', message: 'Scene unavailable.', recovery: 'Enable browser hardware acceleration and reload. WebGL2 is required.' });
+  fatal = true;
+  reportAsset({ phase: 'error', message: 'Scene unavailable.', recovery: 'Reload the page to retry. If the problem continues, check your connection and WebGL2 hardware acceleration.' });
+  retryCharacter.textContent = 'Reload page';
   status.textContent = 'Scene unavailable';
   error.hidden = false;
   error.textContent = 'The 3D scene could not start. Enable browser hardware acceleration and reload the page. Your browser needs WebGL2.';
-  document.querySelectorAll<HTMLButtonElement | HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>('button, input, select, textarea').forEach(control => { control.disabled = true; });
+  controls.forEach(control => { if (control !== retryCharacter) control.disabled = true; });
   console.error('Scene initialization failed:', cause);
 }
+}
+void initialize();
 const dispose = (): void => { uiEvents.abort(); viewer?.dispose(); };
 window.addEventListener('pagehide', event => { if (!event.persisted) dispose(); }, { signal: uiEvents.signal });
 if (import.meta.hot) import.meta.hot.dispose(dispose);

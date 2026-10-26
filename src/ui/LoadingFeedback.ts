@@ -1,7 +1,16 @@
+export type LoadingStage = 'engine' | 'scene' | 'loader' | 'download' | 'prepare';
+export interface DownloadProgress { loaded: number; total?: number }
 export type LoadingState =
-  | { phase: 'loading'; message: string }
+  | { phase: 'loading'; message: string; stage?: LoadingStage; download?: DownloadProgress }
   | { phase: 'ready'; message: string }
   | { phase: 'error'; message: string; recovery: string };
+
+export function describeDownload(state: LoadingState): number | null {
+  if (state.phase !== 'loading' || !state.download) return null;
+  const { loaded, total } = state.download;
+  if (!Number.isFinite(loaded) || loaded < 0 || total === undefined || !Number.isFinite(total) || total <= 0 || loaded > total) return null;
+  return Math.floor(loaded / total * 100);
+}
 
 export function describeLoading(state: LoadingState): { text: string; busy: boolean; error: boolean } {
   return {

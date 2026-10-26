@@ -1,5 +1,7 @@
 # Development plan
 
+追加需求（2026-10-26使用者授權）：初始化載入進度條與旋轉立體文字，獨立規格 [initialization-loading-progress](../.kiro/specs/initialization-loading-progress/)。實作與本機驗證完成，真實下載資訊／未知總量、錯誤Retry／Reload、reduced-motion規則及compact提示證據見 [validation](../.kiro/specs/initialization-loading-progress/validation.md)。不是第七里程碑，亦不代表里程碑6結束或人工環境驗收通過。
+
 最新進度（2026-10-26）：里程碑 5 已由使用者確認；里程碑 6 rigged-character-assets 已完成本機三角色骨架GLB、四動作／轉場、載入／錯誤重試及文件，待結束確認。使用者允許優先找專用資產、必要時明示衍生角色／動畫及使用現有Blender5.2；已記錄來源／修改與驗證。[證據及限制](../.kiro/specs/rigged-character-assets/validation.md)。不代表跨GPU／實機／全部環境驗收完成；原Front近距遮擋觀察仍保留。
 
 最新進度（2026-10-26）：使用者已確認里程碑 4 並授權開始 5。里程碑 5 character-expressions-ui 已完成情緒、可編輯泡泡、控制、載入呈現與無障礙實作／驗證，待結束確認；[證據與限制](../.kiro/specs/character-expressions-ui/validation.md)。里程碑 6 尚未開始，真實 GLB 載入驗收仍保留。以下舊時點敘述保留作歷史。
