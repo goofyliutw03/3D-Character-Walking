@@ -8,6 +8,12 @@
 
 ## 現有模式
 
+- `src/character/CharacterAssets.ts` 管最新請求與retry，注入loader／factory／release；`RiggedCharacter.ts`管normalization、AnimationMixer及unique資源釋放；`assetCatalog.ts`提供本機URL／clip／高度。既有Character保留明示fallback。ViewerApp組裝權威motion、model、camera與overlay。資產來源與Blender重建腳本見`tools/assets/`及`docs/asset-pipeline.md`。
+
+- `src/expression/` 管情緒／對話狀態及DOM overlay；`src/camera/AnchorProjection.ts` 對應普通與160°魚眼映射，不改鏡頭權威。`src/ui/` 管載入回饋及SpeechEditor的IME／提交時序。ViewerApp集中每幀定位，main只透過公開介面。
+
+- `src/camera/CameraController.ts` 管理鏡頭view／Follow、構圖與球面轉場，重用FirstPersonCamera與FollowCamera.constrain；ViewerApp負責組裝。`src/engine/FisheyePass.ts`由SceneRenderer按需使用，負責160°等距魚眼及離屏資源，不依人物或UI。
+
 - `src/engine/` 管理應用生命週期與渲染。ViewerApp 組合 SceneRenderer、CityScene 與 OrbitControls，管理更新迴圈與鏡頭轉場。
 - `src/scene/` 管理靜態環境、光照與可重用 geometry／material；場景負責釋放自己持有的資源。
 - 類別檔案使用 PascalCase（例如 ViewerApp.ts），方法與變數使用 camelCase；既有匯入使用相對路徑與 Three.js addon 路徑，尚未設定專案路徑別名。

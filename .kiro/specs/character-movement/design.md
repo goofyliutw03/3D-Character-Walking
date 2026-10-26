@@ -45,6 +45,14 @@ flowchart TD
 README、steering、roadmap 僅同步實作及驗證狀態。共用檔案依序修改。
 
 ## Components & Interfaces
+2026-10-25 第三人稱增補：使用者要求在 First person 外另增 Third person。CameraPreset 新增 third-person，路由至既有 setFollowing(true) 與 FollowCamera，不另建重複控制器。介面明列 Third person 卡片，與 First person 互斥；Follow 開關亦同步 Third person 選取，取消時清除動態卡片選取並回 Orbit。沿用外部 FOV 43°／near 0.1m、遮擋解算及角色顯示還原。5.7 對應 ViewerApp／UI integration，沿用 follow 行為測試，加實際瀏覽器切換驗證。inline 自動審閱通過。
+### 第一人稱增補（2026-10-25 使用者明確要求）
+本里程碑擴充基本視角，新增 src/camera/FirstPersonCamera.ts 與 tests/first-person.test.mjs。Character 暴露 eyeHeight=height×1.58/1.8 與 eyeForward=height×0.17/1.8，對應現有臉部 geometry；相機每幀同步眼位及 heading，以 Y-up 水平朝前看，不做額外位置插值／頭晃。第一人稱 FOV=70°（垂直）、near=0.04m，離開恢復 FOV=43°／near=0.1m。使用同一 PerspectiveCamera，不改 SceneRenderer。
+
+ViewerApp.setCamera 接受 first-person；狀態新增 firstPerson。第一人稱、Follow、Orbit 互斥；第一人稱隱藏 root，退出恢復。直接退出至 Orbit 時先用 Follow 即時取景，避免恢復人物後鏡頭仍在頭內；靜態 preset 再依原本轉場處理。main 顯示 First person 卡片、當前模式與適用操作提示。此版本使用隨人物面向的第一人稱視角，垂直 FOV 為 70°，不新增 mouse-look 或 pointer lock。
+
+Traceability：5.4 → Character.eyeHeight/eyeForward、FirstPersonCamera.update；5.5 → projection／root visibility／Orbit disable；5.6 → ViewerApp 模式切換與 UI status。測試涵蓋眼位、三角色高度、heading、跳躍高度、無延遲及 near/FOV 恢復；瀏覽器檢查無自身頭部、切回人物顯示與狀態同步。inline 自動審閱 PASS；無新依賴或外部資產。
+
 ### 1. CharacterController 與資料
 Service／State：`MovementIntent { x,z,run,jump }` → `update(delta,intent): Readonly<MotionSnapshot>`；snapshot 為 `{ x,y,z,heading,speed,grounded,action }`，action 為 idle／walk／run／jump。world 為 `{ bounds, obstacles, groundHeight(x,z) }`，障礙為 XZ AABB；無 DOM／Three 依賴。
 

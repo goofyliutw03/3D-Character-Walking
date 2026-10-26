@@ -26,6 +26,8 @@ export class Character {
   private variant: CharacterVariant = 'man';
   private disposed = false;
   get height(): number { return variants[this.variant].height; }
+  get eyeHeight(): number { return this.height * 1.58 / 1.8; }
+  get eyeForward(): number { return this.height * 0.17 / 1.8; }
   constructor() {
     this.root.name = 'procedural-character';
     this.root.add(this.model);

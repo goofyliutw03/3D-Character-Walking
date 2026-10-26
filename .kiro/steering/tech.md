@@ -17,7 +17,7 @@
 
 ## 驗證與限制
 
-使用 `./scripts/project.ps1 typecheck`、`./scripts/project.ps1 build`；開發與預覽使用同腳本的 dev／preview。build 包含 TypeScript 檢查，但不等於瀏覽器呈現、互動或 GPU 相容性驗收。目前 package.json 未設定自動化 test script。
+使用 `./scripts/project.ps1 typecheck`、`./scripts/project.ps1 build`；開發與預覽使用同腳本的 dev／preview。build 包含 TypeScript 檢查，但不等於瀏覽器呈現、互動或 GPU 相容性驗收。package.json 的 test 使用 Node 原生 runner，命令為 `node --experimental-transform-types --test --test-isolation=none tests/*.test.mjs`，不新增測試依賴。
 
 本次導入驗證的 production build 通過，出現壓縮後 chunk 大於 500 KB 的提示；是否拆包須另行評估，不在 steering 階段處理。
 

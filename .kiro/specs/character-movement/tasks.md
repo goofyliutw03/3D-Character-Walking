@@ -31,20 +31,28 @@
   - _Boundary: FollowCamera_
   - _Requirements: 5.1, 5.3_
 
-- [ ] 3. 整合與驗證
-- [ ] 3.1 整合城市資料、loop、生命週期及可見控制
+- [x] 3. 整合與驗證
+- [x] 3.1 整合城市資料、loop、生命週期及可見控制
   - CityScene 發布碰撞、單一 loop 更新、Follow／Orbit 互斥。
   - 完成時角色選擇、方向、Run／Jump／Stop、狀態可操作，production build 通過並保留光影／靜態鏡頭。
   - _Boundary: CityScene, ViewerApp, UI integration_
   - _Depends: 1.2, 2.1, 2.2, 2.3_
   - _Requirements: 1.1, 1.2, 1.3, 2.3, 3.1, 3.3, 4.1, 4.2, 4.3, 4.4, 5.1, 5.2, 5.3, 6.1, 6.2, 6.3_
-- [ ] 3.2 執行完整行為、瀏覽器與回歸驗證
+- [x] 3.2 加入角色眼位第一人稱視角
+  - 依實際眼位／朝向與跳躍更新第一人稱視線（垂直 FOV 70°），三種人物眼高不同，水平視線無額外頭晃。
+  - 完成時具 First person 可見卡片、自身隱藏、模式互斥與 near／FOV 恢復測試。
+  - _Boundary: FirstPersonCamera, Character eye anchor, ViewerApp, UI integration_
+  - _Depends: 3.1_
+  - _Requirements: 5.4, 5.5, 5.6, 5.7_
+- [x] 3.3 執行完整行為、瀏覽器與回歸驗證
   - 完整測試與 build，production preview 首次可用、走跑跳停、切角色、相機與失焦。
   - 完成時有可見輸入、窄螢幕與既有光影證據；限制明列，不冒稱實機效能驗收。
   - _Boundary: feature validation_
   - _Requirements: 1.1, 1.2, 1.3, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 3.1, 3.2, 3.3, 4.1, 4.2, 4.3, 4.4, 5.1, 5.2, 5.3, 6.1, 6.2, 6.3_
 
 ## Task-plan review
+2026-10-25 第三人稱增補（3.2／3.3）：新增 5.7，重用 FollowCamera 並明列 Third person 卡片；驗證第一／第三人稱、Follow 開關與 Orbit 選取同步。沿用原任務範圍，不新增平行工作。
+2026-10-25 增補 inline PASS：使用者要求 First person，新增 5.4–5.6 與任務 3.2；整體驗證調整為 3.3。目前 8 個子任務、25 個驗收條件完整對應，無跨里程碑自動開始。
 2026-10-24 inline PASS：7 個子任務，22 個驗收條件完整對應；基礎／核心／整合／驗證順序清楚、依賴無循環；不平行、不委派、不自動 commit。
 
 ## Implementation Notes

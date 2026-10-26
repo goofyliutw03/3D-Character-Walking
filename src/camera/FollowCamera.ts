@@ -13,6 +13,10 @@ export class FollowCamera {
     const amount = immediate ? 1 : 1 - Math.exp(-6 * Math.min(Math.max(delta, 0), 0.05));
     target.lerp(this.focus, amount);
     camera.position.lerp(this.destination, amount);
+    this.constrain(camera, target);
+    camera.lookAt(target);
+  }
+  constrain(camera: PerspectiveCamera, target: Vector3): void {
     this.direction.subVectors(camera.position, target);
     const distance = this.direction.length();
     if (distance > 0) {
@@ -22,6 +26,5 @@ export class FollowCamera {
       const hit = this.ray.intersectObjects(this.obstructions, true)[0];
       if (hit) camera.position.copy(target).addScaledVector(this.direction, Math.max(0.4, hit.distance - 0.25));
     }
-    camera.lookAt(target);
   }
 }

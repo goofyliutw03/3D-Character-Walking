@@ -1,0 +1,47 @@
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import { PerspectiveCamera, Scene } from 'three';
+import { FisheyePass } from '../src/engine/FisheyePass.ts';
+
+test('3.1–3.2: square wide-angle capture and aspect-correct output survive resize', () => {
+  const pass = new FisheyePass();
+  const calls = [];
+  let target = null;
+  const renderer = { getRenderTarget: () => target, setRenderTarget: value => { target = value; }, render: (scene, camera) => calls.push({ scene, camera: camera.clone(), target }) };
+  const camera = new PerspectiveCamera(43, 2, 0.1, 200);
+  camera.position.set(2, 3, 4);
+  pass.resize(1200, 600, 2);
+  pass.render(renderer, new Scene(), camera);
+  assert.equal(calls.length, 2);
+  assert.equal(calls[0].camera.fov, 160);
+  assert.equal(calls[0].camera.aspect, 1);
+  assert.deepEqual(calls[0].camera.position.toArray(), [2, 3, 4]);
+  assert.equal(calls[0].target.width, calls[0].target.height);
+  assert.ok(calls[0].target.width >= 1536 && calls[0].target.width <= 2048);
+  const material = calls[1].scene.children[0].material;
+  assert.equal(material.uniforms.aspect.value, 2);
+  assert.equal(target, null);
+  assert.equal(camera.aspect, 2);
+  pass.resize(390, 844, 1);
+  calls.length = 0;
+  pass.render(renderer, new Scene(), camera);
+  assert.equal(material.uniforms.aspect.value, 390 / 844);
+  assert.equal(calls[0].target.width, calls[0].target.height);
+  pass.dispose();
+});
+test('3.3, 4.2: render target restores on error, resources dispose exactly once', () => {
+  const pass = new FisheyePass(false);
+  const original = { name: 'original' };
+  let target = original;
+  let sourceTarget;
+  let output;
+  const renderer = { getRenderTarget: () => target, setRenderTarget: value => { target = value; }, render: scene => { if (target !== original) sourceTarget = target; else output = scene; } };
+  pass.render(renderer, new Scene(), new PerspectiveCamera());
+  let released = 0;
+  [sourceTarget, output.children[0].geometry, output.children[0].material].forEach(resource => resource.addEventListener('dispose', () => released++));
+  renderer.render = () => { throw new Error('render failed'); };
+  assert.throws(() => pass.render(renderer, new Scene(), new PerspectiveCamera()), /render failed/);
+  assert.equal(target, original);
+  pass.dispose(); pass.dispose();
+  assert.equal(released, 3);
+});

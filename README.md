@@ -1,5 +1,9 @@
 # 3D Character Walk Viewer
 
+2026-10-26：里程碑 6 已整合本機 **男／女／小孩 skinned GLB**、Idle／Walk／Run／Jump 骨架動畫、轉場、真實載入與 Retry／fallback，待結束確認。成人來源為 Quaternius CC0；小孩比例與 Jump 為明確標示的專案衍生資產。無新 npm 依賴，使用既有 Blender 5.2.2 LTS 離線重建；正常瀏覽不需要 Blender。[資產來源](public/assets/characters/ATTRIBUTION.md)・[操作／重建](docs/asset-pipeline.md)・[驗證與限制](.kiro/specs/rigged-character-assets/validation.md)。下方原型／資產尚未整合的敘述為歷史時點。
+
+2026-10-26：里程碑 5 已完成實作與驗證，待結束確認。**Expression** 提供 None／Happy／Sad／Angry／Surprised，以及最多 160 個 Unicode code points 的純文字多行對話、字數與 Clear speech。內容僅留在本次頁面，切換角色會保留；進入編輯會停止移動。泡泡依普通／160°魚眼投影定位，第一人稱隱藏自身泡泡。載入回饋明示目前為程序化原型；正式 GLB loader 留里程碑 6。下方 Stage 1.2「人物尚未實作」等為歷史時點。[驗證與限制](.kiro/specs/character-expressions-ui/validation.md)
+
 GitHub: [goofyliutw03/3D-Character-Walking](https://github.com/goofyliutw03/3D-Character-Walking)
 
 Local AI code search: [RAG setup and commands](docs/local-rag.md) (SocratiCode, native Qdrant, Ollama; no Docker required).
@@ -11,6 +15,12 @@ Local AI code search: [RAG setup and commands](docs/local-rag.md) (SocratiCode, 
 2026-10-14 已匯入「建立 Three.js 城市角色檢視器」及其引用的 Web 3D 規畫聊天內容，並建立階段 1.1 的 Vite + TypeScript + Three.js 專案骨架。
 
 ## 安裝與啟動
+
+里程碑4完成：Camera 新增 **Front、Character overhead、Low angle、Fisheye**，保留第一／第三人稱與原有靜態預設。外部視角平滑切換，Follow 可暫停／恢復而不改所選構圖；暫停後可拖曳觀察。First person 固定眼位。Fisheye 是 **160°圓形等距投影**，不是180°，會額外使用離屏渲染資源。[驗證紀錄](.kiro/specs/camera-modes/validation.md)
+
+Camera 同時提供 **First person**（角色眼位，垂直 FOV 70°）與 **Third person**（人物後方跟隨，垂直 FOV 43°）。Third person 與 Follow character 開關同步，可看見人物；兩種視角互斥。
+
+里程碑 3 更新（2026-10-25）：可選男／女／小孩程序化原型，以 WASD／方向鍵或畫面控制移動，Shift／Run 加速，Space／Jump 起跳，Stop 停止。Camera 新增 **First person**，使用角色實際眼高及面向，隨跳躍移動；自身隱藏，切回 Follow／靜態鏡頭恢復顯示。此版第一人稱視線隨人物面向，垂直 FOV 為 70°，不包含滑鼠自由看向或 pointer lock。正式 GLB／骨架動畫仍待後續。證據與限制見 [character-movement validation](.kiro/specs/character-movement/validation.md)。
 
 需要 Node.js 22.12+（建議 24 LTS）與 pnpm 11.25.0。一般環境可先使用 Node.js 附帶的 npm 執行 `npm install --global pnpm@11.25.0`。此電腦也可直接使用腳本自動找到 Codex 附帶的 pnpm。
 

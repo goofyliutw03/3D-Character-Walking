@@ -11,6 +11,29 @@ const setup = () => {
 class Button extends EventTarget {
   setPointerCapture() {}
 }
+test('expressions 2.4: entering an editor clears held keys, latched movement, run and jump', () => {
+  const { win, doc, input } = setup();
+  const up = new Button();
+  input.bindDirection(up, 'forward');
+  up.dispatchEvent(event('click', { detail: 0 }));
+  input.setRun(true);
+  win.dispatchEvent(event('keydown', { code: 'KeyD', repeat: false }));
+  input.jump();
+  const focus = event('focusin');
+  Object.defineProperty(focus, 'target', { value: { closest: () => ({}) } });
+  doc.dispatchEvent(focus);
+  assert.deepEqual(input.sample(), { x: 0, z: 0, run: false, jump: false });
+  const composing = event('keydown', { code: 'Space', isComposing: true });
+  win.dispatchEvent(composing);
+  assert.equal(composing.defaultPrevented, false);
+  assert.equal(input.sample().jump, false);
+  input.setRun(true);
+  const buttonFocus = event('focusin');
+  Object.defineProperty(buttonFocus, 'target', { value: { closest: selector => selector.includes('button') ? {} : null } });
+  doc.dispatchEvent(buttonFocus);
+  assert.equal(input.running, true);
+  input.dispose();
+});
 test('4.3: keyboard movement, running, blur and hidden reset', () => {
   const { win, doc, input } = setup();
   win.dispatchEvent(event('keydown', { code: 'KeyW', repeat: false }));

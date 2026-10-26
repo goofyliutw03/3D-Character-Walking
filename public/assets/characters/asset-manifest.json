@@ -1,0 +1,42 @@
+{
+  "generator": "tools/assets/prepare_characters.py",
+  "blender": "5.2.2 LTS",
+  "assets": [
+    {
+      "variant": "man",
+      "file": "man.glb",
+      "bytes": 886940,
+      "sha256": "23da879b83604a0b29383d742d2ec93b4ee238d98fcba28851ddb358fa3a696e",
+      "source": "tools/assets/source/man.glb",
+      "sourceSha256": "fea7e71271203e7073f1a073fa1208de7402df276f87f80e149bf7589b5d46b4",
+      "license": "CC0-1.0",
+      "author": "Quaternius",
+      "projectAuthoredJump": true,
+      "derivedChild": false
+    },
+    {
+      "variant": "woman",
+      "file": "woman.glb",
+      "bytes": 946952,
+      "sha256": "3c7ddd31cb3876eb8a137d2256e95fbb81f01f1aeb096c7f8cf4ca2a16a54915",
+      "source": "tools/assets/source/woman.glb",
+      "sourceSha256": "a2212729826b718e59e698211ed3951c22459b48733b1ee6a24fac0abf74dca8",
+      "license": "CC0-1.0",
+      "author": "Quaternius",
+      "projectAuthoredJump": true,
+      "derivedChild": false
+    },
+    {
+      "variant": "child",
+      "file": "child.glb",
+      "bytes": 887516,
+      "sha256": "afb54cee6662176f984a6665cdd5686a854035e24d186acbe9a7f4d38b32f69d",
+      "source": "tools/assets/source/man.glb",
+      "sourceSha256": "fea7e71271203e7073f1a073fa1208de7402df276f87f80e149bf7589b5d46b4",
+      "license": "CC0-1.0",
+      "author": "Quaternius",
+      "projectAuthoredJump": true,
+      "derivedChild": true
+    }
+  ]
+}

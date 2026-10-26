@@ -1,5 +1,13 @@
 # Development plan
 
+最新進度（2026-10-26）：里程碑 5 已由使用者確認；里程碑 6 rigged-character-assets 已完成本機三角色骨架GLB、四動作／轉場、載入／錯誤重試及文件，待結束確認。使用者允許優先找專用資產、必要時明示衍生角色／動畫及使用現有Blender5.2；已記錄來源／修改與驗證。[證據及限制](../.kiro/specs/rigged-character-assets/validation.md)。不代表跨GPU／實機／全部環境驗收完成；原Front近距遮擋觀察仍保留。
+
+最新進度（2026-10-26）：使用者已確認里程碑 4 並授權開始 5。里程碑 5 character-expressions-ui 已完成情緒、可編輯泡泡、控制、載入呈現與無障礙實作／驗證，待結束確認；[證據與限制](../.kiro/specs/character-expressions-ui/validation.md)。里程碑 6 尚未開始，真實 GLB 載入驗收仍保留。以下舊時點敘述保留作歷史。
+
+最新進度：使用者已確認里程碑3並授權開始4；目前里程碑4的前方／人物俯視／低角度／160°魚眼、平滑切換與獨立Follow已完成實作與驗證，待使用者結束確認。[證據與限制](../.kiro/specs/camera-modes/validation.md)。里程碑5尚未開始；以下舊時點進度保留作歷史。
+
+目前進度（2026-10-25）：里程碑 3 程序化人物、移動／跑跳、靜態碰撞、Follow／Orbit 及使用者追加 First person 已完成實作與驗證，等待里程碑結束確認。證據與環境限制見 [validation](../.kiro/specs/character-movement/validation.md)。里程碑 4 尚未開始。
+
 Updated: 2026-10-19 (Asia/Taipei).
 
 流程更新（2026-10-24）：使用者確認開始某交付里程碑後，該里程碑內規劃、requirements、design、tasks、實作、審閱與驗證自動依序推進；僅里程碑結束時總結並提示確認，確認後才開始下一里程碑。此規則取代以下註記與歷史文字的逐階段人工審閱限制；commit、模型切換及外部操作授權仍依 AGENTS.md。

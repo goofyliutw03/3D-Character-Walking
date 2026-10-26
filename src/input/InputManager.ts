@@ -16,7 +16,7 @@ export class InputManager {
   constructor(win: Window = window, doc: Document = document) {
     const signal = this.events.signal;
     win.addEventListener('keydown', event => {
-      if (!gameKeys.has(event.code) || this.editing(event.target) || event.altKey || event.ctrlKey || event.metaKey) return;
+      if (!gameKeys.has(event.code) || event.isComposing || this.editing(event.target) || event.altKey || event.ctrlKey || event.metaKey) return;
       event.preventDefault();
       if (event.repeat) return;
       if (event.code === 'Space' && !this.keys.has('Space')) this.jumpPending = true;
@@ -24,11 +24,14 @@ export class InputManager {
     }, { signal });
     win.addEventListener('keyup', event => { this.keys.delete(event.code); }, { signal });
     win.addEventListener('blur', () => this.stop(), { signal });
+    doc.addEventListener('focusin', event => {
+      if (this.editing(event.target, 'input, textarea, select, [contenteditable]:not([contenteditable="false"])')) this.stop();
+    }, { signal });
     doc.addEventListener('visibilitychange', () => { if (doc.hidden) this.stop(); }, { signal });
   }
-  private editing(target: EventTarget | null): boolean {
+  private editing(target: EventTarget | null, selector = 'input, textarea, select, button, [contenteditable]:not([contenteditable="false"])'): boolean {
     return !!target && 'closest' in target && typeof target.closest === 'function'
-      && !!target.closest('input, textarea, select, button, [contenteditable]:not([contenteditable="false"])');
+      && !!target.closest(selector);
   }
   bindDirection(button: HTMLButtonElement, direction: MoveDirection): void {
     const signal = this.events.signal;

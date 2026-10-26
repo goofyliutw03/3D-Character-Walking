@@ -1,5 +1,13 @@
 # cc-sdd 規劃對應與待辦
 
+最新狀態（2026-10-26）：里程碑5已由使用者確認，6 rigged-character-assets完成實作與驗證，待結束確認，見[validation](../specs/rigged-character-assets/validation.md)。三角色GLB與四骨架clips含依使用者授權製作的小孩／Jump衍生，真實載入與失敗／Retry已驗證。以下未開始／initialized屬歷史。六個功能里程碑的實作完成不等於跨GPU／實機／螢幕閱讀器等人工驗收完成。
+
+最新狀態（2026-10-26）：使用者已確認里程碑 4，里程碑 5 character-expressions-ui 依授權完成實作與驗證，待結束確認。20 項條件覆蓋與限制見 [validation](../specs/character-expressions-ui/validation.md)。里程碑 6 未開始；真實載入／資產授權與實機驗收仍保留。以下 initialized 及較舊進度屬歷史，不作目前狀態。
+
+最新狀態：里程碑3已由使用者確認；里程碑4 camera-modes完成實作與驗證，待結束確認，見[validation](../specs/camera-modes/validation.md)。里程碑5、6未開始。下游表情anchor需考慮cameraView及160°魚眼投影，不能直接沿用普通透視螢幕座標。本段取代下方舊時點狀態。
+
+目前進度（2026-10-25）：里程碑 3 character-movement 實作與驗證完成，含使用者追加 First person（70° FOV），等待結束確認；證據見 [validation](../specs/character-movement/validation.md)。里程碑 4–6 未開始。下文 initialized 與「等待開始里程碑 3」屬首次導入時點，現況以本段及各 spec.json 為準。
+
 更新：2026-10-24（Asia/Taipei）。使用者已核准 product／tech／structure steering，並要求將目前 plan items 導入 cc-sdd 規劃方式。本文件記錄導入與分析，不核准後續實作。
 
 ## 來源與判定
@@ -18,10 +26,10 @@
 
 ## Specs (dependency order)
 
-- [ ] [character-movement](../specs/character-movement/) — 里程碑 3；程序化男／女／小孩、停止／走／跑／跳、輸入、移動狀態、碰撞／可走區限制、基本 Follow／Orbit。依賴：既有場景。
-- [ ] [camera-modes](../specs/camera-modes/) — 里程碑 4；前方／俯視／低角度／魚眼、平滑切換、獨立跟隨開關。依賴：character-movement 的 transform 與 Follow 邊界。
-- [ ] [character-expressions-ui](../specs/character-expressions-ui/) — 里程碑 5；emoji／情緒、可編輯泡泡、可見控制、載入回饋呈現與無障礙。依賴：character-movement；鏡頭控制整合依賴 camera-modes。
-- [ ] [rigged-character-assets](../specs/rigged-character-assets/) — 里程碑 6；免費授權 rigged GLB、載入與錯誤事件、clip 映射與動畫轉場、效能與本機操作文件。依賴：前三個功能的角色、相機與 UI 契約；實作前需確認資產。
+- [x] [character-movement](../specs/character-movement/) — 里程碑 3；程序化男／女／小孩、停止／走／跑／跳、輸入、移動狀態、碰撞／可走區限制、基本 Follow／Orbit。依賴：既有場景。
+- [x] [camera-modes](../specs/camera-modes/) — 里程碑 4；前方／俯視／低角度／魚眼、平滑切換、獨立跟隨開關。依賴：character-movement 的 transform 與 Follow 邊界。
+- [x] [character-expressions-ui](../specs/character-expressions-ui/) — 里程碑 5；emoji／情緒、可編輯泡泡、可見控制、載入回饋呈現與無障礙實作／驗證完成，待結束確認。依賴：character-movement；鏡頭控制整合依賴 camera-modes。
+- [x] [rigged-character-assets](../specs/rigged-character-assets/) — 里程碑 6；授權來源與衍生清楚的三角色GLB、四骨架動作、載入／錯誤／Retry、效能樣本與本機文件已驗證，待結束確認。環境限制與Front遮擋後續調查仍保留。
 
 載入器與錯誤狀態由 rigged-character-assets 擁有；character-expressions-ui 擁有狀態的可視／輔助技術呈現，前期可用測試狀態，最終須真實載入驗收。共用契約在 design 階段審閱。
 

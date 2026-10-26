@@ -4,6 +4,7 @@
 使用本機城市街道人物檢視器的使用者目前只有靜態街景，尚無可操作人物。建立明確標示為原型的男／女／小孩程序化角色，分離 Character、InputManager 與 CharacterController，提供停止、走、跑、跳、鍵盤與可見控制、移動狀態、可走區／碰撞限制及基本 Follow／Orbit。依 docs/development-plan.md 里程碑 3 與 docs/stage-1.2.md 下一階段提案；詳細需求待審閱。前方／魚眼等延伸鏡頭、表情與最終 rigged GLB 由其他 spec 負責。共用 ViewerApp.ts、CityScene.ts、main.ts 必須依序修改，不可平行。
 
 ## Boundary Context
+2026-10-25 使用者追加 First person view with proper FOV（使用者已更正術語），納入本里程碑；5.4–5.6 依授權自動審閱通過。
 本里程碑一次顯示一位程序化原型，包含三種外觀、基本關節擺動、移動、跑跳、靜態碰撞與 Follow。既有街景、光影、三種靜態鏡頭保留。真實 rigged GLB、clip 動畫、魚眼、表情、NavMesh 與 NPC 不在範圍。
 
 ## Requirements
@@ -46,6 +47,10 @@
 1. When 使用者開啟 Follow, the Viewer shall 依人物位置及朝向更新鏡頭，讓移動人物保持可見。（5.1）
 2. When 切回 Orbit 或選取既有靜態鏡頭, the Viewer shall 結束 Follow 並恢復自由觀察；Follow 期間不得與自由操作爭奪鏡頭。（5.2）
 3. While 系統偏好減少動態效果, the Viewer shall 避免額外鏡頭插值且維持追蹤。（5.3）
+4. When 使用者選擇 First person, the Viewer shall 將鏡頭置於所選角色眼位，以水平視線朝人物面向觀看，並隨移動、跳躍及角色身高切換即時更新。（5.4）
+5. While First person 啟用, the Viewer shall 隱藏自身人物、使用適合近距離觀看的透視，且不接受 Orbit 操作或加入額外頭部晃動。（5.5）
+6. When 從 First person 切回 Follow、Orbit 或靜態預設, the Viewer shall 恢復人物顯示及外部鏡頭透視設定，並同步介面選取狀態。（5.6）
+7. When 使用者選擇 Third person, the Viewer shall 從人物後方跟隨並顯示人物，與 First person 互斥，且與 Follow 開關及鏡頭卡片選取狀態同步。（5.7）
 
 ### Requirement 6: 整合與生命週期
 **Objective:** 維護者能驗證新功能並保留既有行為。
