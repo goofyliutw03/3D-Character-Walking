@@ -1,5 +1,7 @@
 # cc-sdd 規劃對應與待辦
 
+2026-10-30 CAM-03（1M-0）：使用者核准追加 [camera-obstruction-modes](../specs/camera-obstruction-modes/)，三種遮擋策略、desired／rendered構圖分離、環境材質隔離／還原及Camera UI；依序實作與inline審閱，驗證／Release／索引證據見validation。共用CameraController／ViewerApp／CityScene／main必須依序，未平行；不擴充NPC、不結束M6／SCENE-05、不新增第七里程碑。
+
 追加需求（2026-10-29）：[mobile-touch-navigation](../specs/mobile-touch-navigation/) 4項tasks已完成，54 tests／build及本機production驗證通過，待結束確認。手機控制、點地跑步與靜態避障證據見[validation](../specs/mobile-touch-navigation/validation.md)。非第七里程碑，SCENE-05 iPhone三瀏覽器真機與既有M6未結事項保留；LATER-01／LATER-03不擴張。
 
 追加需求（2026-10-26授權）：[initialization-loading-progress](../specs/initialization-loading-progress/) 已完成實作與本機驗證，13條件、43 tests及production build／browser證據見validation。擴充既有loading契約並重驗rigged／UI；非第七里程碑，不變更原人工驗收狀態。

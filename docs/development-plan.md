@@ -1,5 +1,7 @@
 # Development plan
 
+2026-10-30 CAM-03（1M-0）：使用者已確認三種鏡頭遮擋模式規劃，規格見 [camera-obstruction-modes](../.kiro/specs/camera-obstruction-modes/)。Auto zoom平滑入／出、遮擋物75%透明、全場景線框與主角排除已實作；First person保持眼位，模式跨鏡頭／Follow保留。完成證據與發佈／索引結果見 [validation](../.kiro/specs/camera-obstruction-modes/validation.md)。本次非第七里程碑，不變更M6／SCENE-05實機待驗或LATER-03 NPC延後範圍。
+
 追加需求（2026-10-26授權，2026-10-29完成本機驗證）：[mobile-touch-navigation](../.kiro/specs/mobile-touch-navigation/) 已完成場景下方手機控制、點地跑步、靜態避障與取消；4項tasks、54 tests及production證據見[validation](../.kiro/specs/mobile-touch-navigation/validation.md)。待結束確認及SCENE-05真機驗收；非第七里程碑，不更動M6、LATER-01巡迴或其他延後項目。
 
 2026-10-26 補充：Front近牆／樹旁避障壓縮裁切已依授權完成局部修正與本機驗證，見[camera-modes validation](../.kiro/specs/camera-modes/validation.md)的1G-0紀錄。貼牆可能採斜前／近側構圖；封閉空間、轉場路徑及既有人工環境限制仍保留，不代表里程碑6人工驗收通過。

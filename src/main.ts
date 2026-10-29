@@ -5,12 +5,18 @@ import { emotions, speechLimit, type Emotion } from './expression/ExpressionMana
 import { presentLoading, type LoadingState } from './ui/LoadingFeedback';
 import { SpeechEditor } from './ui/SpeechEditor';
 import { LoadingPanel } from './ui/LoadingPanel';
+import type { ObstructionMode } from './camera/CameraObstruction';
 import './style.css';
 
 const cameraNames: Record<CameraPreset, string> = {
   overview: 'Overview', street: 'Street level', overhead: 'From above',
   'first-person': 'First person', 'third-person': 'Third person', front: 'Front',
   'character-overhead': 'Character overhead', 'low-angle': 'Low angle', fisheye: 'Fisheye · 160°',
+};
+const obstructionHints: Record<ObstructionMode, string> = {
+  zoom: 'Move smoothly closer when scenery blocks your character, then return to your chosen view.',
+  transparent: 'Keep your view. Scenery blocking your character becomes 75% transparent.',
+  wireframe: 'Show the whole scene as a wireframe. Your character keeps its normal appearance.',
 };
 
 const app = document.querySelector<HTMLDivElement>('#app');
@@ -49,6 +55,13 @@ app.innerHTML = `
         <div class="section-heading"><h2>Camera</h2><span class="tag" id="camera-mode">ORBIT</span></div>
         <label class="toggle-row follow-row" for="follow"><span>Follow character</span><input id="follow" type="checkbox"></label>
         <p class="hint" id="camera-hint">Choose a starting angle, then explore.</p>
+        <label class="select-label" for="obstruction-mode">Objects block mode</label>
+        <select id="obstruction-mode" aria-describedby="obstruction-hint">
+          <option value="zoom">1 · Auto zoom (default)</option>
+          <option value="transparent">2 · Transparent blockers · 75%</option>
+          <option value="wireframe">3 · Wireframe scene</option>
+        </select>
+        <p class="hint" id="obstruction-hint">${obstructionHints.zoom}</p>
         <div class="camera-options" role="group" aria-label="Camera views">
           <button data-camera="overview" aria-pressed="true"><span class="view-icon">◇</span><span>Overview<small>See the whole neighborhood</small></span><span class="selection-dot"></span></button>
           <button data-camera="street" aria-pressed="false"><span class="view-icon">↗</span><span>Street level<small>Step into the scene</small></span><span class="selection-dot"></span></button>
@@ -133,7 +146,7 @@ retryCharacter.addEventListener('click', () => {
 }, { signal: uiEvents.signal });
 let previousCharacterStatus = '';
 const updateCharacterStatus = (state: CharacterStatus): void => {
-  const key = `${state.variant}/${state.action}/${state.running}/${state.following}/${state.cameraView}/${state.navigation}`;
+  const key = `${state.variant}/${state.action}/${state.running}/${state.following}/${state.cameraView}/${state.navigation}/${state.obstructionMode}`;
   if (key === previousCharacterStatus) return;
   previousCharacterStatus = key;
   const names = { man: 'Man', woman: 'Woman', child: 'Child' };
@@ -148,6 +161,10 @@ const updateCharacterStatus = (state: CharacterStatus): void => {
   if (navigationStatus.textContent !== navigationMessages[state.navigation]) navigationStatus.textContent = navigationMessages[state.navigation];
   document.querySelector<HTMLInputElement>('#follow')!.checked = state.following;
   document.querySelector<HTMLInputElement>('#follow')!.disabled = state.firstPerson;
+  document.querySelector<HTMLSelectElement>('#obstruction-mode')!.value = state.obstructionMode;
+  document.querySelector('#obstruction-hint')!.textContent = state.firstPerson && state.obstructionMode !== 'wireframe'
+    ? 'First person keeps your eye position. This mode resumes when you return to an external view.'
+    : obstructionHints[state.obstructionMode];
   document.querySelector('#camera-mode')!.textContent = state.cameraView === 'fisheye' ? '160° FISHEYE' : cameraNames[state.cameraView].toUpperCase();
   document.querySelector('.viewport')!.classList.toggle('fisheye-view', state.cameraView === 'fisheye');
   document.querySelector('#camera-hint')!.textContent = state.firstPerson
@@ -203,6 +220,7 @@ try {
   document.querySelector('#jump')!.addEventListener('click', () => viewer?.jump(), { signal: uiEvents.signal });
   document.querySelector('#stop')!.addEventListener('click', () => viewer?.stop(), { signal: uiEvents.signal });
   document.querySelector<HTMLInputElement>('#follow')!.addEventListener('change', event => viewer?.setFollowing((event.target as HTMLInputElement).checked), { signal: uiEvents.signal });
+  document.querySelector<HTMLSelectElement>('#obstruction-mode')!.addEventListener('change', event => viewer?.setObstructionMode((event.target as HTMLSelectElement).value as ObstructionMode), { signal: uiEvents.signal });
   const cameraButtons = document.querySelectorAll<HTMLButtonElement>('[data-camera]');
   const selectCamera = (preset: CameraPreset): void => {
     viewer?.setCamera(preset);

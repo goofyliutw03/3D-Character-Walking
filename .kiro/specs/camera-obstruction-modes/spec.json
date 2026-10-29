@@ -1,0 +1,22 @@
+{
+  "feature_name": "camera-obstruction-modes",
+  "created_at": "2026-10-29T23:40:00+08:00",
+  "updated_at": "2026-10-30T07:08:11.3817555+08:00",
+  "language": "zh-TW",
+  "phase": "implementation-complete",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": true
+    }
+  },
+  "ready_for_implementation": true
+}

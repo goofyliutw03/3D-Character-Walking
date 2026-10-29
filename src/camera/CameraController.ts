@@ -22,6 +22,7 @@ const isStatic = (view: CameraView): view is keyof typeof staticPresets => view 
 export class CameraController {
   private selected: CameraView = 'overview';
   private tracking = false;
+  private obstructionAvoidance = true;
   private transition: Transition | undefined;
   private centering: { elapsed: number; held: boolean } | undefined;
   private previousPosition = new Vector3();
@@ -36,6 +37,8 @@ export class CameraController {
   get fisheye(): boolean { return this.selected === 'fisheye'; }
   get transitioning(): boolean { return this.transition !== undefined; }
   constructor(private readonly camera: PerspectiveCamera, private readonly orbit: Orbit, private readonly obstruction: Pick<FollowCamera, 'constrain'>, private readonly first: FirstPersonCamera) {}
+
+  setObstructionAvoidance(enabled: boolean): void { this.obstructionAvoidance = enabled; }
 
   select(view: CameraView, subject: CameraSubject, immediate: boolean): void {
     this.centering = undefined;
@@ -124,7 +127,7 @@ export class CameraController {
     else if (view === 'low-angle') position.set(subject.x + sin * 5, subject.y + 0.35, subject.z + cos * 5);
     else if (view === 'fisheye') position.set(subject.x - sin * 3.5, subject.y + subject.height + 0.6, subject.z - cos * 3.5);
     else position.set(subject.x - sin * 6, subject.y + subject.height + 3, subject.z - cos * 6);
-    if (view === 'front') this.resolveFront(position, target, subject);
+    if (view === 'front' && this.obstructionAvoidance) this.resolveFront(position, target, subject);
     return { position, target };
   }
   private resolveFront(position: Vector3, target: Vector3, subject: CameraSubject): void {
@@ -175,7 +178,6 @@ export class CameraController {
     this.finishFrame();
   }
   private finishFrame(): void {
-    if (!isStatic(this.selected)) this.obstruction.constrain(this.camera, this.orbit.target);
     this.camera.lookAt(this.orbit.target);
   }
 }

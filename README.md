@@ -20,6 +20,8 @@ Local AI code search: [RAG setup and commands](docs/local-rag.md) (SocratiCode, 
 
 ## 安裝與啟動
 
+Camera 追加 **Objects block mode**：預設 **Auto zoom** 遇遮擋平滑拉近，解除後回到操作中的原構圖；**Transparent blockers** 將遮擋主角的環境物件顯示為75%透明（opacity0.25）；**Wireframe scene** 將全場景顯示為三角網格線框，主角保持正常。切換／解除會恢復材質，模式跨鏡頭、Follow與角色保留。First person維持眼位、不縮距或透明化，線框仍適用。目前沒有NPC。有限射線與封閉空間不保證全身可見，突發遮擋可在平滑拉近期間短暫遮住主角。[規格與驗證](.kiro/specs/camera-obstruction-modes/validation.md)
+
 里程碑4完成：Camera 新增 **Front、Character overhead、Low angle、Fisheye**，保留第一／第三人稱與原有靜態預設。外部視角平滑切換，Follow 可暫停／恢復而不改所選構圖；暫停後可拖曳觀察。First person 固定眼位。Fisheye 是 **160°圓形等距投影**，不是180°，會額外使用離屏渲染資源。[驗證紀錄](.kiro/specs/camera-modes/validation.md)
 
 Camera 同時提供 **First person**（角色眼位，垂直 FOV 70°）與 **Third person**（人物後方跟隨，垂直 FOV 43°）。Third person 與 Follow character 開關同步，可看見人物；兩種視角互斥。

@@ -3,6 +3,7 @@ import type { WalkableBounds, WalkableWorld } from '../character/motion';
 
 export class CityScene {
   readonly scene = new Scene();
+  readonly environment = new Group();
   private readonly obstacles: WalkableBounds[] = [];
   readonly walkableWorld: WalkableWorld = {
     bounds: { minX: -8.3, maxX: 8.3, minZ: -26.5, maxZ: 26.5 },
@@ -26,6 +27,7 @@ export class CityScene {
     this.sun.shadow.bias = -0.0003;
     this.sun.shadow.normalBias = 0.04;
     this.scene.add(this.sun);
+    this.scene.add(this.environment);
     this.buildStreet();
   }
   private material(color: string): MeshStandardMaterial {
@@ -47,9 +49,9 @@ export class CityScene {
   }
   private buildStreet(): void {
     const ground = (x: number, y: number, z: number, width: number, height: number, depth: number, color: string): void => {
-      this.box(this.scene, x, y, z, width, height, depth, color).userData.walkable = true;
+      this.box(this.environment, x, y, z, width, height, depth, color).userData.walkable = true;
     };
-    this.box(this.scene, 0, -0.4, 0, 45, 0.8, 54, '#bfccac');
+    this.box(this.environment, 0, -0.4, 0, 45, 0.8, 54, '#bfccac');
     ground(0, 0.025, 0, 9, 0.05, 54, '#697272');
     for (const side of [-1, 1]) {
       ground(side * 6.4, 0.15, 0, 3.8, 0.3, 54, '#ded9ca');
@@ -64,14 +66,14 @@ export class CityScene {
     }
     for (let z = -25; z < 26; z += 5) if (Math.abs(z) > 3) ground(0, 0.06, z, 0.12, 0.02, 2.5, '#f2dfac');
     for (let x = -3.6; x <= 3.6; x += 1.2) ground(x, 0.065, 0, 0.65, 0.02, 3.2, '#eee9dc');
-    this.box(this.scene, 0, 0.18, -25.4, 2.1, 0.35, 2.4, '#e2d9c5');
+    this.box(this.environment, 0, 0.18, -25.4, 2.1, 0.35, 2.4, '#e2d9c5');
     this.obstacle(0, -25.4, 2.1, 2.4);
     this.tree(0, -25.4);
   }
   private building(x: number, z: number, height: number, color: string, side: number): void {
     const group = new Group();
     group.position.set(x, 0.3, z);
-    this.scene.add(group);
+    this.environment.add(group);
     this.box(group, 0, height / 2, 0, 7.2, height, 9.8, color);
     this.box(group, 0, height + 0.18, 0, 7.6, 0.36, 10.2, '#eee7d7');
     this.box(group, 0, height + 0.48, 0, 6.6, 0.28, 9.2, '#b5b6a9');
@@ -90,32 +92,38 @@ export class CityScene {
     this.box(group, front - side * 0.12, 2.94, 0, 0.12, 0.38, 4.6, '#f2e7cc');
   }
   private tree(x: number, z: number): void {
+    const group = new Group();
+    this.environment.add(group);
     this.obstacle(x, z, 1.5, 1.5);
-    this.box(this.scene, x, 0.35, z, 1.5, 0.4, 1.5, '#b3b3a0');
-    this.box(this.scene, x, 0.57, z, 1.3, 0.05, 1.3, '#7d8463');
+    this.box(group, x, 0.35, z, 1.5, 0.4, 1.5, '#b3b3a0');
+    this.box(group, x, 0.57, z, 1.3, 0.05, 1.3, '#7d8463');
     const trunk = new Mesh(this.pole, this.material('#85745b'));
     trunk.position.set(x, 1.8, z);
     trunk.scale.set(0.13, 2.8, 0.13);
     trunk.castShadow = true;
-    this.scene.add(trunk);
+    group.add(trunk);
     const crown = new Mesh(this.canopy, this.material('#739065'));
     crown.position.set(x, 3.5, z);
     crown.scale.set(1.1, 1.6, 1.1);
     crown.castShadow = true;
     crown.receiveShadow = true;
-    this.scene.add(crown);
+    group.add(crown);
   }
   private streetlight(x: number, z: number, side: number): void {
+    const group = new Group();
+    this.environment.add(group);
     this.obstacle(x, z, 0.2, 0.2);
-    this.box(this.scene, x, 2.4, z, 0.12, 4.2, 0.12, '#4b605a');
-    this.box(this.scene, x - side * 0.4, 4.5, z, 0.9, 0.12, 0.12, '#4b605a');
-    this.box(this.scene, x - side * 0.8, 4.43, z, 0.55, 0.13, 0.35, '#eee1b7');
+    this.box(group, x, 2.4, z, 0.12, 4.2, 0.12, '#4b605a');
+    this.box(group, x - side * 0.4, 4.5, z, 0.9, 0.12, 0.12, '#4b605a');
+    this.box(group, x - side * 0.8, 4.43, z, 0.55, 0.13, 0.35, '#eee1b7');
   }
   private bench(x: number, z: number, side: number): void {
+    const group = new Group();
+    this.environment.add(group);
     this.obstacle(x, z, 0.85, 2.1);
-    this.box(this.scene, x, 0.85, z, 0.75, 0.15, 2, '#a38360');
-    this.box(this.scene, x + side * 0.34, 1.18, z, 0.1, 0.6, 2, '#a38360');
-    for (const offset of [-0.72, 0.72]) this.box(this.scene, x, 0.55, z + offset, 0.6, 0.5, 0.1, '#4b605a');
+    this.box(group, x, 0.85, z, 0.75, 0.15, 2, '#a38360');
+    this.box(group, x + side * 0.34, 1.18, z, 0.1, 0.6, 2, '#a38360');
+    for (const offset of [-0.72, 0.72]) this.box(group, x, 0.55, z + offset, 0.6, 0.5, 0.1, '#4b605a');
   }
   private obstacle(x: number, z: number, width: number, depth: number): void {
     this.obstacles.push({ minX: x - width / 2, maxX: x + width / 2, minZ: z - depth / 2, maxZ: z + depth / 2 });

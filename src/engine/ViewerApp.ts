@@ -20,12 +20,15 @@ import { DestinationNavigation, type NavigationStatus } from '../navigation/Dest
 import { pickGround } from '../navigation/GroundPicker';
 import { TapGesture } from '../input/TapGesture';
 import { MouseOrbitGesture } from '../input/MouseOrbitGesture';
+import { CameraObstruction, type ObstructionMode } from '../camera/CameraObstruction';
 
 export type CameraPreset = CameraView;
-export interface CharacterStatus { variant: CharacterVariant; action: MotionSnapshot['action']; running: boolean; following: boolean; firstPerson: boolean; cameraView: CameraView; navigation: NavigationStatus }
+export interface CharacterStatus { variant: CharacterVariant; action: MotionSnapshot['action']; running: boolean; following: boolean; firstPerson: boolean; cameraView: CameraView; navigation: NavigationStatus; obstructionMode: ObstructionMode }
 
 export class ViewerApp {
   private readonly camera = new PerspectiveCamera(43, 1, 0.1, 200);
+  private readonly desiredCamera = this.camera.clone();
+  private readonly obstruction: CameraObstruction;
   private readonly city: CityScene;
   private readonly view: SceneRenderer;
   private readonly controls: OrbitControls;
@@ -53,8 +56,10 @@ export class ViewerApp {
   constructor(private readonly container: HTMLElement, private readonly report: (message: string) => void, private readonly fps: (value: number) => void, private readonly characterReport?: (status: CharacterStatus) => void, assetReport?: (state: LoadingState) => void, private readonly metricsReport?: (stats: RenderStats) => void) {
     this.view = new SceneRenderer(container, this.camera);
     this.city = new CityScene();
-    const obstructions = [...this.city.scene.children];
-    this.controls = new OrbitControls(this.camera, this.view.renderer.domElement);
+    this.obstruction = new CameraObstruction(this.city.environment);
+    const obstructions = [...this.city.environment.children];
+    this.desiredCamera.copy(this.camera);
+    this.controls = new OrbitControls(this.desiredCamera, this.view.renderer.domElement);
     this.character = new Character();
     this.movement = new CharacterController(this.city.walkableWorld);
     this.navigation = new DestinationNavigation(this.city.walkableWorld);
@@ -67,10 +72,11 @@ export class ViewerApp {
     this.controls.minDistance = 3;
     this.controls.maxDistance = 95;
     this.controls.maxPolarAngle = Math.PI / 2 - 0.04;
-    this.cameras = new CameraController(this.camera, this.controls, new FollowCamera(obstructions), new FirstPersonCamera());
+    this.cameras = new CameraController(this.desiredCamera, this.controls, new FollowCamera(obstructions), new FirstPersonCamera());
     this.controls.addEventListener('start', () => this.cameras.interrupt());
     this.cameras.select('overview', this.getCameraSubject(), true);
     this.controls.update();
+    this.updateObstruction(0, true);
     this.overlay = new ExpressionOverlay(container);
     this.assets = new CharacterAssets({
       load: async (url, reportProgress) => {
@@ -135,7 +141,11 @@ export class ViewerApp {
     this.character.update(this.motion, delta);
     this.assets.current?.update(this.motion, delta);
     this.characterReport?.(this.getCharacterStatus());
-    this.cameras.update(this.getCameraSubject(), delta, window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    const immediate = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    this.desiredCamera.aspect = this.camera.aspect;
+    this.desiredCamera.updateProjectionMatrix();
+    this.cameras.update(this.getCameraSubject(), delta, immediate);
+    this.updateObstruction(delta, immediate);
     this.character.root.visible = !this.assets.current && this.cameras.characterVisible;
     if (this.assets.current) this.assets.current.root.visible = this.cameras.characterVisible;
     this.anchor.set(this.motion.x, this.motion.y + this.getSubjectHeight() + 0.25, this.motion.z);
@@ -167,6 +177,14 @@ export class ViewerApp {
     if (!this.cameras.characterVisible) this.overlay.place(null);
   }
   setEmotion(emotion: Emotion): void { this.expressions.setEmotion(emotion); this.updateExpression(); }
+  setObstructionMode(mode: ObstructionMode): void {
+    this.obstruction.setMode(mode);
+    this.cameras.setObstructionAvoidance(mode === 'zoom');
+    this.characterReport?.(this.getCharacterStatus());
+  }
+  private updateObstruction(delta: number, immediate: boolean): void {
+    this.obstruction.update(this.desiredCamera, this.camera, this.controls.target, this.getCameraSubject(), delta, immediate, this.cameras.characterVisible);
+  }
   setSpeech(text: string): void { this.expressions.setSpeech(text); this.updateExpression(); }
   getExpression(): Readonly<ExpressionState> { return this.expressions.snapshot; }
   private updateExpression(): void {
@@ -195,7 +213,7 @@ export class ViewerApp {
   stop(): void { this.mouseOrbit.cancel(); this.cameras.endCharacterOrbit(true); this.input.stop(); }
   bindDirection(button: HTMLButtonElement, direction: MoveDirection): void { this.input.bindDirection(button, direction); }
   getCharacterStatus(): CharacterStatus {
-    return { variant: this.variant, action: this.motion.action, running: this.input.running || this.navigation.status === 'running', following: this.cameras.following, firstPerson: this.cameras.view === 'first-person', cameraView: this.cameras.view, navigation: this.navigation.status };
+    return { variant: this.variant, action: this.motion.action, running: this.input.running || this.navigation.status === 'running', following: this.cameras.following, firstPerson: this.cameras.view === 'first-person', cameraView: this.cameras.view, navigation: this.navigation.status, obstructionMode: this.obstruction.mode };
   }
   setShadows(enabled: boolean): void {
     this.shadows = enabled;
@@ -209,6 +227,6 @@ export class ViewerApp {
     this.disposed = true; this.events.abort();
     this.mouseOrbit.dispose(); this.tap.dispose(); this.destinationMarker.remove();
     this.assets.dispose(); this.input.dispose(); this.character.dispose(); this.overlay.dispose();
-    this.controls.dispose(); this.city.dispose(); this.view.dispose();
+    this.controls.dispose(); this.obstruction.dispose(); this.city.dispose(); this.view.dispose();
   }
 }

@@ -1,5 +1,7 @@
 # camera-modes 驗證紀錄
 
+2026-10-30 1M-0整合追加：遮擋顯示改由camera-obstruction-modes擁有；CameraController只產生desired構圖，Front避障選角只在Auto zoom啟用，縮距作用於獨立rendered相機。Transparent／Wireframe停用縮距及Front候選；First person眼位／自身隱藏不變。既有Front測試改檢查完整rendered輸出，仍驗證頭腳可讀性、安全視線與靜止穩定；全套66tests及production操作見[新validation](../camera-obstruction-modes/validation.md)。下方較舊constrain直接壓縮說明屬歷史。
+
 模式：依使用者里程碑確認，自動 inline 審閱；非獨立 reviewer，未切換模型。保留既有未提交第一／第三人稱成果，沒有 stage／commit／push。
 
 ## 規劃
