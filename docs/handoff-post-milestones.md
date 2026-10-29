@@ -33,3 +33,5 @@ Production4174已驗三角色、代表性Idle／Walk／Run／Jump、First person
 - 建議下一階段COMPLEX（若重現camera遮擋）、高能力／高推理；未切換。集中新chat可隔離範圍，但由使用者選擇。
 
 不得將金鑰、憑證或機密寫入任何spec、文件、程式或commit。先規劃，等核准。
+
+2026-10-26 補充：Front近牆／樹旁避障壓縮裁切已依授權完成局部修正與本機驗證，見[camera-modes validation](../.kiro/specs/camera-modes/validation.md)的1G-0紀錄。貼牆可能採斜前／近側構圖；封閉空間、轉場路徑及既有人工環境限制仍保留，不代表里程碑6人工驗收通過。

@@ -10,3 +10,5 @@ Sources are preserved in tools/assets/source/. The official Drive download was u
 Project modifications (2026-10-26): retain Idle/Walk/Run, remove unused actions and helper meshes, author a new in-place skeletal Jump; derive a stylized child by changing head/body/limb proportions, not only uniform scaling. Child and Jump are **project-derived assets**, not original Quaternius child/Jump assets. Project-authored asset modifications are dedicated under CC0 1.0 as well. No endorsement is implied.
 
 Blender 5.2.2 LTS pipeline: tools/assets/prepare_characters.py. Runtime assets are served locally with no paid or remote model service. No face morph animations are included.
+
+Child hand correction (2026-10-26): retain the Male Casual Character hand topology and skin weights; uniformly scale each hand and its rest bones about the wrist, with weighted blending at the wrist. This replaces the height-based deformation that enlarged some fingers as if they were part of the head. No additional source asset or license is introduced.

@@ -1,5 +1,9 @@
 # 3D Character Walk Viewer
 
+正式操作副本：修改仍在本專案進行，驗證後執行 `./scripts/project.ps1 release`，依序 tests／build／SHA256 增量同步至 `D:\Work_Mine\Testing\3D Character Walk Viewer\Release`。使用 `./scripts/project.ps1 preview-release`，開啟 http://127.0.0.1:4174 。[發佈流程、限制與驗證](docs/release.md)。
+
+2026-10-29：手機操作列已移至場景正下方；輕點可走地面會跑向目的地，支援靜態避障、普通／160°魚眼拾取及手動取消。54項測試與本機正式預覽通過，iPhone Safari／Chrome／Edge真機驗收仍待完成。[規格與驗證](.kiro/specs/mobile-touch-navigation/validation.md)。
+
 2026-10-26：里程碑 6 已整合本機 **男／女／小孩 skinned GLB**、Idle／Walk／Run／Jump 骨架動畫、轉場、真實載入與 Retry／fallback，待結束確認。成人來源為 Quaternius CC0；小孩比例與 Jump 為明確標示的專案衍生資產。無新 npm 依賴，使用既有 Blender 5.2.2 LTS 離線重建；正常瀏覽不需要 Blender。[資產來源](public/assets/characters/ATTRIBUTION.md)・[操作／重建](docs/asset-pipeline.md)・[驗證與限制](.kiro/specs/rigged-character-assets/validation.md)。下方原型／資產尚未整合的敘述為歷史時點。
 
 2026-10-26：里程碑 5 已完成實作與驗證，待結束確認。**Expression** 提供 None／Happy／Sad／Angry／Surprised，以及最多 160 個 Unicode code points 的純文字多行對話、字數與 Clear speech。內容僅留在本次頁面，切換角色會保留；進入編輯會停止移動。泡泡依普通／160°魚眼投影定位，第一人稱隱藏自身泡泡。載入回饋明示目前為程序化原型；正式 GLB loader 留里程碑 6。下方 Stage 1.2「人物尚未實作」等為歷史時點。[驗證與限制](.kiro/specs/character-expressions-ui/validation.md)

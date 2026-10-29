@@ -79,3 +79,13 @@ Node tests：前方相對 heading／俯視高度／低角度；模式不因 Foll
 
 ## 自動審閱
 inline PASS：15條需求、依賴方向、檔案、lens角度／跟隨例外與資源生命週期明確，無未解設計阻擋。
+
+## 2026-10-26 Front 近距構圖修正
+`CameraController.resolveFront` 在既有 Front frame 上探測實際 `FollowCamera.constrain` 後的距離。最低可讀距離以 height×0.75/tan(FOV/2) 決定；原正前方距離足夠且頭腳視線清楚時保留原構圖，否則依 ±30°、±60°、±85° 檢查前半圓候選，優先較小偏角，選第一個有足夠距離且頭腳視線清楚的位置。尚無足夠位置時保留已找到的最遠清楚候選；若全部視線受阻則保留原避障結果，不承諾封閉空間內必定全身可見。
+探測使用不加入 scene 的單一 PerspectiveCamera；不新增 renderer／loop、場景材質修改或 GPU 資源。實際鏡頭仍經既有球面轉場與 finishFrame 避障。緊貼長牆時可能到85°近側面構圖，為可讀性與不穿牆的折衷；靜止姿態候選選擇確定，不在同座標來回切換。
+追加回歸 `tests/front-obstruction.test.mjs` 使用真實 CityScene 左右近牆／樹、三種高度、portrait／landscape，檢查頭腳投影與視線、前半圓、freeze、轉場收斂、First person進出及無遮擋原方向。
+
+## 2026-10-29 角色中心 Orbit（1L-0）
+MouseOrbitGesture只辨識mouse左鍵hold／drag並傳遞開始／結束／取消，不依賴Three或導航。沿用單一ViewerApp loop以delta辨識350ms，drag門檻8px；觸發時取消TapGesture候選以避免hold誤觸Run。capture階段開始，正常pointerup完成剩餘置中；cancel／blur／hidden／resize及生命週期取消。
+CameraController在允許Orbit時擁有獨立centering狀態；0.8秒smoothstep的逐幀增量將camera.position與target同量平移，OrbitControls保留當前手動旋轉／縮放／阻尼，沒有快照重播。按住追蹤最新角色軀幹（height*0.65）；放開後完成再凍結，Follow旗標不變。非靜態視角沿用遮擋保護，可能縮短距離；不承諾任意平移路徑避障。First person及專用Follow視角不啟動。取消／select／setFollowing重設centering。無新依賴／loop／資產。
+自動設計審閱inline PASS，依使用者授權；依賴方向input→callback→ViewerApp→camera，未擴張navigation或角色責任。

@@ -16,9 +16,13 @@ import { assetCatalog } from '../character/assetCatalog';
 import { RiggedCharacter, disposeModel } from '../character/RiggedCharacter';
 import { CharacterAssets } from '../character/CharacterAssets';
 import type { LoadingState } from '../ui/LoadingFeedback';
+import { DestinationNavigation, type NavigationStatus } from '../navigation/DestinationNavigation';
+import { pickGround } from '../navigation/GroundPicker';
+import { TapGesture } from '../input/TapGesture';
+import { MouseOrbitGesture } from '../input/MouseOrbitGesture';
 
 export type CameraPreset = CameraView;
-export interface CharacterStatus { variant: CharacterVariant; action: MotionSnapshot['action']; running: boolean; following: boolean; firstPerson: boolean; cameraView: CameraView }
+export interface CharacterStatus { variant: CharacterVariant; action: MotionSnapshot['action']; running: boolean; following: boolean; firstPerson: boolean; cameraView: CameraView; navigation: NavigationStatus }
 
 export class ViewerApp {
   private readonly camera = new PerspectiveCamera(43, 1, 0.1, 200);
@@ -28,6 +32,10 @@ export class ViewerApp {
   private readonly character: Character;
   private readonly movement: CharacterController;
   private readonly input: InputManager;
+  private readonly navigation: DestinationNavigation;
+  private readonly tap: TapGesture;
+  private readonly mouseOrbit: MouseOrbitGesture;
+  private readonly destinationMarker: HTMLDivElement;
   private readonly cameras: CameraController;
   private readonly expressions = new ExpressionManager();
   private readonly overlay: ExpressionOverlay;
@@ -49,7 +57,8 @@ export class ViewerApp {
     this.controls = new OrbitControls(this.camera, this.view.renderer.domElement);
     this.character = new Character();
     this.movement = new CharacterController(this.city.walkableWorld);
-    this.input = new InputManager();
+    this.navigation = new DestinationNavigation(this.city.walkableWorld);
+    this.input = new InputManager(window, document, () => { this.navigation.cancel(); this.tap?.cancel(); });
     this.motion = this.movement.update(0, this.input.sample());
     this.character.update(this.motion, 0);
     this.city.scene.add(this.character.root);
@@ -79,15 +88,33 @@ export class ViewerApp {
           this.city.scene.add(model.root);
         }
         this.character.root.visible = !model && this.cameras.characterVisible;
-        this.view.renderer.domElement.setAttribute('aria-label', `Interactive city with a ${model ? 'rigged character' : 'procedural fallback'}. Click then use WASD or arrows, Shift to run, Space to jump.`);
+        this.view.renderer.domElement.setAttribute('aria-label', `Interactive city with a ${model ? 'rigged character' : 'procedural fallback'}. Tap the ground to run there. Drag to orbit, pinch to zoom. Keyboard: WASD or arrows, Shift to run, Space to jump.`);
       },
     });
     const canvas = this.view.renderer.domElement;
+    this.mouseOrbit = new MouseOrbitGesture(canvas,
+      () => { this.tap.cancel(); this.cameras.beginCharacterOrbit(); },
+      cancelled => this.cameras.endCharacterOrbit(cancelled));
     canvas.tabIndex = 0;
-    canvas.setAttribute('aria-label', 'Interactive city with a procedural character. Click then use WASD or arrows, Shift to run, Space to jump.');
+    canvas.setAttribute('aria-label', 'Interactive city with a procedural character. Tap the ground to run there. Drag to orbit, pinch to zoom. Keyboard: WASD or arrows, Shift to run, Space to jump.');
+    this.destinationMarker = document.createElement('div');
+    this.destinationMarker.className = 'destination-marker';
+    this.destinationMarker.setAttribute('aria-hidden', 'true');
+    this.destinationMarker.hidden = true;
+    container.append(this.destinationMarker);
+    this.tap = new TapGesture(canvas, point => {
+      if (this.contextLost || this.disposed) return;
+      const rect = canvas.getBoundingClientRect();
+      const target = pickGround({ x: point.x - rect.left, y: point.y - rect.top }, this.camera,
+        rect.width, rect.height, this.cameras.fisheye, obstructions, this.city.walkableWorld);
+      this.input.stop();
+      if (target) this.navigation.select(this.motion, target);
+      else this.navigation.reject();
+    });
     canvas.addEventListener('pointerdown', () => canvas.focus({ preventScroll: true }), { signal: this.events.signal });
     canvas.addEventListener('webglcontextlost', event => {
       event.preventDefault(); this.contextLost = true;
+      this.stop(); this.destinationMarker.hidden = true;
       this.overlay.place(null);
       this.report('Graphics connection lost. Waiting for recovery…');
     }, { signal: this.events.signal });
@@ -100,7 +127,11 @@ export class ViewerApp {
     if (this.disposed || this.contextLost) return;
     const delta = Math.min((time - this.lastTime) / 1000 || 1 / 60, 0.05);
     this.lastTime = time;
-    this.motion = this.movement.update(delta, this.input.sample());
+    this.mouseOrbit.update(delta);
+    const manual = this.input.sample();
+    if (manual.x || manual.z || manual.jump) this.navigation.cancel();
+    const intent = this.navigation.status === 'running' ? this.navigation.sample(this.motion, delta) : manual;
+    this.motion = this.movement.update(delta, intent);
     this.character.update(this.motion, delta);
     this.assets.current?.update(this.motion, delta);
     this.characterReport?.(this.getCharacterStatus());
@@ -111,6 +142,15 @@ export class ViewerApp {
     this.overlay.place(this.cameras.characterVisible
       ? projectAnchor(this.anchor, this.camera, this.container.clientWidth, this.container.clientHeight, this.cameras.fisheye)
       : null);
+    const destination = this.navigation.target;
+    const marker = destination ? projectAnchor(new Vector3(destination.x, this.city.walkableWorld.groundHeight(destination.x, destination.z) + 0.06, destination.z),
+      this.camera, this.container.clientWidth, this.container.clientHeight, this.cameras.fisheye) : null;
+    this.destinationMarker.hidden = !marker;
+    if (marker) {
+      this.destinationMarker.style.left = `${marker.x}px`;
+      this.destinationMarker.style.top = `${marker.y}px`;
+      this.destinationMarker.dataset.state = this.navigation.status;
+    }
     this.view.render(this.city.scene, this.cameras.fisheye);
     this.frameCount++;
     if (time - this.sampleTime >= 1000) {
@@ -120,6 +160,7 @@ export class ViewerApp {
     }
   }
   setCamera(preset: CameraPreset): void {
+    this.mouseOrbit.cancel();
     this.cameras.select(preset, this.getCameraSubject(), window.matchMedia('(prefers-reduced-motion: reduce)').matches);
     this.character.root.visible = !this.assets.current && this.cameras.characterVisible;
     if (this.assets.current) this.assets.current.root.visible = this.cameras.characterVisible;
@@ -134,12 +175,15 @@ export class ViewerApp {
   }
   setEvening(evening: boolean): void { this.city.setEvening(evening); }
   setCharacter(variant: CharacterVariant): void {
+    this.mouseOrbit.cancel(); this.cameras.endCharacterOrbit(true);
+    this.stop();
     this.variant = variant; this.character.setVariant(variant);
     void this.assets.select(assetCatalog[variant]);
   }
   retryCharacter(): void { void this.assets.retry(); }
   private getSubjectHeight(): number { return this.assets.current?.height ?? this.character.height; }
   setFollowing(enabled: boolean): void {
+    this.mouseOrbit.cancel();
     this.cameras.setFollowing(enabled, this.getCameraSubject(), window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   }
   private getCameraSubject(): CameraSubject {
@@ -148,10 +192,10 @@ export class ViewerApp {
   }
   setRunning(enabled: boolean): void { this.input.setRun(enabled); }
   jump(): void { this.input.jump(); }
-  stop(): void { this.input.stop(); }
+  stop(): void { this.mouseOrbit.cancel(); this.cameras.endCharacterOrbit(true); this.input.stop(); }
   bindDirection(button: HTMLButtonElement, direction: MoveDirection): void { this.input.bindDirection(button, direction); }
   getCharacterStatus(): CharacterStatus {
-    return { variant: this.variant, action: this.motion.action, running: this.input.running, following: this.cameras.following, firstPerson: this.cameras.view === 'first-person', cameraView: this.cameras.view };
+    return { variant: this.variant, action: this.motion.action, running: this.input.running || this.navigation.status === 'running', following: this.cameras.following, firstPerson: this.cameras.view === 'first-person', cameraView: this.cameras.view, navigation: this.navigation.status };
   }
   setShadows(enabled: boolean): void {
     this.shadows = enabled;
@@ -163,6 +207,7 @@ export class ViewerApp {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true; this.events.abort();
+    this.mouseOrbit.dispose(); this.tap.dispose(); this.destinationMarker.remove();
     this.assets.dispose(); this.input.dispose(); this.character.dispose(); this.overlay.dispose();
     this.controls.dispose(); this.city.dispose(); this.view.dispose();
   }

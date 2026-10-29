@@ -35,6 +35,8 @@ The script imports the preserved GLBs as data, retains Idle/Walk/Run, removes he
 
 Generated SHA256 hashes can change if Blender/exporter versions change. Revalidate the actual outputs; do not blindly copy old expected hashes. Runtime normalizes feet and height to 1.8m / 1.68m / 1.15m and maps clips explicitly. AnimationMixer never drives the outer world transform; CharacterController continues to own world translation and jumping physics.
 
+Child hand correction (2026-10-26): hand vertices are identified by wrist/finger skinning groups, rather than height. Each hand and its descendant rest bones retain the adult shape uniformly scaled by 0.73 about the wrist; weighted wrist boundaries blend with the body deformation. This avoids the head enlargement threshold cutting across T-pose fingers. Existing adult topology and skin weights are retained. To rebuild only Child and preserve adult outputs/manifest entries, append `-- child` to the Blender command. With no variant arguments the script still rebuilds all three characters.
+
 ## Validation and limits
 Automated tests parse all three real GLBs, verify skinning and four clips, proportion changes, Jump pose, target height/feet, action transitions, controller transform, disposal, stale requests, missing clips and retry. Production browser evidence includes real loading, deliberate unavailable-asset failure and restored Retry, three variants, motion, first person, fisheye, expressions, responsive layout and renderer counters.
 

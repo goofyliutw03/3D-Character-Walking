@@ -29,8 +29,8 @@
     {
       "variant": "child",
       "file": "child.glb",
-      "bytes": 887516,
-      "sha256": "afb54cee6662176f984a6665cdd5686a854035e24d186acbe9a7f4d38b32f69d",
+      "bytes": 888628,
+      "sha256": "4f51df97aa3f927bdf64e59a5ce3676c9ae3e7393996945341e792e1b2314d0e",
       "source": "tools/assets/source/man.glb",
       "sourceSha256": "fea7e71271203e7073f1a073fa1208de7402df276f87f80e149bf7589b5d46b4",
       "license": "CC0-1.0",

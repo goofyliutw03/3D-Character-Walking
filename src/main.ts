@@ -33,16 +33,7 @@ app.innerHTML = `
         <p class="hint" id="character-asset-hint">Loading a local rigged character. Procedural preview is available.</p>
         <a class="asset-credits" href="/assets/characters/ATTRIBUTION.md" target="_blank" rel="noopener">Character sources & modifications ↗</a>
         <p id="character-status" class="character-status" role="status" aria-live="polite" aria-atomic="true">Man · Idle</p>
-        <div class="direction-pad" role="group" aria-label="Movement directions">
-          <button data-direction="forward" aria-label="Move forward">↑</button>
-          <button data-direction="left" aria-label="Move left">←</button>
-          <button data-direction="backward" aria-label="Move backward">↓</button>
-          <button data-direction="right" aria-label="Move right">→</button>
-        </div>
-        <div class="action-controls" role="group" aria-label="Character actions">
-          <button id="run" aria-pressed="false">Run</button><button id="jump">Jump</button><button id="stop">Stop</button>
-        </div>
-        <p class="hint movement-help">Hold arrows to move. Keyboard: click the scene, then WASD / arrows, Shift to run, Space to jump. Directions follow the street axes. Keyboard-activate a direction to keep moving; Stop ends it.</p>
+        <p class="hint">Movement controls are below the scene. Keyboard: WASD / arrows, Shift to run, Space to jump. Directions follow the street axes. Keyboard-activate a direction to keep moving; Stop ends it.</p>
       </section>
       <section aria-labelledby="expression-heading">
         <div class="section-heading"><h2 id="expression-heading">Expression</h2><span class="tag">SAY SOMETHING</span></div>
@@ -78,6 +69,7 @@ app.innerHTML = `
       </section>
       <div class="sidebar-bottom"><span class="status-dot"></span> Everything runs on your computer.</div>
     </aside>
+    <div class="scene-workspace">
     <section class="viewport" aria-label="City scene workspace" aria-busy="true">
       <div id="scene"></div>
       <div class="scene-title"><span class="eyebrow">THE NEIGHBORHOOD</span><h2>Maple Avenue</h2><p>A quiet street. An open canvas.</p></div>
@@ -93,6 +85,22 @@ app.innerHTML = `
         <button id="retry-character" type="button" hidden>Retry character</button>
       </div>
     </section>
+    <section class="movement-controls" aria-label="Movement controls">
+      <div class="direction-pad" role="group" aria-label="Movement directions">
+        <button data-direction="forward" aria-label="Move forward">↑</button>
+        <button data-direction="left" aria-label="Move left">←</button>
+        <button data-direction="backward" aria-label="Move backward">↓</button>
+        <button data-direction="right" aria-label="Move right">→</button>
+      </div>
+      <div class="action-controls" role="group" aria-label="Character actions">
+        <button id="run" aria-pressed="false">Run</button><button id="jump">Jump</button><button id="stop">Stop</button>
+      </div>
+      <div class="movement-copy">
+        <p id="navigation-status" role="status" aria-live="polite" aria-atomic="true">Tap the ground to run there.</p>
+        <p class="movement-help">Hold arrows to move · Stop cancels · Drag to orbit / pinch to zoom</p>
+      </div>
+    </section>
+    </div>
   </main>
   <div class="asset-feedback"><div id="asset-status" class="asset-status" role="status" aria-live="polite" aria-atomic="true">Starting scene…</div></div>
   <footer><span><span class="status-dot"></span> <span id="renderer-status" role="status">Starting scene…</span></span><span id="camera-status">Camera: Overview</span><span><span id="fps">—</span> FPS <span class="footer-divider">/</span> <span id="scene-metrics">1 unit = 1 meter</span></span></footer>
@@ -125,13 +133,19 @@ retryCharacter.addEventListener('click', () => {
 }, { signal: uiEvents.signal });
 let previousCharacterStatus = '';
 const updateCharacterStatus = (state: CharacterStatus): void => {
-  const key = `${state.variant}/${state.action}/${state.running}/${state.following}/${state.cameraView}`;
+  const key = `${state.variant}/${state.action}/${state.running}/${state.following}/${state.cameraView}/${state.navigation}`;
   if (key === previousCharacterStatus) return;
   previousCharacterStatus = key;
   const names = { man: 'Man', woman: 'Woman', child: 'Child' };
   const actions = { idle: 'Idle', walk: 'Walk', run: 'Run', jump: 'Jump' };
   document.querySelector('#character-status')!.textContent = `${names[state.variant]} · ${actions[state.action]}`;
   document.querySelector('#run')!.setAttribute('aria-pressed', String(state.running));
+  const navigationMessages = {
+    idle: 'Tap the ground to run there.', running: 'Running to destination…',
+    arrived: 'Destination reached.', blocked: 'Cannot reach that spot. Tap clear ground.',
+  };
+  const navigationStatus = document.querySelector('#navigation-status')!;
+  if (navigationStatus.textContent !== navigationMessages[state.navigation]) navigationStatus.textContent = navigationMessages[state.navigation];
   document.querySelector<HTMLInputElement>('#follow')!.checked = state.following;
   document.querySelector<HTMLInputElement>('#follow')!.disabled = state.firstPerson;
   document.querySelector('#camera-mode')!.textContent = state.cameraView === 'fisheye' ? '160° FISHEYE' : cameraNames[state.cameraView].toUpperCase();

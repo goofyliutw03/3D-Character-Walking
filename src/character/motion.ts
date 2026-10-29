@@ -1,5 +1,6 @@
 export type CharacterAction = 'idle' | 'walk' | 'run' | 'jump';
 export type CharacterVariant = 'man' | 'woman' | 'child';
+export const characterRadius = 0.28;
 export interface MovementIntent { x: number; z: number; run: boolean; jump: boolean }
 export interface MotionSnapshot {
   x: number; y: number; z: number; heading: number;

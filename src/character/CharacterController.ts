@@ -1,6 +1,6 @@
 import type { MovementIntent, MotionSnapshot, WalkableWorld } from './motion';
+import { characterRadius as RADIUS } from './motion.ts';
 
-const RADIUS = 0.28;
 const GRAVITY = 18;
 
 export class CharacterController {

@@ -1,5 +1,7 @@
 # cc-sdd 規劃對應與待辦
 
+追加需求（2026-10-29）：[mobile-touch-navigation](../specs/mobile-touch-navigation/) 4項tasks已完成，54 tests／build及本機production驗證通過，待結束確認。手機控制、點地跑步與靜態避障證據見[validation](../specs/mobile-touch-navigation/validation.md)。非第七里程碑，SCENE-05 iPhone三瀏覽器真機與既有M6未結事項保留；LATER-01／LATER-03不擴張。
+
 追加需求（2026-10-26授權）：[initialization-loading-progress](../specs/initialization-loading-progress/) 已完成實作與本機驗證，13條件、43 tests及production build／browser證據見validation。擴充既有loading契約並重驗rigged／UI；非第七里程碑，不變更原人工驗收狀態。
 
 最新狀態（2026-10-26）：里程碑5已由使用者確認，6 rigged-character-assets完成實作與驗證，待結束確認，見[validation](../specs/rigged-character-assets/validation.md)。三角色GLB與四骨架clips含依使用者授權製作的小孩／Jump衍生，真實載入與失敗／Retry已驗證。以下未開始／initialized屬歷史。六個功能里程碑的實作完成不等於跨GPU／實機／螢幕閱讀器等人工驗收完成。
@@ -65,3 +67,5 @@
 本次只驗證文件連結、里程碑覆蓋與 spec 初始化狀態；未重跑 build 或瀏覽器驗收。stage-1.2.md 的既有驗證屬先前紀錄，本次未重現。
 
 目前 cc-sdd 導入里程碑已完成。下一里程碑為 3：character-movement，複雜度 COMPLEX（移動、輸入、碰撞、相機與生命週期跨模組），建議高能力模型、高推理；未切換。等待使用者確認結束導入並開始里程碑 3；確認後從 `$kiro-spec-requirements character-movement` 自動推進至同一里程碑的實作、審閱與驗證，結束再總結等待確認，不自動開始里程碑 4。
+
+2026-10-29 CAM-02（1L-0）：角色中心mouse Orbit追加需求已依核准完成，camera-modes tasks4.1–4.3／validation記錄57tests、build、Release與本機操作證據；待使用者結束確認。共用CameraController／ViewerApp依序修改，未平行；M6、SCENE-05與LATER項目不擴張。

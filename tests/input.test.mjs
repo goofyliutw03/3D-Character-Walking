@@ -11,6 +11,21 @@ const setup = () => {
 class Button extends EventTarget {
   setPointerCapture() {}
 }
+test('mobile 4.1–4.2: manual and lifecycle notifications cancel a navigation consumer', () => {
+  const win = new EventTarget(), doc = Object.assign(new EventTarget(), { hidden: false });
+  let active = true;
+  const input = new InputManager(win, doc, () => { active = false; });
+  const button = new Button(); input.bindDirection(button, 'right');
+  for (const action of [
+    () => win.dispatchEvent(event('keydown', { code: 'KeyW', repeat: false })),
+    () => button.dispatchEvent(event('pointerdown', { pointerId: 7, button: 0 })),
+    () => button.dispatchEvent(event('click', { detail: 0 })),
+    () => input.jump(), () => input.stop(), () => input.setRun(true),
+    () => win.dispatchEvent(event('blur')),
+    () => { doc.hidden = true; doc.dispatchEvent(event('visibilitychange')); },
+  ]) { active = true; action(); assert.equal(active, false); }
+  input.dispose();
+});
 test('expressions 2.4: entering an editor clears held keys, latched movement, run and jump', () => {
   const { win, doc, input } = setup();
   const up = new Button();

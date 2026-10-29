@@ -13,12 +13,13 @@ export class InputManager {
   private latch: MoveDirection | undefined;
   private runToggle = false;
   private jumpPending = false;
-  constructor(win: Window = window, doc: Document = document) {
+  constructor(win: Window = window, doc: Document = document, private readonly onManual: () => void = () => {}) {
     const signal = this.events.signal;
     win.addEventListener('keydown', event => {
       if (!gameKeys.has(event.code) || event.isComposing || this.editing(event.target) || event.altKey || event.ctrlKey || event.metaKey) return;
       event.preventDefault();
       if (event.repeat) return;
+      this.onManual();
       if (event.code === 'Space' && !this.keys.has('Space')) this.jumpPending = true;
       this.keys.add(event.code);
     }, { signal });
@@ -38,6 +39,7 @@ export class InputManager {
     button.addEventListener('pointerdown', event => {
       if (event.button !== 0) return;
       event.preventDefault();
+      this.onManual();
       this.latch = undefined;
       this.pointers.set(event.pointerId, direction);
       button.setPointerCapture(event.pointerId);
@@ -47,7 +49,7 @@ export class InputManager {
     button.addEventListener('pointercancel', release, { signal });
     button.addEventListener('lostpointercapture', release, { signal });
     button.addEventListener('click', event => {
-      if (event.detail === 0) this.latch = this.latch === direction ? undefined : direction;
+      if (event.detail === 0) { this.onManual(); this.latch = this.latch === direction ? undefined : direction; }
     }, { signal });
   }
   sample(): MovementIntent {
@@ -63,9 +65,10 @@ export class InputManager {
     return { x: Math.sign(x), z: Math.sign(z), run: this.running, jump };
   }
   get running(): boolean { return this.runToggle || this.keys.has('ShiftLeft') || this.keys.has('ShiftRight'); }
-  setRun(enabled: boolean): void { this.runToggle = enabled; }
-  jump(): void { this.jumpPending = true; }
+  setRun(enabled: boolean): void { this.onManual(); this.runToggle = enabled; }
+  jump(): void { this.onManual(); this.jumpPending = true; }
   stop(): void {
+    this.onManual();
     this.keys.clear(); this.pointers.clear(); this.latch = undefined;
     this.runToggle = false; this.jumpPending = false;
   }

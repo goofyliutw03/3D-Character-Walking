@@ -1,5 +1,17 @@
 # rigged-character-assets validation
 
+## 1H-0 Child hand correction — 2026-10-26
+- 使用者外觀確認（2026-10-26）：回覆「OK good as my expectation. please go on」，確認本次Child手部修正符合預期。僅代表此修正驗收，不延伸為跨GPU／實機或其他人工項目通過；commit仍未授權。
+- 使用者確認修正方案後實作；沿用既有里程碑6資產範圍，非第七里程碑。HEAD fab6fd7；既有Front修改保留，無commit／push／委派／模型切換。
+- 根因：T-pose手指跨過world Z=1.45，原warp_child把部分手部橫向比例從0.73跳成0.94；原始左手rest surface寬約0.247，衍生Child反增至0.355。抽查手部weights總和正常，非缺權重。
+- 修正：依Wrist及其descendants的vertex groups辨識手部，以腕為原點均勻縮放0.73，同步rest bones；邊界以原skin weights混合。保留成人手拓撲／權重，未改runtime、相機或其他角色。
+- pipeline新增`-- child`選擇輸出，僅重建child.glb與其manifest條目；成人GLB／來源hash不變。Child 888628bytes，SHA256 `4f51df97aa3f927bdf64e59a5ce3676c9ae3e7393996945341e792e1b2314d0e`。
+- 新回歸檢查實際蒙皮表面：雙手、四clips、各13個時間點，對照Man腕部至手部最遠距離比例0.67–0.79；修正資產PASS。舊資產反證嘗試受Node spawnSync git EPERM阻擋，finally保留修正資產，不冒稱RED已完成。
+- Full suite 46/46 PASS；TypeScript／Vite production build PASS。主chunk638.84kB／gzip161.46kB，既有500kB advisory保留。
+- Production127.0.0.1:4173實際Child Ready，Front近距Idle／Jump可見手掌與手指恢復，Walk／Run狀態可播放；完整動畫時間覆蓋由蒙皮測試補足。原預覽已停止而connection refused，重新啟動既有preview後可用。跨GPU／實機等既有限制保留，不冒稱里程碑6人工驗收通過。
+- Inline review PASS：修改限Child生成／資產／測試／attribution與紀錄；不引入來源、依賴或runtime契約變更。
+- Token統計：本chat session JSONL首個token_count基準input34526／output192／total34718，至收尾第一次統計input1973875／output6197／total1980072；差額input1939349／output6005／total1945354。cached input與reasoning已包含，不重加。範圍包含本chat診斷與修正至該統計點，排除基準前、後續索引／收尾與原Front chat；全階段精確值無法取得，不能以此當完整最終總量。
+
 ## Authorization / baseline
 2026-10-26：使用者確認5並要求繼續，授權下載兩包，繼而指定優先專用資產、找不到合適者接受明確標示骨架衍生角色／動畫，允許使用現有Blender5.2。未安裝，實查5.2.2LTS可執行。
 main / af73f11fe44c406ec784aeb9e496a710b2c6c939，保留所有里程碑3–5修改。無stage／commit／push、無委派／切換模型。

@@ -1,5 +1,11 @@
 # 專案協作規則（Codex）
 
+## 正式操作目錄增量發佈（2026-10-29 使用者授權）
+- 始終在原始專案修改。每次修改完成且適當驗證成功後，執行 `./scripts/project.ps1 release`（tests → build → sync），將 `dist` 內容增量發佈至 `D:\Work_Mine\Testing\3D Character Walk Viewer\Release`。失敗須停止並如實報告，不能宣稱已發佈。
+- 本項明確授權既有目的地的必要建置產物新增／更新；workspace 外寫入仍須遵守宿主 sandbox 權限，不繞過限制。不複製 source、node_modules、.git 或機密；不 mirror／刪除目的地陌生檔案或舊 hashed 資產。
+- SHA256 相同檔案不重寫；資產先更新、index.html 最後以同目錄暫存檔替換。發佈須依序進行，不得同時 build／sync。固定名稱資產更新不保證整個版本交易一致，已開啟頁面須重新整理才載入新入口。
+- 使用 `./scripts/project.ps1 preview-release` 以 localhost:4174 觀察 Release；不停止原有 preview、不改防火牆，不把 localhost 驗證當作手機 LAN 驗收。詳細操作與限制見 docs/release.md。
+
 ## 里程碑收尾：索引與 token 用量（2026-10-26 使用者更新）
 - 每次交付里程碑完成實作與驗證、準備提出結束確認時，自動更新本專案 codebase index，不逐次索取核准。優先使用既有 SocratiCode 的增量 codebase_update；尚無索引才使用 codebase_index。若使用者另核准收尾 commit，提交後再次確認索引涵蓋最終狀態。
 - 此授權包含以 scripts/rag.ps1 start 啟動既有本機 Qdrant／Ollama 供索引使用；遵守 .gitignore／.socraticodeignore 及機密排除，不安裝工具、下載模型、使用雲端或重建／刪除既有索引。缺少既有服務／模型或工具失敗時記錄阻擋，不冒稱完成。

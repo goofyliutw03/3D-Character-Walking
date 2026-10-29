@@ -46,21 +46,24 @@ export class CityScene {
     return mesh;
   }
   private buildStreet(): void {
+    const ground = (x: number, y: number, z: number, width: number, height: number, depth: number, color: string): void => {
+      this.box(this.scene, x, y, z, width, height, depth, color).userData.walkable = true;
+    };
     this.box(this.scene, 0, -0.4, 0, 45, 0.8, 54, '#bfccac');
-    this.box(this.scene, 0, 0.025, 0, 9, 0.05, 54, '#697272');
+    ground(0, 0.025, 0, 9, 0.05, 54, '#697272');
     for (const side of [-1, 1]) {
-      this.box(this.scene, side * 6.4, 0.15, 0, 3.8, 0.3, 54, '#ded9ca');
-      this.box(this.scene, side * 4.65, 0.22, 0, 0.16, 0.18, 54, '#f4eee0');
-      this.box(this.scene, side * 4.05, 0.065, 0, 0.07, 0.025, 52, '#e4d7ad');
-      for (let z = -25; z < 27; z += 2) this.box(this.scene, side * 6.4, 0.306, z, 3.6, 0.01, 0.025, '#c9c4b8');
+      ground(side * 6.4, 0.15, 0, 3.8, 0.3, 54, '#ded9ca');
+      ground(side * 4.65, 0.22, 0, 0.16, 0.18, 54, '#f4eee0');
+      ground(side * 4.05, 0.065, 0, 0.07, 0.025, 52, '#e4d7ad');
+      for (let z = -25; z < 27; z += 2) ground(side * 6.4, 0.306, z, 3.6, 0.01, 0.025, '#c9c4b8');
       const colors = side < 0 ? ['#c9aa8b', '#b7c7b3', '#d2ba9d', '#a4b9b8'] : ['#b8c4cb', '#d2ad94', '#d6c9af', '#b8bea1'];
       [-20, -7, 7, 20].forEach((z, index) => this.building(side * 12.1, z, 6 + (index % 3) * 1.9, colors[index]!, side));
       for (const z of [-24, -13, 1, 13, 25]) this.tree(side * 7.2, z);
       for (const z of [-17, 3, 20]) this.streetlight(side * 5.2, z, side);
       for (const z of [-10, 11]) this.bench(side * 6.4, z, side);
     }
-    for (let z = -25; z < 26; z += 5) if (Math.abs(z) > 3) this.box(this.scene, 0, 0.06, z, 0.12, 0.02, 2.5, '#f2dfac');
-    for (let x = -3.6; x <= 3.6; x += 1.2) this.box(this.scene, x, 0.065, 0, 0.65, 0.02, 3.2, '#eee9dc');
+    for (let z = -25; z < 26; z += 5) if (Math.abs(z) > 3) ground(0, 0.06, z, 0.12, 0.02, 2.5, '#f2dfac');
+    for (let x = -3.6; x <= 3.6; x += 1.2) ground(x, 0.065, 0, 0.65, 0.02, 3.2, '#eee9dc');
     this.box(this.scene, 0, 0.18, -25.4, 2.1, 0.35, 2.4, '#e2d9c5');
     this.obstacle(0, -25.4, 2.1, 2.4);
     this.tree(0, -25.4);

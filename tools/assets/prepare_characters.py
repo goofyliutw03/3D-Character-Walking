@@ -5,6 +5,7 @@ blender --factory-startup --disable-autoexec --background --python tools/assets/
 from pathlib import Path
 import hashlib
 import json
+import sys
 
 import bpy
 from mathutils import Quaternion, Vector
@@ -30,19 +31,44 @@ def warp_child(point):
 def make_child(rig):
     rig.animation_data.action = None
     bpy.context.view_layer.update()
+    # Preserve each adult hand as a uniformly scaled unit about its wrist.
+    # Height alone cannot identify the head: T-pose fingers cross z=1.45 too.
+    hand_bones = {}
+    wrists = {}
+    for side in ('L', 'R'):
+        wrist = rig.data.bones[f'Wrist.{side}']
+        wrists[side] = rig.matrix_world @ wrist.head_local
+        for bone in (wrist, *wrist.children_recursive):
+            hand_bones[bone.name] = side
+
+    def hand_point(point, side):
+        origin = wrists[side]
+        return warp_child(origin) + (point - origin) * 0.73
+
     for obj in list(bpy.context.scene.objects):
         if obj.type != 'MESH':
             continue
         inv = obj.matrix_world.inverted()
         for vertex in obj.data.vertices:
-            vertex.co = inv @ warp_child(obj.matrix_world @ vertex.co)
+            point = obj.matrix_world @ vertex.co
+            target = warp_child(point)
+            weights = {'L': 0.0, 'R': 0.0}
+            for group in vertex.groups:
+                side = hand_bones.get(obj.vertex_groups[group.group].name)
+                if side:
+                    weights[side] += group.weight
+            for side, weight in weights.items():
+                target += (hand_point(point, side) - warp_child(point)) * weight
+            vertex.co = inv @ target
     bpy.context.view_layer.objects.active = rig
     rig.select_set(True)
     bpy.ops.object.mode_set(mode='EDIT')
     inv = rig.matrix_world.inverted()
     for bone in rig.data.edit_bones:
-        bone.head = inv @ warp_child(rig.matrix_world @ bone.head)
-        bone.tail = inv @ warp_child(rig.matrix_world @ bone.tail)
+        side = hand_bones.get(bone.name)
+        for attr in ('head', 'tail'):
+            point = rig.matrix_world @ getattr(bone, attr)
+            setattr(bone, attr, inv @ (hand_point(point, side) if side else warp_child(point)))
     bpy.ops.object.mode_set(mode='OBJECT')
     # Translation keys are offsets from rest; scale locomotion bob to child size.
     for action in bpy.data.actions:
@@ -142,7 +168,14 @@ def generate(variant):
 
 
 OUTPUT.mkdir(parents=True, exist_ok=True)
+args = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
+variants = args or ['man', 'woman', 'child']
+if any(v not in ('man', 'woman', 'child') for v in variants):
+    raise ValueError('Expected variants: man woman child')
+previous = json.loads((OUTPUT / 'asset-manifest.json').read_text(encoding='utf-8')) if args else None
+updated = {v: generate(v) for v in variants}
 manifest = {'generator': 'tools/assets/prepare_characters.py', 'blender': bpy.app.version_string,
-            'assets': [generate(v) for v in ('man', 'woman', 'child')]}
+            'assets': [updated.get(v) or next(a for a in previous['assets'] if a['variant'] == v)
+                       for v in ('man', 'woman', 'child')]}
 (OUTPUT / 'asset-manifest.json').write_text(json.dumps(manifest, indent=2) + '\n', encoding='utf-8')
 print('ASSET_MANIFEST', json.dumps(manifest))

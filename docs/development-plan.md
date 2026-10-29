@@ -1,5 +1,9 @@
 # Development plan
 
+追加需求（2026-10-26授權，2026-10-29完成本機驗證）：[mobile-touch-navigation](../.kiro/specs/mobile-touch-navigation/) 已完成場景下方手機控制、點地跑步、靜態避障與取消；4項tasks、54 tests及production證據見[validation](../.kiro/specs/mobile-touch-navigation/validation.md)。待結束確認及SCENE-05真機驗收；非第七里程碑，不更動M6、LATER-01巡迴或其他延後項目。
+
+2026-10-26 補充：Front近牆／樹旁避障壓縮裁切已依授權完成局部修正與本機驗證，見[camera-modes validation](../.kiro/specs/camera-modes/validation.md)的1G-0紀錄。貼牆可能採斜前／近側構圖；封閉空間、轉場路徑及既有人工環境限制仍保留，不代表里程碑6人工驗收通過。
+
 追加需求（2026-10-26使用者授權）：初始化載入進度條與旋轉立體文字，獨立規格 [initialization-loading-progress](../.kiro/specs/initialization-loading-progress/)。實作與本機驗證完成，真實下載資訊／未知總量、錯誤Retry／Reload、reduced-motion規則及compact提示證據見 [validation](../.kiro/specs/initialization-loading-progress/validation.md)。不是第七里程碑，亦不代表里程碑6結束或人工環境驗收通過。
 
 最新進度（2026-10-26）：里程碑 5 已由使用者確認；里程碑 6 rigged-character-assets 已完成本機三角色骨架GLB、四動作／轉場、載入／錯誤重試及文件，待結束確認。使用者允許優先找專用資產、必要時明示衍生角色／動畫及使用現有Blender5.2；已記錄來源／修改與驗證。[證據及限制](../.kiro/specs/rigged-character-assets/validation.md)。不代表跨GPU／實機／全部環境驗收完成；原Front近距遮擋觀察仍保留。
@@ -59,3 +63,5 @@ Use a perspective camera with orbit controls, bounded zoom, hemisphere light, di
 `Character` owns the character transform and appearance. `CharacterController` handles grounded movement and jump physics. `AnimationController` consumes action state. `CameraController` switches camera strategies and tracking behavior. `ExpressionManager` owns speech and emotional overlays. UI controls call public interfaces instead of modifying scene objects directly.
 
 The historical plan requests confirmation of each stage design before implementation. This document provides the concrete next-stage design for that workflow.
+
+2026-10-29 追加角色中心Orbit（1L-0）：使用者核准後完成mouse左鍵hold／drag平滑置中，保留短點擊Run／觸控與Follow模式邊界；57 tests、build、Release及本機production操作通過。見camera-modes validation；非新里程碑，不變更M6／SCENE-05人工驗收狀態。
