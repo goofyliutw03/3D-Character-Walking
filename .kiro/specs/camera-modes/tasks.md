@@ -50,3 +50,15 @@ inline PASS：4個子任務，依賴順序明確，全15條件對應（以實際
 - [x] 4.3 全套測試／build／Release、production smoke及整合審閱與索引
   - Depends: 4.2；Boundary: camera-modes文件、development-plan、roadmap。
 任務計畫inline PASS：逐項測試已執行，57/57通過，4.3待後續證據；共用檔案必須依序進行，不可平行。
+
+## 2026-10-31 Mobile Orbit（1L-1）
+依使用者「Continue, 請加上支持 mobile browser 的對應支持」核准，依序執行，不commit／push／委派。
+- [x] 5.1 擴充單指hold／drag與多指取消狀態（6.1–6.3）
+  - Boundary: MouseOrbitGesture、mouse-orbit tests；保留既有CameraController／ViewerApp接線。
+- [x] 5.2 整合審閱與瀏覽器接線驗證（6.1–6.4）
+  - Depends: 5.1；Boundary: camera-modes validation；手機實機仍待使用者驗收。
+- [x] 5.3 全套tests／build／Release與增量索引
+  - Depends: 5.2；Boundary: 本spec、README／roadmap；不更改M6／SCENE-05。
+計畫inline審閱PASS：6.1–6.4全映射，共用檔案必須依序進行，不可平行。
+
+2026-10-31：使用者已確認iOS／Android Mobile Orbit操作OK，忽略機型，5.2的本次手機實機待驗已完成；不概括關閉M6／SCENE-05其他項目。

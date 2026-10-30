@@ -1,0 +1,173 @@
+{
+  "gpu": "ANGLE (NVIDIA, NVIDIA GeForce GTX 1060 6GB (0x00001C03) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+  "checks": [
+    {
+      "name": "no occlusion / no self ghost",
+      "ok": true,
+      "details": {
+        "total": 0,
+        "left": 0,
+        "right": 0
+      }
+    },
+    {
+      "name": "partial: right hidden, left visible unchanged",
+      "ok": true,
+      "details": {
+        "total": 9752,
+        "left": 0,
+        "right": 9752
+      }
+    },
+    {
+      "name": "full: both halves visible through wall",
+      "ok": true,
+      "details": {
+        "total": 22472,
+        "left": 11236,
+        "right": 11236
+      }
+    },
+    {
+      "name": "transparent material excluded",
+      "ok": true,
+      "details": {
+        "total": 0,
+        "left": 0,
+        "right": 0
+      }
+    },
+    {
+      "name": "opacity below 1 excluded",
+      "ok": true,
+      "details": {
+        "total": 0,
+        "left": 0,
+        "right": 0
+      }
+    },
+    {
+      "name": "alpha hashed transparency excluded",
+      "ok": true,
+      "details": {
+        "total": 0,
+        "left": 0,
+        "right": 0
+      }
+    },
+    {
+      "name": "opaque water tagged exclusion",
+      "ok": true,
+      "details": {
+        "total": 0,
+        "left": 0,
+        "right": 0
+      }
+    },
+    {
+      "name": "outside environment (particles / Target) excluded",
+      "ok": true,
+      "details": {
+        "total": 0,
+        "left": 0,
+        "right": 0
+      }
+    },
+    {
+      "name": "transparent front material group excluded",
+      "ok": true,
+      "details": {
+        "total": 0,
+        "left": 0,
+        "right": 0
+      }
+    },
+    {
+      "name": "fisheye compiles and renders",
+      "ok": true
+    },
+    {
+      "name": "fisheye partial pixel alignment",
+      "ok": true,
+      "details": {
+        "total": 864,
+        "left": 0,
+        "right": 864
+      }
+    },
+    {
+      "name": "fisheye unoccluded pixels unchanged",
+      "ok": true,
+      "details": {
+        "total": 0,
+        "left": 0,
+        "right": 0
+      }
+    },
+    {
+      "name": "man skinned depth / animation / fish",
+      "ok": true,
+      "details": [
+        5646,
+        5281,
+        4576,
+        5082
+      ]
+    },
+    {
+      "name": "woman skinned depth / animation / fish",
+      "ok": true,
+      "details": [
+        4553,
+        4264,
+        3785,
+        4139
+      ]
+    },
+    {
+      "name": "child skinned depth / animation / fish",
+      "ok": true,
+      "details": [
+        2715,
+        2601,
+        2232,
+        2436
+      ]
+    }
+  ],
+  "rigged": [
+    {
+      "variant": "man",
+      "counts": [
+        5646,
+        5281,
+        4576,
+        5082
+      ]
+    },
+    {
+      "variant": "woman",
+      "counts": [
+        4553,
+        4264,
+        3785,
+        4139
+      ]
+    },
+    {
+      "variant": "child",
+      "counts": [
+        2715,
+        2601,
+        2232,
+        2436
+      ]
+    }
+  ],
+  "errors": 0,
+  "resources": {
+    "geometries": 4,
+    "textures": 6,
+    "programs": 6
+  }
+}

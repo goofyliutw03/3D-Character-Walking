@@ -23,7 +23,7 @@ export class FollowCamera {
       this.direction.normalize();
       this.ray.set(target, this.direction);
       this.ray.far = distance;
-      const hit = this.ray.intersectObjects(this.obstructions, true)[0];
+      const hit = this.ray.intersectObjects(this.obstructions, true).find(hit => hit.object.userData.cameraObstruction !== false);
       if (hit) camera.position.copy(target).addScaledVector(this.direction, Math.max(0.4, hit.distance - 0.25));
     }
   }

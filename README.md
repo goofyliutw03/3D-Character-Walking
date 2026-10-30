@@ -1,5 +1,9 @@
 # 3D Character Walk Viewer
 
+2026-10-31：Camera → Objects block mode 新增 **4 · X-ray character · 50%**，僅以半透明反相／高對比效果顯示主角被不透明環境擋住的部分。水、粒子、原始透明／半透明材質不列入判定；可見部分正常，First person 暫停效果。[規格與驗證](.kiro/specs/occluded-character-xray/validation.md)。
+
+2026-10-31：街尾植栽島改為程序水池／小瀑布；由 **Scene display → Water feature** 調整效果、暫停、品質、波浪與流速。池岸不可通行，可從兩側繞行；低品質僅調整水景，不改整個場景的 DPR。獨立原型仍可於 `water.html` 開啟。[Shader Module／API 使用說明](docs/water-api.md)・[街道整合規格](.kiro/specs/street-water-integration/)。手機與跨 GPU 效能仍待實機驗證。
+
 正式操作副本：修改仍在本專案進行，驗證後執行 `./scripts/project.ps1 release`，依序 tests／build／SHA256 增量同步至 `D:\Work_Mine\Testing\3D Character Walk Viewer\Release`。使用 `./scripts/project.ps1 preview-release`，開啟 http://127.0.0.1:4174 。[發佈流程、限制與驗證](docs/release.md)。
 
 2026-10-29：手機操作列已移至場景正下方；輕點可走地面會跑向目的地，支援靜態避障、普通／160°魚眼拾取及手動取消。54項測試與本機正式預覽通過，iPhone Safari／Chrome／Edge真機驗收仍待完成。[規格與驗證](.kiro/specs/mobile-touch-navigation/validation.md)。
@@ -54,3 +58,22 @@ Camera 同時提供 **First person**（角色眼位，垂直 FOV 70°）與 **Th
 - [原始 Web 3D 規畫 session](docs/imported/web-3d-planning-session.md)
 
 操作：拖曳旋轉鏡頭、滾輪縮放、右鍵拖曳平移；Reset view 回到 Overview。下個階段為人物原型、移動與動畫；詳見 [Stage 1.2 完成紀錄與下一階段設計](docs/stage-1.2.md)。
+
+## Particle interaction · Plan v02
+
+The selected player is **Caster**; an independent **Target** uses the existing local CC0-derived woman rig and stays idle. Blue and amber markers indicate the emission and reception anchors. Target has its own loading/fallback status and Retry target control; changing Caster does not replace Target.
+
+Use **Fire particle** below the scene (click, touch, or keyboard activation). Each shot travels toward Target's position at launch without homing. A simple sphere hit creates a brief particle flash once; misses expire. **Reset target** restores its default position and clears effects and counters. There is no damage, health, combat or NPC AI. First person keeps the existing Caster hiding behavior.
+
+The Particle interaction panel sets color, speed (0.5–30 m/s), radius (0.03–0.5 m), lifetime (0.1–10 s), and maximum effects (1–128, including hit bursts). Apply settings affects new shots; reducing the limit removes the oldest excess effects. Full capacity rejects new shots. Settings remain on this page only. [Specification and validation](.kiro/specs/particle-interaction/validation.md).
+
+## Function panel
+
+- 左側 Function panel 按鈕可展開／收合整個面板；五大分類及子群組可各自展開。設定、文字與節點狀態保留於目前頁面，重新整理回到預設。
+- 桌面拖曳面板右側邊界調寬（260–520px，並為場景保留至少360px）。Tab到邊界後，用Left／Right調整16px，Shift調整32px，Home／End移至最小／最大寬度。
+- 窄版／觸控排列將面板放在場景與移動控制下方，使用全寬並隱藏調寬把手。下方移動與粒子按鈕維持原位。
+- 規格與本機驗證：[left-control-panel-tree](.kiro/specs/left-control-panel-tree/validation.md)。本機模擬窄版不等於手機LAN／真機驗收。
+
+Mobile Orbit：在允許自由 Orbit 的鏡頭中，單指按住超過350ms或拖曳超過8px會平滑對準目前角色；雙指維持縮放／平移並取消置中，全部放開後可開始新手勢。短點地仍可跑向目的地。手機端請重新整理既有 LAN 預覽；iOS／Android及摺疊裝置的實機相容／效能仍待驗收。
+
+使用者驗收更新（2026-10-31）：iOS／Android的Mobile Orbit操作皆確認OK，依要求略過機型；本次Mobile Orbit已結案。此確認不代表所有瀏覽器／摺疊形態或效能測試通過。

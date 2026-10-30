@@ -42,7 +42,7 @@ export class FisheyePass {
     this.target.setSize(size, size);
     this.material.uniforms.aspect!.value = safeWidth / safeHeight;
   }
-  render(renderer: WebGLRenderer, scene: Scene, camera: PerspectiveCamera): void {
+  render(renderer: WebGLRenderer, scene: Scene, camera: PerspectiveCamera, capture?: (camera: PerspectiveCamera) => void): void {
     const previous = renderer.getRenderTarget();
     this.capture.copy(camera, false);
     this.capture.aspect = 1;
@@ -50,7 +50,8 @@ export class FisheyePass {
     this.capture.updateProjectionMatrix();
     try {
       renderer.setRenderTarget(this.target);
-      renderer.render(scene, this.capture);
+      if (capture) capture(this.capture);
+      else renderer.render(scene, this.capture);
       renderer.setRenderTarget(previous);
       renderer.render(this.output, this.screenCamera);
     } finally { renderer.setRenderTarget(previous); }

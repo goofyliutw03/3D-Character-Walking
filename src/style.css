@@ -747,3 +747,73 @@ textarea::placeholder { color:#65735c }
   .loading-panel { padding:12px; max-height:95%; overflow:auto }
   .loading-panel .loading-sculpture { display:none }
 }
+/* Interaction anchors are projected through the same camera as the scene. */
+.actor-label { position:absolute; transform:translate(-50%,-100%); pointer-events:none; padding:4px 9px; border-radius:12px; background:#15333ee8; color:#b6f3ff; font-size:11px; font-weight:700; z-index:3; }
+.actor-label[hidden] { display:none; }
+.actor-target { color:#ffcf8e; }
+.particle-settings { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:12px 0; }
+.particle-settings label { display:flex; flex-direction:column; gap:5px; font-size:12px; color:#50615a; }
+.particle-settings input { width:100%; min-height:38px; border:1px solid #ccd4ca; border-radius:7px; padding:6px; background:#fff; color:#273e34; }
+#apply-particles, #retry-target { min-height:40px; padding:8px 14px; border:1px solid #c5cec2; border-radius:8px; background:#f2f5ed; cursor:pointer; }
+#fire-particle { background:#d8f0f6; color:#193f4b; }
+#particle-status, #target-status { font-size:12px; line-height:1.5; }
+.action-controls { flex-wrap:wrap; }
+
+/* The panel owns layout only; scene sizing follows its existing ResizeObserver. */
+main { grid-template-columns:var(--panel-width,320px) minmax(0,1fr) }
+aside.control-panel {
+  position:relative; padding:0; min-width:0; min-height:0; overflow:visible;
+}
+.panel-toolbar { flex:none; padding:10px 9px; border-bottom:1px solid #dce0d3 }
+#panel-toggle {
+  display:flex; align-items:center; gap:10px; width:100%; min-height:36px;
+  padding:8px; border:0; border-radius:7px; background:transparent; color:#354f3c;
+  text-align:left; cursor:pointer; font:inherit; font-size:12px; font-weight:650;
+}
+#panel-toggle:hover { background:#e8edde }
+.panel-toggle-icon { font-size:17px; line-height:1 }
+.panel-toggle-chevron { margin-left:auto; font-size:21px; line-height:1 }
+.panel-content { flex:1; min-height:0; overflow:auto; padding:20px 18px 18px; scrollbar-gutter:stable }
+.panel-content[hidden], #panel-resize[hidden] { display:none }
+.panel-title { font:500 22px Georgia,serif; letter-spacing:-.4px; margin:0 0 8px }
+.panel-help { font-size:11px; color:#59684f; margin:0 0 18px }
+.function-node { min-width:0; border-top:1px solid #dde2d3 }
+.function-node > summary {
+  padding:13px 4px; cursor:pointer; color:#354f3c; font-size:13px; font-weight:650;
+  overflow-wrap:anywhere;
+}
+.function-node > summary::marker { color:#718663; font-size:11px }
+.function-node[open] > summary { color:#254e37 }
+.function-node-content { padding:0 4px 16px 14px; min-width:0; overflow-wrap:anywhere }
+.function-node .function-node { border-top:0; border-left:1px solid #dce3d2; margin:0 0 4px }
+.function-node .function-node > summary { font-size:11px; font-weight:600; padding:10px }
+.function-node .function-node-content { padding:0 10px 12px }
+.function-tree .select-label { margin-top:12px }
+.function-tree .camera-options { grid-template-columns:1fr; margin-top:8px }
+.function-tree .particle-settings { grid-template-columns:repeat(2,minmax(0,1fr)) }
+.panel-content .sidebar-bottom { margin-top:20px }
+#panel-resize {
+  position:absolute; right:-5px; top:0; bottom:0; width:10px; z-index:5;
+  cursor:col-resize; touch-action:none;
+}
+#panel-resize::after {
+  content:''; position:absolute; width:3px; height:44px; top:calc(50% - 22px); left:3px;
+  background:#9caa8e; border-radius:3px;
+}
+#panel-resize:hover, #panel-resize:focus-visible { background:#adc39866 }
+#panel-toggle:focus-visible, .function-node > summary:focus-visible, #panel-resize:focus-visible {
+  outline:2px solid #365f43; outline-offset:-2px;
+}
+.panel-resizing, .panel-resizing * { cursor:col-resize !important; user-select:none !important }
+main[data-panel-collapsed=true] .panel-toggle-label, main[data-panel-collapsed=true] .panel-toggle-chevron { display:none }
+main[data-panel-collapsed=true] #panel-toggle { justify-content:center; padding:8px 0 }
+.sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; border:0 }
+@media(max-width:850px), (pointer:coarse) {
+  aside.control-panel { width:100%; border-top:1px solid #cbd4bf }
+  .panel-content { overflow:visible; padding:18px max(18px,env(safe-area-inset-right)) 22px max(18px,env(safe-area-inset-left)) }
+  .panel-toolbar { padding:8px max(12px,env(safe-area-inset-right)) 8px max(12px,env(safe-area-inset-left)) }
+  #panel-resize { display:none }
+  main[data-panel-collapsed=true] .panel-toggle-label, main[data-panel-collapsed=true] .panel-toggle-chevron { display:block }
+  main[data-panel-collapsed=true] #panel-toggle { justify-content:flex-start; padding:8px }
+  .panel-resize-copy { display:none }
+}

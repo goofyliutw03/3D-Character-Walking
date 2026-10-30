@@ -1,5 +1,15 @@
 # Development plan
 
+2026-10-31 CAM-04（1M-1）：使用者核准 [occluded-character-xray](../.kiro/specs/occluded-character-xray/) 第4遮擋模式，僅凸顯操作主角被不透明環境遮住的像素；排除水／粒子／原始透明材質。已依序完成實作、inline審閱、93 tests／build／GPU及Release，驗證及限制見該spec。非第七里程碑，M6／SCENE-05維持。
+
+2026-10-31 WATER-02（1P-1）：使用者確認原型並核准街尾植栽島水景整合，另明確要求 Shader 可重用 Module／API；規格見 [street-water-integration](../.kiro/specs/street-water-integration/)。中心約 (0,-24.6)、完整池岸障礙與相機相容、Scene display 水景控制，兩入口共用公開 API；本次依序實作與 inline 審閱。下方原型「街道整合尚未授權」為原型交付時點，已由本項取代。非第七里程碑，M6／SCENE-05 未驗事項維持。
+
+2026-10-30 WATER-01（1P-0）：使用者核准 [water-effects](../.kiro/specs/water-effects/) 獨立水池／瀑布原型與規格，requirements→design→tasks→實作／inline 審閱依序推進。入口 `water.html`，程序素材及兩種品質；實測、Release、索引見該 spec validation。原型待風格／效能確認；街道整合尚未授權。非第七里程碑，M6／SCENE-05 人工待驗與既有延後範圍不變。
+
+2026-10-30 UI-02（1O-0）：使用者核准 [left-control-panel-tree](../.kiro/specs/left-control-panel-tree/)，改善既有左側UI：五大功能樹、整體／節點展開收合、桌面拖曳及鍵盤調寬，保留下方移動／粒子操作；規格及審閱／驗證／Release／索引見該spec。共用main／style在particle-interaction交付後依序修改；非第七里程碑，不變更M6／SCENE-05人工驗收或LATER延後範圍。
+
+2026-10-30 Plan v02（1N-0）：使用者已核准 [particle-interaction](../.kiro/specs/particle-interaction/)；主玩家為 Caster，追加一名使用既有授權資產的獨立站立 Target、可設定定向粒子、單次命中回饋及逾時／上限。依序規格、實作與 inline 審閱；驗證、Release、索引結果見該 spec validation。僅本案一名 Target 為 LATER-03 追加授權；不包含 NPC AI／NavMesh／戰鬥、不改 M6／SCENE-05 人工驗收狀態、不新增第七里程碑。
+
 2026-10-30 CAM-03（1M-0）：使用者已確認三種鏡頭遮擋模式規劃，規格見 [camera-obstruction-modes](../.kiro/specs/camera-obstruction-modes/)。Auto zoom平滑入／出、遮擋物75%透明、全場景線框與主角排除已實作；First person保持眼位，模式跨鏡頭／Follow保留。完成證據與發佈／索引結果見 [validation](../.kiro/specs/camera-obstruction-modes/validation.md)。本次非第七里程碑，不變更M6／SCENE-05實機待驗或LATER-03 NPC延後範圍。
 
 追加需求（2026-10-26授權，2026-10-29完成本機驗證）：[mobile-touch-navigation](../.kiro/specs/mobile-touch-navigation/) 已完成場景下方手機控制、點地跑步、靜態避障與取消；4項tasks、54 tests及production證據見[validation](../.kiro/specs/mobile-touch-navigation/validation.md)。待結束確認及SCENE-05真機驗收；非第七里程碑，不更動M6、LATER-01巡迴或其他延後項目。
@@ -67,3 +77,7 @@ Use a perspective camera with orbit controls, bounded zoom, hemisphere light, di
 The historical plan requests confirmation of each stage design before implementation. This document provides the concrete next-stage design for that workflow.
 
 2026-10-29 追加角色中心Orbit（1L-0）：使用者核准後完成mouse左鍵hold／drag平滑置中，保留短點擊Run／觸控與Follow模式邊界；57 tests、build、Release及本機production操作通過。見camera-modes validation；非新里程碑，不變更M6／SCENE-05人工驗收狀態。
+
+2026-10-31 Mobile Orbit（1L-1）：依使用者明確授權擴充角色中心Orbit至單指觸控，雙指取消置中並維持OrbitControls操作；camera-modes追加需求6.1–6.4。手機實機、M6／SCENE-05驗收維持待辦，詳見該spec validation。
+
+2026-10-31 Mobile Orbit結案：使用者回報iOS／Android皆OK，依要求忽略機型；本次追加需求實機驗收與結束確認完成。僅涵蓋本次操作，不推定所有瀏覽器／摺疊形態／效能皆通過，M6／SCENE-05其餘未驗項保留。見camera-modes validation。

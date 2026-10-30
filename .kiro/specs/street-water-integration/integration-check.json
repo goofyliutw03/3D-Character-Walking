@@ -1,0 +1,212 @@
+{
+  "integration": [
+    {
+      "name": "Pause freezes while renderer continues",
+      "pass": true,
+      "details": {
+        "frozen": 10.307299999999962,
+        "after": 10.307299999999962
+      }
+    },
+    {
+      "name": "Off freezes and hides fall, keeps pool",
+      "pass": true,
+      "details": {
+        "elapsed": 10.307299999999962
+      }
+    },
+    {
+      "name": "Resume advances",
+      "pass": true
+    },
+    {
+      "name": "Invalid settings atomic",
+      "pass": true
+    },
+    {
+      "name": "Simulated resume first frame does not add background gap",
+      "pass": true
+    },
+    {
+      "name": "Quality replaces geometry without changing DPR",
+      "pass": true,
+      "details": {
+        "low": {
+          "calls": 313,
+          "triangles": 19928,
+          "geometries": 29,
+          "textures": 5,
+          "programs": 6
+        },
+        "standard": {
+          "calls": 313,
+          "triangles": 32216,
+          "geometries": 29,
+          "textures": 5,
+          "programs": 6
+        },
+        "dpr": 1
+      }
+    },
+    {
+      "name": "Transparent solid blocker fades entire water group",
+      "pass": true,
+      "details": [
+        {
+          "name": "",
+          "opacity": 0.25
+        },
+        {
+          "name": "",
+          "opacity": 0.25
+        },
+        {
+          "name": "",
+          "opacity": 0.25
+        },
+        {
+          "name": "",
+          "opacity": 0.25
+        },
+        {
+          "name": "",
+          "opacity": 0.25
+        },
+        {
+          "name": "",
+          "opacity": 0.25
+        },
+        {
+          "name": "",
+          "opacity": 0.25
+        },
+        {
+          "name": "Pool surface",
+          "opacity": 0.25
+        },
+        {
+          "name": "Waterfall",
+          "opacity": 0.25
+        }
+      ]
+    },
+    {
+      "name": "Transparent shader alpha and clock remain live",
+      "pass": true,
+      "details": {
+        "opacity": 0.25,
+        "t1": 10.650699999999958,
+        "t2": 10.757299999999956
+      }
+    },
+    {
+      "name": "Wireframe includes water",
+      "pass": true
+    },
+    {
+      "name": "Restore originals after modes",
+      "pass": true
+    },
+    {
+      "name": "Solid water rim constrains zoom",
+      "pass": true,
+      "details": {
+        "desired": [
+          4.163799117100999e-16,
+          1.6000000000000005,
+          -28
+        ],
+        "rendered": [
+          3.504326005314559e-16,
+          1.5437741956083648,
+          -26.97051344071653
+        ]
+      }
+    },
+    {
+      "name": "Camera overview",
+      "pass": true,
+      "details": {
+        "calls": 673,
+        "shaderErrors": 0
+      }
+    },
+    {
+      "name": "Camera street",
+      "pass": true,
+      "details": {
+        "calls": 616,
+        "shaderErrors": 0
+      }
+    },
+    {
+      "name": "Camera overhead",
+      "pass": true,
+      "details": {
+        "calls": 637,
+        "shaderErrors": 0
+      }
+    },
+    {
+      "name": "Camera first-person",
+      "pass": true,
+      "details": {
+        "calls": 458,
+        "shaderErrors": 0
+      }
+    },
+    {
+      "name": "Camera third-person",
+      "pass": true,
+      "details": {
+        "calls": 401,
+        "shaderErrors": 0
+      }
+    },
+    {
+      "name": "Camera front",
+      "pass": true,
+      "details": {
+        "calls": 396,
+        "shaderErrors": 0
+      }
+    },
+    {
+      "name": "Camera character-overhead",
+      "pass": true,
+      "details": {
+        "calls": 329,
+        "shaderErrors": 0
+      }
+    },
+    {
+      "name": "Camera low-angle",
+      "pass": true,
+      "details": {
+        "calls": 394,
+        "shaderErrors": 0
+      }
+    },
+    {
+      "name": "Camera fisheye",
+      "pass": true,
+      "details": {
+        "calls": 547,
+        "shaderErrors": 0
+      }
+    },
+    {
+      "name": "Evening / shadows off render",
+      "pass": true
+    },
+    {
+      "name": "Shader compile errors",
+      "pass": true,
+      "details": {
+        "shaderErrors": 0
+      }
+    }
+  ],
+  "pass": true,
+  "completedAt": "2026-10-30T16:20:48.084Z"
+}

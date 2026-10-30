@@ -38,6 +38,8 @@ export class TapGesture {
     for (const type of ['blur', 'resize'] as const) win.addEventListener(type, () => this.cancel(), options);
     canvas.ownerDocument.addEventListener('visibilitychange', () => { if (canvas.ownerDocument.hidden) this.cancel(); }, options);
   }
-  cancel(): void { this.candidate = undefined; this.pointers.clear(); }
+  /** Suppress this tap while retaining held fingers for multi-touch rejection. */
+  cancelCandidate(): void { this.candidate = undefined; }
+  cancel(): void { this.cancelCandidate(); this.pointers.clear(); }
   dispose(): void { this.cancel(); this.events.abort(); }
 }

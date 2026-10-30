@@ -1,5 +1,7 @@
 import { BoxGeometry, Color, CylinderGeometry, DirectionalLight, DodecahedronGeometry, Fog, Group, HemisphereLight, Mesh, MeshStandardMaterial, Scene } from 'three';
 import type { WalkableBounds, WalkableWorld } from '../character/motion';
+import { StreetWaterFeature, streetWaterBounds } from './StreetWaterFeature.ts';
+import type { WaterSettings } from '../water/index.ts';
 
 export class CityScene {
   readonly scene = new Scene();
@@ -16,6 +18,7 @@ export class CityScene {
   private readonly materials = new Map<string, MeshStandardMaterial>();
   private readonly sun = new DirectionalLight(0xfff2dc, 3.2);
   private readonly ambient = new HemisphereLight(0xdbeafa, 0xb3a88b, 2.3);
+  private readonly water = new StreetWaterFeature();
   constructor() {
     this.scene.background = new Color('#e3e9df');
     this.scene.fog = new Fog('#e3e9df', 75, 160);
@@ -66,9 +69,8 @@ export class CityScene {
     }
     for (let z = -25; z < 26; z += 5) if (Math.abs(z) > 3) ground(0, 0.06, z, 0.12, 0.02, 2.5, '#f2dfac');
     for (let x = -3.6; x <= 3.6; x += 1.2) ground(x, 0.065, 0, 0.65, 0.02, 3.2, '#eee9dc');
-    this.box(this.environment, 0, 0.18, -25.4, 2.1, 0.35, 2.4, '#e2d9c5');
-    this.obstacle(0, -25.4, 2.1, 2.4);
-    this.tree(0, -25.4);
+    this.environment.add(this.water.root);
+    this.obstacles.push({...streetWaterBounds});
   }
   private building(x: number, z: number, height: number, color: string, side: number): void {
     const group = new Group();
@@ -128,6 +130,10 @@ export class CityScene {
   private obstacle(x: number, z: number, width: number, depth: number): void {
     this.obstacles.push({ minX: x - width / 2, maxX: x + width / 2, minZ: z - depth / 2, maxZ: z + depth / 2 });
   }
+  get waterSettings(): WaterSettings { return this.water.settings; }
+  get waterElapsed(): number { return this.water.elapsed; }
+  configureWater(patch: Partial<WaterSettings>): boolean { return this.water.configure(patch); }
+  update(delta: number): void { this.water.update(delta); }
   setEvening(evening: boolean): void {
     const background = evening ? '#d4b9a5' : '#e3e9df';
     this.scene.background = new Color(background);
@@ -142,6 +148,7 @@ export class CityScene {
     this.materials.forEach(material => { material.needsUpdate = true; });
   }
   dispose(): void {
+    this.water.dispose();
     this.boxes.dispose(); this.canopy.dispose(); this.pole.dispose();
     this.materials.forEach(material => material.dispose());
     this.sun.shadow.map?.dispose();

@@ -6,6 +6,8 @@ import { presentLoading, type LoadingState } from './ui/LoadingFeedback';
 import { SpeechEditor } from './ui/SpeechEditor';
 import { LoadingPanel } from './ui/LoadingPanel';
 import type { ObstructionMode } from './camera/CameraObstruction';
+import { controlPanelContent } from './ui/controlPanelContent';
+import { ControlPanel } from './ui/ControlPanel';
 import './style.css';
 
 const cameraNames: Record<CameraPreset, string> = {
@@ -17,6 +19,7 @@ const obstructionHints: Record<ObstructionMode, string> = {
   zoom: 'Move smoothly closer when scenery blocks your character, then return to your chosen view.',
   transparent: 'Keep your view. Scenery blocking your character becomes 75% transparent.',
   wireframe: 'Show the whole scene as a wireframe. Your character keeps its normal appearance.',
+  xray: 'Reveal only hidden parts of your character with a 50% contrast overlay. Water, particles and transparent materials do not block this view.',
 };
 
 const app = document.querySelector<HTMLDivElement>('#app');
@@ -28,59 +31,18 @@ app.innerHTML = `
     <span class="version">CHARACTER STUDY <b>06</b></span>
   </header>
   <main>
-    <aside>
-      <div class="panel-heading"><span class="eyebrow">YOUR WORKSPACE</span><span class="step">06 / 06</span></div>
-      <h1>A little city.<br> A world of stories.</h1>
-      <p class="intro">Choose a character. Take a walk.<br>Find a new point of view.</p>
-      <section>
-        <div class="section-heading"><h2>Character</h2><span class="tag" id="character-source">LOADING</span></div>
-        <label class="select-label" for="character">Choose a character</label>
-        <select id="character"><option value="man">Man</option><option value="woman">Woman</option><option value="child">Child</option></select>
-        <p class="hint" id="character-asset-hint">Loading a local rigged character. Procedural preview is available.</p>
-        <a class="asset-credits" href="/assets/characters/ATTRIBUTION.md" target="_blank" rel="noopener">Character sources & modifications ↗</a>
-        <p id="character-status" class="character-status" role="status" aria-live="polite" aria-atomic="true">Man · Idle</p>
-        <p class="hint">Movement controls are below the scene. Keyboard: WASD / arrows, Shift to run, Space to jump. Directions follow the street axes. Keyboard-activate a direction to keep moving; Stop ends it.</p>
-      </section>
-      <section aria-labelledby="expression-heading">
-        <div class="section-heading"><h2 id="expression-heading">Expression</h2><span class="tag">SAY SOMETHING</span></div>
-        <label class="select-label" for="emotion">Mood</label>
-        <select id="emotion">${Object.entries(emotions).map(([value, mood]) => `<option value="${value}">${mood.icon ? `${mood.icon} ` : ''}${mood.label}</option>`).join('')}</select>
-        <label class="select-label" for="speech">Your character’s words</label>
-        <textarea id="speech" rows="3" aria-describedby="speech-help speech-count" placeholder="A thought for the neighborhood…"></textarea>
-        <div class="speech-toolbar"><span id="speech-count">0 / ${speechLimit}</span><button id="clear-speech" type="button">Clear speech</button></div>
-        <p id="speech-help" class="hint">Up to 160 characters. Text stays on this page only. Your character stops while you edit. Overlays are hidden in First person.</p>
-        <p id="expression-status" class="expression-status" role="status" aria-live="polite" aria-atomic="true">Mood: None. No speech.</p>
-      </section>
-      <section>
-        <div class="section-heading"><h2>Camera</h2><span class="tag" id="camera-mode">ORBIT</span></div>
-        <label class="toggle-row follow-row" for="follow"><span>Follow character</span><input id="follow" type="checkbox"></label>
-        <p class="hint" id="camera-hint">Choose a starting angle, then explore.</p>
-        <label class="select-label" for="obstruction-mode">Objects block mode</label>
-        <select id="obstruction-mode" aria-describedby="obstruction-hint">
-          <option value="zoom">1 · Auto zoom (default)</option>
-          <option value="transparent">2 · Transparent blockers · 75%</option>
-          <option value="wireframe">3 · Wireframe scene</option>
-        </select>
-        <p class="hint" id="obstruction-hint">${obstructionHints.zoom}</p>
-        <div class="camera-options" role="group" aria-label="Camera views">
-          <button data-camera="overview" aria-pressed="true"><span class="view-icon">◇</span><span>Overview<small>See the whole neighborhood</small></span><span class="selection-dot"></span></button>
-          <button data-camera="street" aria-pressed="false"><span class="view-icon">↗</span><span>Street level<small>Step into the scene</small></span><span class="selection-dot"></span></button>
-          <button data-camera="overhead" aria-pressed="false"><span class="view-icon">⊞</span><span>From above<small>A bird’s-eye perspective</small></span><span class="selection-dot"></span></button>
-          <button data-camera="first-person" aria-pressed="false"><span class="view-icon">◎</span><span>First person<small>See through your character’s eyes</small></span><span class="selection-dot"></span></button>
-          <button data-camera="third-person" aria-pressed="false"><span class="view-icon">◉</span><span>Third person<small>Follow behind your character</small></span><span class="selection-dot"></span></button>
-          <button data-camera="front" aria-pressed="false"><span class="view-icon">◌</span><span>Front<small>Face your character</small></span><span class="selection-dot"></span></button>
-          <button data-camera="character-overhead" aria-pressed="false"><span class="view-icon">⊙</span><span>Character overhead<small>Look straight down at your character</small></span><span class="selection-dot"></span></button>
-          <button data-camera="low-angle" aria-pressed="false"><span class="view-icon">↟</span><span>Low angle<small>A view from near the ground</small></span><span class="selection-dot"></span></button>
-          <button data-camera="fisheye" aria-pressed="false"><span class="view-icon">◍</span><span>Fisheye<small>160° circular wide view</small></span><span class="selection-dot"></span></button>
-        </div>
-      </section>
-      <section>
-        <div class="section-heading"><h2>Atmosphere</h2><span class="tiny-label">LOCAL SCENE</span></div>
-        <label class="select-label" for="lighting">Time of day</label>
-        <select id="lighting"><option value="day">☀ &nbsp; Soft daylight</option><option value="evening">◐ &nbsp; Golden hour</option></select>
-        <label class="toggle-row" for="shadows"><span>Cast shadows</span><input id="shadows" type="checkbox" checked></label>
-      </section>
-      <div class="sidebar-bottom"><span class="status-dot"></span> Everything runs on your computer.</div>
+    <aside class="control-panel" aria-label="Function panel">
+      <div class="panel-toolbar">
+        <button id="panel-toggle" data-panel-layout type="button" aria-expanded="true" aria-controls="control-panel-content" aria-label="Collapse function panel" title="Expand or collapse function panel"><span class="panel-toggle-icon" aria-hidden="true">☰</span><span class="panel-toggle-label">Function panel</span><span class="panel-toggle-chevron" aria-hidden="true">‹</span></button>
+      </div>
+      <div id="control-panel-content" class="panel-content">
+        <h1 class="panel-title">Your workspace</h1>
+        <p class="panel-help">Expand a category to explore.<span class="panel-resize-copy"> Drag the right edge to resize.</span></p>
+        <nav class="function-tree" aria-label="Viewer functions">${controlPanelContent(obstructionHints.zoom)}</nav>
+        <div class="sidebar-bottom"><span class="status-dot"></span> Everything runs on your computer.</div>
+      </div>
+      <div id="panel-resize" role="separator" tabindex="0" aria-label="Function panel width" aria-orientation="vertical" aria-controls="control-panel-content" aria-describedby="panel-resize-help" title="Drag to resize · Left / Right arrows · Home / End"></div>
+      <span id="panel-resize-help" class="sr-only">Use Left and Right arrows to resize, Shift for larger steps, Home for minimum and End for maximum width.</span>
     </aside>
     <div class="scene-workspace">
     <section class="viewport" aria-label="City scene workspace" aria-busy="true">
@@ -107,10 +69,12 @@ app.innerHTML = `
       </div>
       <div class="action-controls" role="group" aria-label="Character actions">
         <button id="run" aria-pressed="false">Run</button><button id="jump">Jump</button><button id="stop">Stop</button>
+        <button id="fire-particle" type="button">Fire particle</button><button id="reset-target" type="button">Reset target</button>
       </div>
       <div class="movement-copy">
         <p id="navigation-status" role="status" aria-live="polite" aria-atomic="true">Tap the ground to run there.</p>
         <p class="movement-help">Hold arrows to move · Stop cancels · Drag to orbit / pinch to zoom</p>
+        <p id="particle-status" role="status" aria-live="polite" aria-atomic="true">Ready · Active 0 · Hits 0 · Expired 0</p>
       </div>
     </section>
     </div>
@@ -118,6 +82,7 @@ app.innerHTML = `
   <div class="asset-feedback"><div id="asset-status" class="asset-status" role="status" aria-live="polite" aria-atomic="true">Starting scene…</div></div>
   <footer><span><span class="status-dot"></span> <span id="renderer-status" role="status">Starting scene…</span></span><span id="camera-status">Camera: Overview</span><span><span id="fps">—</span> FPS <span class="footer-divider">/</span> <span id="scene-metrics">1 unit = 1 meter</span></span></footer>
 `;
+const controlPanel = new ControlPanel(document.querySelector<HTMLElement>('main')!);
 const scene = document.querySelector<HTMLElement>('#scene')!;
 const status = document.querySelector<HTMLElement>('#renderer-status')!;
 const fps = document.querySelector<HTMLElement>('#fps')!;
@@ -136,7 +101,7 @@ const reportAsset = (state: LoadingState): void => {
 };
 reportAsset({ phase: 'loading', stage: 'engine', message: 'Preparing the viewer…' });
 const uiEvents = new AbortController();
-const controls = document.querySelectorAll<HTMLButtonElement | HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>('button, input, select, textarea');
+const controls = document.querySelectorAll<HTMLButtonElement | HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>('button:not([data-panel-layout]), input, select, textarea');
 controls.forEach(control => { if (control !== retryCharacter) control.disabled = true; });
 let viewer: ViewerApp | undefined;
 let fatal = false;
@@ -189,8 +154,61 @@ try {
     const element = document.querySelector<HTMLElement>('#scene-metrics')!;
     element.textContent = `${metrics.drawCalls} draws · ${(metrics.triangles / 1000).toFixed(1)}k triangles`;
     element.dataset.geometries = String(metrics.geometries); element.dataset.textures = String(metrics.textures);
+  }, state => {
+    document.querySelector('#target-status')!.textContent = `Target · ${state.phase === 'ready' ? 'Rigged woman · Ready' : state.phase === 'error' ? 'Fallback · Could not load' : 'Loading · procedural preview'}`;
+    document.querySelector<HTMLButtonElement>('#retry-target')!.hidden = state.phase !== 'error';
+  }, state => {
+    const element = document.querySelector('#particle-status')!;
+    const text = `${state.lastEvent} · Active ${state.active} · Hits ${state.hits} · Expired ${state.expired}`;
+    if(element.textContent !== text) element.textContent = text;
   });
   controls.forEach(control => { control.disabled = false; });
+  const syncWater = (): void => {
+    if (!viewer) return;
+    const state = viewer.getWaterSettings();
+    document.querySelector('#water-settings-status')!.textContent = `${!state.enabled ? 'Static water' : state.paused ? 'Water paused' : 'Dynamic water'} · ${state.quality === 'low' ? 'Low' : 'Standard'} quality.`;
+    document.querySelector('#water-wave-value')!.textContent = state.waveStrength.toFixed(1);
+    document.querySelector('#water-flow-value')!.textContent = state.flowSpeed.toFixed(1);
+  };
+  for (const [id, key] of [['water-enabled','enabled'],['water-paused','paused']] as const) {
+    document.querySelector<HTMLInputElement>(`#${id}`)!.addEventListener('change', event => {
+      viewer?.configureWater({[key]:(event.target as HTMLInputElement).checked}); syncWater();
+    }, {signal:uiEvents.signal});
+  }
+  document.querySelector<HTMLSelectElement>('#water-quality')!.addEventListener('change', event => {
+    const quality = (event.target as HTMLSelectElement).value;
+    if (quality === 'low' || quality === 'standard') viewer?.configureWater({quality});
+    syncWater();
+  }, {signal:uiEvents.signal});
+  for (const [id, key] of [['water-wave','waveStrength'],['water-flow','flowSpeed']] as const) {
+    document.querySelector<HTMLInputElement>(`#${id}`)!.addEventListener('input', event => {
+      const input = event.target as HTMLInputElement;
+      if (!input.checkValidity() || !viewer?.configureWater({[key]:input.valueAsNumber})) {
+        document.querySelector('#water-settings-status')!.textContent = 'Check the allowed water ranges. Settings were not changed.';
+        return;
+      }
+      syncWater();
+    }, {signal:uiEvents.signal});
+  }
+  document.querySelector('#fire-particle')!.addEventListener('click',()=>viewer?.fireParticle(),{signal:uiEvents.signal});
+  document.querySelector('#reset-target')!.addEventListener('click',()=>viewer?.resetTarget(),{signal:uiEvents.signal});
+  document.querySelector('#retry-target')!.addEventListener('click',()=>viewer?.retryTarget(),{signal:uiEvents.signal});
+  document.querySelector('#apply-particles')!.addEventListener('click',()=>{
+    const number = (id: string): number => document.querySelector<HTMLInputElement>(`#particle-${id}`)!.valueAsNumber;
+    const fields = [...document.querySelectorAll<HTMLInputElement>('.particle-settings input')];
+    const invalid = fields.find(field => !field.checkValidity());
+    if (invalid) {
+      // Reveal an invalid field even when its appearance subgroup was collapsed.
+      let group = invalid.closest('details');
+      while (group) { group.open = true; group = group.parentElement?.closest('details') ?? null; }
+      invalid.reportValidity();
+    }
+    const valid = !invalid && viewer?.configureParticles({
+      color:document.querySelector<HTMLInputElement>('#particle-color')!.value,
+      speed:number('speed'),size:number('size'),lifetime:number('lifetime'),maxCount:number('limit'),
+    });
+    document.querySelector('#particle-settings-status')!.textContent = valid ? 'Settings applied to new shots.' : 'Check the allowed ranges. Settings were not changed.';
+  },{signal:uiEvents.signal});
   const speech = document.querySelector<HTMLTextAreaElement>('#speech')!;
   const expressionStatus = document.querySelector<HTMLElement>('#expression-status')!;
   const syncExpression = (announce: boolean): void => {
@@ -241,6 +259,6 @@ try {
 }
 }
 void initialize();
-const dispose = (): void => { uiEvents.abort(); viewer?.dispose(); };
+const dispose = (): void => { uiEvents.abort(); controlPanel.dispose(); viewer?.dispose(); };
 window.addEventListener('pagehide', event => { if (!event.persisted) dispose(); }, { signal: uiEvents.signal });
 if (import.meta.hot) import.meta.hot.dispose(dispose);

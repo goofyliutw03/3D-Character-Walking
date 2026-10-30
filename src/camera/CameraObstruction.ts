@@ -3,7 +3,7 @@ import type { CameraSubject } from './CameraController';
 import { FollowCamera } from './FollowCamera.ts';
 import { SceneAppearance } from '../scene/SceneAppearance.ts';
 
-export type ObstructionMode = 'zoom' | 'transparent' | 'wireframe';
+export type ObstructionMode = 'zoom' | 'transparent' | 'wireframe' | 'xray';
 
 export class CameraObstruction {
   private selected: ObstructionMode = 'zoom';
@@ -33,7 +33,7 @@ export class CameraObstruction {
     if (external) {
       this.environment.updateWorldMatrix(true, true);
       this.visibleMeshes.length = 0;
-      this.environment.traverseVisible(object => { if (object instanceof Mesh) this.visibleMeshes.push(object); });
+      this.environment.traverseVisible(object => { if (object instanceof Mesh && object.userData.cameraObstruction !== false) this.visibleMeshes.push(object); });
       if (this.selected === 'zoom') {
         this.probe.position.copy(desired.position);
         this.constraint.constrain(this.probe, this.focus);

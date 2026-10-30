@@ -1,4 +1,6 @@
-import { PerspectiveCamera, Vector3 } from 'three';
+import { Mesh, MeshBasicMaterial, PerspectiveCamera, SphereGeometry, Vector3 } from 'three';
+import { TargetActor } from '../character/TargetActor';
+import { ParticleInteraction, type ParticleSettings, type ParticleSnapshot } from '../interaction/ParticleInteraction';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CityScene } from '../scene/CityScene';
 import { SceneRenderer, type RenderStats } from './SceneRenderer';
@@ -21,6 +23,7 @@ import { pickGround } from '../navigation/GroundPicker';
 import { TapGesture } from '../input/TapGesture';
 import { MouseOrbitGesture } from '../input/MouseOrbitGesture';
 import { CameraObstruction, type ObstructionMode } from '../camera/CameraObstruction';
+import type { WaterSettings } from '../water/index.ts';
 
 export type CameraPreset = CameraView;
 export interface CharacterStatus { variant: CharacterVariant; action: MotionSnapshot['action']; running: boolean; following: boolean; firstPerson: boolean; cameraView: CameraView; navigation: NavigationStatus; obstructionMode: ObstructionMode }
@@ -44,6 +47,11 @@ export class ViewerApp {
   private readonly overlay: ExpressionOverlay;
   private readonly anchor = new Vector3();
   private readonly assets: CharacterAssets;
+  private readonly target: TargetActor;
+  private readonly particles = new ParticleInteraction();
+  private readonly casterMarker = new Mesh(new SphereGeometry(.075,12,8), new MeshBasicMaterial({color:'#66ddff'}));
+  private readonly targetMarker = new Mesh(new SphereGeometry(.09,12,8), new MeshBasicMaterial({color:'#ffbf69'}));
+  private readonly actorLabels: HTMLDivElement[] = [];
   private shadows = true;
   private variant: CharacterVariant = 'man';
   private motion: Readonly<MotionSnapshot>;
@@ -53,7 +61,7 @@ export class ViewerApp {
   private frameCount = 0;
   private contextLost = false;
   private disposed = false;
-  constructor(private readonly container: HTMLElement, private readonly report: (message: string) => void, private readonly fps: (value: number) => void, private readonly characterReport?: (status: CharacterStatus) => void, assetReport?: (state: LoadingState) => void, private readonly metricsReport?: (stats: RenderStats) => void) {
+  constructor(private readonly container: HTMLElement, private readonly report: (message: string) => void, private readonly fps: (value: number) => void, private readonly characterReport?: (status: CharacterStatus) => void, assetReport?: (state: LoadingState) => void, private readonly metricsReport?: (stats: RenderStats) => void, targetReport?: (state: LoadingState) => void, private readonly particleReport?: (state: ParticleSnapshot) => void) {
     this.view = new SceneRenderer(container, this.camera);
     this.city = new CityScene();
     this.obstruction = new CameraObstruction(this.city.environment);
@@ -67,6 +75,13 @@ export class ViewerApp {
     this.motion = this.movement.update(0, this.input.sample());
     this.character.update(this.motion, 0);
     this.city.scene.add(this.character.root);
+    this.target = new TargetActor(this.city.walkableWorld, state => targetReport?.(state));
+    this.city.scene.add(this.target.root,this.particles.root,this.casterMarker,this.targetMarker);
+    for (const role of ['Caster','Target']) {
+      const label = document.createElement('div'); label.className = `actor-label actor-${role.toLowerCase()}`;
+      label.textContent = role; label.setAttribute('aria-hidden','true'); label.hidden = true;
+      container.append(label); this.actorLabels.push(label);
+    }
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.075;
     this.controls.minDistance = 3;
@@ -99,7 +114,7 @@ export class ViewerApp {
     });
     const canvas = this.view.renderer.domElement;
     this.mouseOrbit = new MouseOrbitGesture(canvas,
-      () => { this.tap.cancel(); this.cameras.beginCharacterOrbit(); },
+      () => { this.tap.cancelCandidate(); this.cameras.beginCharacterOrbit(); },
       cancelled => this.cameras.endCharacterOrbit(cancelled));
     canvas.tabIndex = 0;
     canvas.setAttribute('aria-label', 'Interactive city with a procedural character. Tap the ground to run there. Drag to orbit, pinch to zoom. Keyboard: WASD or arrows, Shift to run, Space to jump.');
@@ -121,18 +136,23 @@ export class ViewerApp {
     canvas.addEventListener('webglcontextlost', event => {
       event.preventDefault(); this.contextLost = true;
       this.stop(); this.destinationMarker.hidden = true;
+      this.particles.clear(); this.particleReport?.(this.particles.snapshot);
+      this.actorLabels.forEach(label => {label.hidden=true;});
       this.overlay.place(null);
       this.report('Graphics connection lost. Waiting for recovery…');
     }, { signal: this.events.signal });
-    canvas.addEventListener('webglcontextrestored', () => { this.contextLost = false; this.report('WebGL2 · connection restored'); }, { signal: this.events.signal });
+    canvas.addEventListener('webglcontextrestored', () => { this.contextLost = false; this.lastTime = 0; this.report('WebGL2 · connection restored'); }, { signal: this.events.signal });
+    document.addEventListener('visibilitychange', () => { this.lastTime = 0; }, { signal: this.events.signal });
     this.view.renderer.setAnimationLoop(time => this.update(time));
     this.report('WebGL2 · ready');
     void this.assets.select(assetCatalog[this.variant]);
   }
   private update(time: number): void {
     if (this.disposed || this.contextLost) return;
+    const waterDelta = this.lastTime && !document.hidden ? Math.min(Math.max((time - this.lastTime) / 1000, 0), 0.05) : 0;
     const delta = Math.min((time - this.lastTime) / 1000 || 1 / 60, 0.05);
     this.lastTime = time;
+    this.city.update(waterDelta);
     this.mouseOrbit.update(delta);
     const manual = this.input.sample();
     if (manual.x || manual.z || manual.jump) this.navigation.cancel();
@@ -140,6 +160,12 @@ export class ViewerApp {
     this.motion = this.movement.update(delta, intent);
     this.character.update(this.motion, delta);
     this.assets.current?.update(this.motion, delta);
+    this.target.update(delta);
+    const casterAnchor = this.getCasterAnchor();
+    const targetAnchor = this.target.anchor;
+    this.casterMarker.position.copy(casterAnchor); this.targetMarker.position.copy(targetAnchor);
+    this.particles.update(delta,targetAnchor,this.target.height*.25);
+    this.particleReport?.(this.particles.snapshot);
     this.characterReport?.(this.getCharacterStatus());
     const immediate = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     this.desiredCamera.aspect = this.camera.aspect;
@@ -148,6 +174,14 @@ export class ViewerApp {
     this.updateObstruction(delta, immediate);
     this.character.root.visible = !this.assets.current && this.cameras.characterVisible;
     if (this.assets.current) this.assets.current.root.visible = this.cameras.characterVisible;
+    this.casterMarker.visible = this.cameras.characterVisible;
+    const labelAnchors = [new Vector3(this.motion.x,this.motion.y+this.getSubjectHeight()+.55,this.motion.z),
+      targetAnchor.clone().add(new Vector3(0,this.target.height*.4+.3,0))];
+    this.actorLabels.forEach((label,index) => {
+      const point = index===0 && !this.cameras.characterVisible ? null : projectAnchor(labelAnchors[index]!,this.camera,this.container.clientWidth,this.container.clientHeight,this.cameras.fisheye);
+      label.hidden = !point;
+      if(point) {label.style.left=`${point.x}px`;label.style.top=`${point.y}px`;}
+    });
     this.anchor.set(this.motion.x, this.motion.y + this.getSubjectHeight() + 0.25, this.motion.z);
     this.overlay.place(this.cameras.characterVisible
       ? projectAnchor(this.anchor, this.camera, this.container.clientWidth, this.container.clientHeight, this.cameras.fisheye)
@@ -161,7 +195,9 @@ export class ViewerApp {
       this.destinationMarker.style.top = `${marker.y}px`;
       this.destinationMarker.dataset.state = this.navigation.status;
     }
-    this.view.render(this.city.scene, this.cameras.fisheye);
+    this.view.render(this.city.scene, this.cameras.fisheye,
+      this.obstruction.mode === 'xray' && this.cameras.characterVisible
+        ? { subject: (this.assets.current ?? this.character).root, environment: this.city.environment } : undefined);
     this.frameCount++;
     if (time - this.sampleTime >= 1000) {
       this.fps(Math.round(this.frameCount * 1000 / (time - this.sampleTime)));
@@ -192,6 +228,9 @@ export class ViewerApp {
     this.overlay.setContent(state, emotions[state.emotion].icon);
   }
   setEvening(evening: boolean): void { this.city.setEvening(evening); }
+  configureWater(patch: Partial<WaterSettings>): boolean { return !this.disposed && this.city.configureWater(patch); }
+  getWaterSettings(): WaterSettings { return this.city.waterSettings; }
+  getWaterElapsed(): number { return this.city.waterElapsed; }
   setCharacter(variant: CharacterVariant): void {
     this.mouseOrbit.cancel(); this.cameras.endCharacterOrbit(true);
     this.stop();
@@ -199,6 +238,16 @@ export class ViewerApp {
     void this.assets.select(assetCatalog[variant]);
   }
   retryCharacter(): void { void this.assets.retry(); }
+  retryTarget(): void { void this.target.retry(); }
+  resetTarget(): void { if(this.disposed)return; this.target.reset(); this.particles.clear(); this.particleReport?.(this.particles.snapshot); }
+  configureParticles(settings: ParticleSettings): boolean { return this.particles.configure(settings); }
+  fireParticle(): void {
+    if(this.contextLost || this.disposed) return;
+    this.particles.fire(this.getCasterAnchor(),this.target.anchor); this.particleReport?.(this.particles.snapshot);
+  }
+  private getCasterAnchor(): Vector3 {
+    return new Vector3(this.motion.x+Math.sin(this.motion.heading)*.3,this.motion.y+this.getSubjectHeight()*.6,this.motion.z+Math.cos(this.motion.heading)*.3);
+  }
   private getSubjectHeight(): number { return this.assets.current?.height ?? this.character.height; }
   setFollowing(enabled: boolean): void {
     this.mouseOrbit.cancel();
@@ -221,12 +270,15 @@ export class ViewerApp {
     this.city.setShadows(enabled);
     this.character.setShadows(enabled);
     this.assets.current?.setShadows(enabled);
+    this.target.setShadows(enabled);
   }
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true; this.events.abort();
     this.mouseOrbit.dispose(); this.tap.dispose(); this.destinationMarker.remove();
     this.assets.dispose(); this.input.dispose(); this.character.dispose(); this.overlay.dispose();
+    this.target.dispose(); this.particles.dispose(); this.actorLabels.forEach(label=>label.remove());
+    for(const marker of [this.casterMarker,this.targetMarker]) {marker.geometry.dispose();marker.material.dispose();marker.removeFromParent();}
     this.controls.dispose(); this.obstruction.dispose(); this.city.dispose(); this.view.dispose();
   }
 }

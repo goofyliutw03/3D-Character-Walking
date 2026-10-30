@@ -1,0 +1,83 @@
+{
+  "resourceCheck": "PASS",
+  "baseline": {
+    "calls": 56,
+    "triangles": 736,
+    "geometries": 28,
+    "textures": 3,
+    "programs": 2
+  },
+  "cycles": [
+    {
+      "calls": 56,
+      "triangles": 736,
+      "geometries": 28,
+      "textures": 3,
+      "programs": 2
+    },
+    {
+      "calls": 56,
+      "triangles": 736,
+      "geometries": 28,
+      "textures": 3,
+      "programs": 2
+    },
+    {
+      "calls": 56,
+      "triangles": 736,
+      "geometries": 28,
+      "textures": 3,
+      "programs": 2
+    },
+    {
+      "calls": 56,
+      "triangles": 736,
+      "geometries": 28,
+      "textures": 3,
+      "programs": 2
+    },
+    {
+      "calls": 56,
+      "triangles": 736,
+      "geometries": 28,
+      "textures": 3,
+      "programs": 2
+    },
+    {
+      "calls": 56,
+      "triangles": 736,
+      "geometries": 28,
+      "textures": 3,
+      "programs": 2
+    },
+    {
+      "calls": 56,
+      "triangles": 736,
+      "geometries": 28,
+      "textures": 3,
+      "programs": 2
+    },
+    {
+      "calls": 56,
+      "triangles": 736,
+      "geometries": 28,
+      "textures": 3,
+      "programs": 2
+    },
+    {
+      "calls": 56,
+      "triangles": 736,
+      "geometries": 28,
+      "textures": 3,
+      "programs": 2
+    },
+    {
+      "calls": 56,
+      "triangles": 736,
+      "geometries": 28,
+      "textures": 3,
+      "programs": 2
+    }
+  ],
+  "shaderErrors": 0
+}

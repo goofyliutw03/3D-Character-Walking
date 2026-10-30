@@ -1,0 +1,38 @@
+:root { font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif; color: #dce8db; background: #18332e; font-synthesis: none; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+header { height: 68px; padding: 0 32px; display:flex; align-items:center; gap:40px; border-bottom:1px solid #3d5145; }
+.brand { color:#dbe6cc; text-decoration:none; font-size:14px; font-weight:700; letter-spacing:.12em; }
+.study { color:#b3c5b3; font-size:11px; letter-spacing:.2em; }.study b { margin-left:14px; color:#d3d7a8; }
+.prototype { margin-left:auto; color:#a6bca9; font-size:12px; }
+main { display:grid; grid-template-columns:minmax(0,1fr) 300px; }
+.stage { position:relative; height:calc(100vh - 108px); min-height:680px; background:#d0ddd3; overflow:hidden; color:#294f40; }
+#water-viewport { width:100%;height:100%; display:flex;align-items:center;justify-content:center; }
+canvas { display:block; touch-action:none; }
+.scene-title { position:absolute;left:36px;top:30px; pointer-events:none;z-index:1; }
+.scene-title p { font-size:10px;letter-spacing:.22em;margin:0 0 17px; }
+h1 { font-weight:500;font-size:32px;letter-spacing:.1em;margin:0; }h1 span { display:block;font-family:Georgia,serif;font-style:italic;font-size:20px;letter-spacing:0;margin-top:7px;color:#597262; }
+.scene-caption { position:absolute;bottom:25px;left:36px;right:36px;display:flex;justify-content:space-between;font-size:10px;letter-spacing:.08em;pointer-events:none; }
+aside { padding:28px 24px; border-left:1px solid #3d5145; }
+.panel-heading>span { color:#a9bb94;letter-spacing:.14em;font-size:9px; }
+h2 { font-size:21px;font-weight:500;margin:12px 0;letter-spacing:.05em; }
+p { font-size:12px;line-height:1.8;color:#aebfac; }
+fieldset { border:0;border-top:1px solid #405646;padding:16px 0 12px;margin:23px 0 0;min-width:0; }
+legend { font-size:10px;color:#9db499;padding:0 8px 0 0;letter-spacing:.1em; }
+label { display:flex;justify-content:space-between;align-items:center;font-size:12px;margin:13px 0 8px; }
+.toggle { margin-top:0;margin-bottom:16px; }
+input[type=checkbox] { accent-color:#c7d5a8;width:17px;height:17px;margin:0; }
+input[type=range] { width:100%;accent-color:#bdcea3;height:12px;cursor:pointer; }
+output { font:11px ui-monospace,monospace;color:#c8d6af; }
+select { width:100%;background:#243f35;border:1px solid #4d6550;color:#dce8db;padding:9px;font-size:12px;border-radius:3px; }
+button { width:100%;border:1px solid #567058;border-radius:3px;background:#29483b;color:#e2eacf;padding:10px;text-align:left;font:inherit;font-size:12px;cursor:pointer;margin-top:8px; }
+button span { float:right;font-size:10px;opacity:.8; }button:hover:enabled { background:#3e5a44; }button:disabled { opacity:.42;cursor:default; }
+button#benchmark { color:#213e2d;background:#c8d6aa;border-color:#c8d6aa; }button#cancel { width:auto;background:transparent;padding:5px 12px; }
+button#resources { background:transparent; }
+:focus-visible { outline:2px solid #f4e8a2;outline-offset:3px; }
+.measurement { border-top:1px solid #405646;padding-top:13px;margin-top:6px; }h3 { font-weight:500;font-size:12px;margin:5px 0; }.measurement p { font-size:10px; }
+#water-status { color:#d0dcb9; font-size:11px; margin-bottom:6px; }
+.mono { font:10px/1.8 ui-monospace,monospace;white-space:pre-line;color:#a3b8a2; }
+.limits { border-top:1px solid #405646;padding-top:12px;font-size:10px; }
+.results { border-top:1px solid #3d5145;padding:12px 32px;font-size:11px; }.results summary { cursor:pointer;color:#b9cbb1; }.results pre { overflow:auto;max-height:400px;font:11px/1.6 ui-monospace,monospace;color:#c3d4be; }
+@media(max-width:850px) { header { padding:0 18px;gap:18px; }.prototype{font-size:10px}.study{font-size:9px}main{grid-template-columns:1fr}.stage{height:62vh;min-height:400px}aside{border-left:0;padding:22px}fieldset{margin-top:18px}.scene-title{left:22px;top:22px}h1{font-size:25px}h1 span{font-size:16px}.scene-caption{left:22px;right:22px;font-size:8px;gap:15px} }

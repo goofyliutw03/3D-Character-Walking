@@ -1,0 +1,22 @@
+{
+  "feature_name": "particle-interaction",
+  "created_at": "2026-10-30T07:33:03.3712923+08:00",
+  "updated_at": "2026-10-30T07:42:27.2819149+08:00",
+  "language": "zh-TW",
+  "phase": "implementation-complete",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": true
+    }
+  },
+  "ready_for_implementation": true
+}

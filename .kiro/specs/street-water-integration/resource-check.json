@@ -1,0 +1,85 @@
+{
+  "resourceReport": {
+    "baseline": {
+      "calls": 611,
+      "triangles": 49684,
+      "geometries": 26,
+      "textures": 5,
+      "programs": 4
+    },
+    "cycles": [
+      {
+        "calls": 2161,
+        "triangles": 163712,
+        "geometries": 26,
+        "textures": 5,
+        "programs": 4
+      },
+      {
+        "calls": 3711,
+        "triangles": 277740,
+        "geometries": 26,
+        "textures": 5,
+        "programs": 4
+      },
+      {
+        "calls": 5261,
+        "triangles": 391768,
+        "geometries": 26,
+        "textures": 5,
+        "programs": 4
+      },
+      {
+        "calls": 6811,
+        "triangles": 505796,
+        "geometries": 26,
+        "textures": 5,
+        "programs": 4
+      },
+      {
+        "calls": 8361,
+        "triangles": 619824,
+        "geometries": 26,
+        "textures": 5,
+        "programs": 4
+      },
+      {
+        "calls": 9911,
+        "triangles": 733852,
+        "geometries": 26,
+        "textures": 5,
+        "programs": 4
+      },
+      {
+        "calls": 11461,
+        "triangles": 847880,
+        "geometries": 26,
+        "textures": 5,
+        "programs": 4
+      },
+      {
+        "calls": 13011,
+        "triangles": 961908,
+        "geometries": 26,
+        "textures": 5,
+        "programs": 4
+      },
+      {
+        "calls": 14561,
+        "triangles": 1075936,
+        "geometries": 26,
+        "textures": 5,
+        "programs": 4
+      },
+      {
+        "calls": 16111,
+        "triangles": 1189964,
+        "geometries": 26,
+        "textures": 5,
+        "programs": 4
+      }
+    ],
+    "stable": true,
+    "shaderErrors": 0
+  }
+}

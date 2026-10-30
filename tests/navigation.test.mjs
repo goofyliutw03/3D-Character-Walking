@@ -57,7 +57,7 @@ test('mobile 3.2: real city detours around tree and bench, near obstacle boundar
   const city = new CityScene();
   const w = city.walkableWorld;
   try {
-    for (const target of [{ x: 6.4, z: -15 }, { x: -6.4, z: 16 }, { x: 0, z: -23 }]) {
+    for (const target of [{ x: 6.4, z: -15 }, { x: -6.4, z: 16 }, { x: 0, z: -22 }]) {
       const controller = new CharacterController(w);
       const nav = new DestinationNavigation(w);
       assert.equal(nav.select({ x: 0, z: 5 }, target), true);

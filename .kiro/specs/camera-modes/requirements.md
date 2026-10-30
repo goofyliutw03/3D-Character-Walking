@@ -50,3 +50,11 @@ inline PASS：15 個數字驗收條件具可觀察結果；魚眼角度與投影
 - 5.2 中心偏離時約0.8秒平滑移動中心及鏡頭，保留當前旋轉／縮放；按住時持續對準角色，正常放開後完成剩餘置中，再停止額外追蹤。
 - 5.3 短點擊點地Run、觸控、修飾鍵平移、First person及專用Follow構圖維持既有行為；取消、切模式／角色、Stop及dispose清除手勢；減少動態效果立即置中。
 自動審閱 inline PASS：觸發／模式邊界及可觀察完成條件明確，依使用者授權通過，非逐份人工審閱。
+
+## 2026-10-31 Mobile 角色中心 Orbit（1L-1）
+此段取代舊5.3「觸控維持既有行為」：使用者明確核准 mobile browser 對應支持，沿用 camera-modes，非新里程碑。
+- 6.1 單指按住超過350ms或拖曳超過8px，沿用5.2角色平滑置中；短點地Run仍保留。
+- 6.2 第二指加入立即取消置中，不攔截OrbitControls雙指縮放／平移；抬起一指不重啟，全部放開才可開始下一手勢。
+- 6.3 pointercancel／有效lostpointercapture、blur／hidden／resize及既有模式／角色切換、Stop、dispose清除；正常pointerup之後的lostcapture不得把正常完成改成取消。長按選單僅在canvas抑制。
+- 6.4 普通／魚眼沿用同一控制器；Follow與First person閘門不變。桌面合成觸控不等於iOS／Android／摺疊裝置實機驗收，M6／SCENE-05保留。
+需求inline審閱PASS：依使用者授權自動審閱，非逐份人工核准。

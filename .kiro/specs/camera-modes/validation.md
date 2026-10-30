@@ -101,3 +101,25 @@ SocratiCode增量更新已完成，status green：62個indexable檔案範圍，1
 - Integration／Design／Boundary：ViewerApp組裝input callback→CameraController，單一loop，手勢不依Three或導航；CameraController不依DOM；無新依賴或資產，無邊界外溢，未解阻擋無。非靜態鏡頭仍可因遮擋縮短距離，不宣稱任意路徑避障或所有構圖全身可見。
 - STATUS: VERIFIED（本次追加行為及本機Release）；DECISION: GO；OWNERSHIP: LOCAL。Rollback只撤回本次差異，依既有release流程重建發佈，不reset checkout。
 - token用量：無法取得精確值；本chat無官方每回合token計量基準，未將前階段累計或帳號額度當成本階段用量。
+
+## 2026-10-31 Mobile Orbit（1L-1）
+- 授權：承接使用者明確要求mobile browser支持，沿用camera-modes局部追加；5.1→5.2→5.3依序，不委派／切模型／stage／commit／push。既有dirty保留。
+- 需求／設計／任務依序追加並inline自動審閱PASS，依使用者授權、非逐份人工核准。6.1→單指hold／drag與既有置中；6.2→pointer Set、多指取消、兩種release次序；6.3→有效capture loss／lifecycle；6.4→既有模式閘門及實機限制。
+- 實作：MouseOrbitGesture支援mouse／touch，>350ms／>8px；第二指只取消候選並保留held Set，全放開前不重新啟動。正常up後implicit capture loss不取消完成；不攔pointer事件，contextmenu只限canvas。ViewerApp啟動Orbit改用TapGesture.cancelCandidate保留held Set，防第二指短放開誤Run；完整cancel／dispose仍清理全部。
+- Inline整合審閱修正：發現原tap.cancel清Set導致多指短放開可能誤Run，加入組合回歸後通過。無獨立reviewer。Input→callback→CameraController、單一loop與既有模式／角色／Stop接線不變；無依賴、資產、API格式或GPU資源擴張。
+- 機械驗證：affected tests5/5；最終release全套95/95，tsc及Vite production build PASS。保留既有>500kB chunk advisory。git diff --check PASS（僅既有LF→CRLF提示）。未新增TODO／FIXME或秘密。
+- Browser：忽略目錄.local/mobile-orbit-validation/index.html，以真實ViewerApp、OrbitControls、GLB及渲染loop做15項合成觸控檢查全部PASS；包括hold不Run、正常up完成角色置中、真旋轉、雙指pinch、取消、剩餘單指不重啟、第二指放開不Run、魚眼／Stop／Follow／First person。為合成DOM事件，僅harness代替native capture方法，未修改產品；native implicit capture以事件順序回歸測試覆蓋，不冒稱手機驗收。console warn/error為空。
+- Release：初次sandbox建置在Vite externalize-deps遭spawn EPERM而停止，未sync；自動審核拒絕直接重試後先隔離讀取build.log，再以提升權限獨立build exit0證實環境限制，重新提交宿主審核後release成功。最後補正tap分流再發佈：2026-10-31 06:42:37+08:00，Added2／Updated1／Skipped14，exit0，目的地D:/Work_Mine/Testing/3D Character Walk Viewer/Release。資產先、入口最後，未刪舊資產／陌生檔案。正式localhost4174 root顯示WebGL2 ready／Rigged man Ready；不把它當LAN手機驗收。
+- kiro-validate-impl inline：本次程式及本機整合GO；OWNERSHIP LOCAL；requirements6.1–6.4皆有映射、無boundary violation。實機驗收MANUAL_VERIFY_REQUIRED：iPhone14–17及對應Safari／Firefox／Chrome，Android一般／雙摺／三摺與display scale均未實機驗證；M6／SCENE-05保留，不宣稱全面支援或效能通過。
+- Rollback：只撤本次gesture／tap／ViewerApp一行及測試／文件差異，再依release重建；不reset既有修改。既有5173／4174／LAN4173預覽不停止、不改防火牆。
+- token用量：無法取得精確值。本chat未取得官方token_count階段起點／終點，未以交接chat累計、額度或估算替代；統計範圍為本chat實作階段，精確數字缺漏。
+- 索引：2026-10-31約06:44（Asia/Taipei）增量完成，codebase_status green；103個可索引檔案範圍，290 chunks，graph84 files／158 edges，更新7檔、無錯誤；遵守既有排除，不重建／刪除索引。收尾文件落盤後再次增量確認。
+
+### 使用者實機驗收與結束確認（2026-10-31）
+使用者先回報「iOS ok」，再回報「Android OK, 機型忽略」，最後以「OK please go on」確認繼續收尾。本次Mobile Orbit的iOS／Android操作驗收通過；依使用者要求略過機型紀錄，不追問。未提供OS版本／瀏覽器清單，不推定每種瀏覽器、摺疊形態、display scale或效能門檻皆通過。此結果關閉本次Mobile Orbit實機待驗與結束確認，不概括關閉M6／SCENE-05其他驗收項。
+收尾只同步文件、既有release檢查與增量索引，不擴充功能，不commit／push。token用量：無法取得精確值；本次收尾無官方token計量起訖基準，先前實作亦缺精確值。
+
+## 2026-10-31 剩餘驗收盤點（1Q-1）
+承接 1Q-0 使用者回報「Galaxy S25+ OK」：確認該 Android 實機本次 Mobile Orbit 操作；iOS OK 沿用 1L-1 使用者來源。沒有 OS／瀏覽器版本，不推定所有瀏覽器、效能或 display scale 通過。
+
+- [ ] SCENE-05-FOLD：依使用者「摺疊機型先列 Todo, 直接進行下一階段」，雙摺／三摺保留後續實機驗收，不阻擋本次盤點。涵蓋外屏、各展開狀態、切換中 resize、預設／放大 display scale、單指 hold／drag、雙指 pinch／pan、多指取消及背景返回。未執行，不概括關閉 SCENE-05。

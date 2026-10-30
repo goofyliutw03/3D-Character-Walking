@@ -55,8 +55,12 @@ $plan = foreach ($file in $files) {
 }
 
 $added = 0; $updated = 0; $skipped = 0
-# Every asset is ready before the browser entry is replaced.
-foreach ($entry in ($plan | Sort-Object @{ Expression = { $_.Relative -eq 'index.html' } }, Relative)) {
+# Assets precede all HTML entries; the main index remains the last replacement.
+foreach ($entry in ($plan | Sort-Object @{ Expression = {
+    if ($_.Relative -eq 'index.html') { 2 }
+    elseif ([IO.Path]::GetExtension($_.Relative) -eq '.html') { 1 }
+    else { 0 }
+} }, Relative)) {
     if ($entry.Same) { $skipped++; continue }
     Assert-SafePath $entry.Target
     $parent = Split-Path $entry.Target -Parent

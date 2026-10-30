@@ -1,5 +1,15 @@
 # cc-sdd 規劃對應與待辦
 
+2026-10-31 CAM-04（1M-1）：[occluded-character-xray](../specs/occluded-character-xray/) 已由使用者核准並完成第4模式實作及本機驗證；水景chat交付後依序修改ViewerApp／CameraObstruction／UI，未平行。排除水、粒子及原始透明／半透明材質，見validation；M6／SCENE-05與LATER項目維持。
+
+2026-10-31 WATER-02（1P-1）：[street-water-integration](../specs/street-water-integration/) 已由使用者核准街尾植栽島替換方案及可重用 Shader Module／API。依序完成模組、街道障礙／遮擋、主迴圈／UI、整合驗證；ViewerApp／main／CityScene 必須依序進行，不可平行。原型 WATER-01 已確認，本項取代舊時點等待街道整合授權說法；非第七里程碑，M6／SCENE-05 與其他 LATER 項維持。
+
+2026-10-30 WATER-01（1P-0）：[water-effects](../specs/water-effects/) 為已核准的獨立水池／瀑布原型追加需求，雙 production 入口、程序素材與正式 A/B 測量；證據及限制見 validation。等待原型風格／效能確認後才談街道整合；非第七里程碑，不更改 M6／SCENE-05。build／release 共用檔案依序修改，未委派。
+
+2026-10-30 UI-02（1O-0）：使用者核准 [left-control-panel-tree](../specs/left-control-panel-tree/)，改善既有左側UI：五大功能樹、整體／節點展開收合、桌面拖曳及鍵盤調寬，保留下方移動／粒子操作；規格及審閱／驗證／Release／索引見該spec。共用main／style在particle-interaction交付後依序修改；非第七里程碑，不變更M6／SCENE-05人工驗收或LATER延後範圍。
+
+2026-10-30 Plan v02（1N-0）：[particle-interaction](../specs/particle-interaction/) 追加 Caster／一名獨立 Target 與單一粒子互動。這是 LATER-03 僅一名站立 Target 的明確追加授權，其餘 NPC AI／NavMesh／多角色模擬維持延後；M6／SCENE-05 待實機事項不變。ViewerApp／main／style 必須依序進行，不可平行；見 spec tasks／validation。
+
 2026-10-30 CAM-03（1M-0）：使用者核准追加 [camera-obstruction-modes](../specs/camera-obstruction-modes/)，三種遮擋策略、desired／rendered構圖分離、環境材質隔離／還原及Camera UI；依序實作與inline審閱，驗證／Release／索引證據見validation。共用CameraController／ViewerApp／CityScene／main必須依序，未平行；不擴充NPC、不結束M6／SCENE-05、不新增第七里程碑。
 
 追加需求（2026-10-29）：[mobile-touch-navigation](../specs/mobile-touch-navigation/) 4項tasks已完成，54 tests／build及本機production驗證通過，待結束確認。手機控制、點地跑步與靜態避障證據見[validation](../specs/mobile-touch-navigation/validation.md)。非第七里程碑，SCENE-05 iPhone三瀏覽器真機與既有M6未結事項保留；LATER-01／LATER-03不擴張。
@@ -71,3 +81,11 @@
 目前 cc-sdd 導入里程碑已完成。下一里程碑為 3：character-movement，複雜度 COMPLEX（移動、輸入、碰撞、相機與生命週期跨模組），建議高能力模型、高推理；未切換。等待使用者確認結束導入並開始里程碑 3；確認後從 `$kiro-spec-requirements character-movement` 自動推進至同一里程碑的實作、審閱與驗證，結束再總結等待確認，不自動開始里程碑 4。
 
 2026-10-29 CAM-02（1L-0）：角色中心mouse Orbit追加需求已依核准完成，camera-modes tasks4.1–4.3／validation記錄57tests、build、Release與本機操作證據；待使用者結束確認。共用CameraController／ViewerApp依序修改，未平行；M6、SCENE-05與LATER項目不擴張。
+
+2026-10-31 Mobile Orbit（1L-1）：沿用camera-modes追加6.1–6.4及tasks5.1–5.3，單指hold／drag置中、第二指取消且保留pinch／pan；Tap候選取消保留held pointers避免多指誤觸Run。非新里程碑，M6／SCENE-05與LATER狀態不變。
+
+2026-10-31 Mobile Orbit（1L-1）結案：使用者確認iOS／Android操作OK並要求忽略機型，完成本次實機驗收與結束確認。其餘M6／SCENE-05環境／瀏覽器／效能項不概括關閉；下一項功能尚待指定，不自行啟動LATER範圍。
+
+2026-10-31 剩餘驗收（1Q-1）：Galaxy S25+ 的 Mobile Orbit 操作由使用者回報 OK；沿用 1L-1 的 iOS OK，未取得 OS／瀏覽器版號。SCENE-05-FOLD（雙摺／三摺外屏、各展開形態、切換 resize、預設／放大 display scale、手勢與背景返回）依明確要求列 TODO，不阻擋下一階段。詳細來源與範圍見 camera-modes validation；未概括關閉 M6／SCENE-05，不啟動 LATER 新功能。
+
+2026-10-31 1Q-1：剩餘驗收盤點與本機故障注入見 [remaining-acceptance](../../docs/remaining-acceptance.md)。SCENE-02真ViewerApp合成pan、SCENE-03導航中原生context loss／恢復、SCENE-04 WebGL初始化失敗提示已補本機證據；SCENE-04跨GPU／瀏覽器與SCENE-05其餘人工項仍保留。歷史未驗文字不回寫；未新增功能。

@@ -1,0 +1,185 @@
+{
+  "status": "完成三輪比較",
+  "completedAt": "2026-10-30T15:42:23.449Z",
+  "environment": {
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+    "platform": "Win32",
+    "renderer": "ANGLE (NVIDIA, NVIDIA GeForce GTX 1060 6GB (0x00001C03) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "canvas": [
+      960,
+      600
+    ],
+    "dpr": 1,
+    "shadow": "PCF 1024 enabled",
+    "camera": [
+      6.7,
+      5.3,
+      7.4
+    ],
+    "target": [
+      0,
+      0.65,
+      0
+    ],
+    "quality": "low",
+    "waveStrength": 1,
+    "flowSpeed": 1,
+    "warmupSeconds": 5,
+    "sampleSeconds": 60,
+    "rounds": 3,
+    "clock": "requestAnimationFrame; not GPU timestamp"
+  },
+  "shaderErrors": 0,
+  "results": [
+    {
+      "round": 1,
+      "enabled": false,
+      "frames": 4499,
+      "seconds": 60.01029999999999,
+      "fps": 74.97046340378236,
+      "medianMs": 13.300000000046566,
+      "p95Ms": 13.400000000023283,
+      "resources": {
+        "min": {
+          "calls": 57,
+          "triangles": 2272,
+          "geometries": 30,
+          "textures": 3,
+          "programs": 4
+        },
+        "max": {
+          "calls": 57,
+          "triangles": 2272,
+          "geometries": 30,
+          "textures": 3,
+          "programs": 4
+        }
+      }
+    },
+    {
+      "round": 1,
+      "enabled": true,
+      "frames": 4499,
+      "seconds": 60.01029999999999,
+      "fps": 74.97046340378236,
+      "medianMs": 13.300000000046566,
+      "p95Ms": 13.400000000023283,
+      "resources": {
+        "min": {
+          "calls": 58,
+          "triangles": 3040,
+          "geometries": 30,
+          "textures": 3,
+          "programs": 4
+        },
+        "max": {
+          "calls": 58,
+          "triangles": 3040,
+          "geometries": 30,
+          "textures": 3,
+          "programs": 4
+        }
+      }
+    },
+    {
+      "round": 2,
+      "enabled": false,
+      "frames": 4499,
+      "seconds": 60.010199999999955,
+      "fps": 74.97058833331673,
+      "medianMs": 13.300000000046566,
+      "p95Ms": 13.400000000023283,
+      "resources": {
+        "min": {
+          "calls": 57,
+          "triangles": 2272,
+          "geometries": 30,
+          "textures": 3,
+          "programs": 4
+        },
+        "max": {
+          "calls": 57,
+          "triangles": 2272,
+          "geometries": 30,
+          "textures": 3,
+          "programs": 4
+        }
+      }
+    },
+    {
+      "round": 2,
+      "enabled": true,
+      "frames": 4499,
+      "seconds": 60.01030000000004,
+      "fps": 74.97046340378229,
+      "medianMs": 13.300000000046566,
+      "p95Ms": 13.400000000023283,
+      "resources": {
+        "min": {
+          "calls": 58,
+          "triangles": 3040,
+          "geometries": 30,
+          "textures": 3,
+          "programs": 4
+        },
+        "max": {
+          "calls": 58,
+          "triangles": 3040,
+          "geometries": 30,
+          "textures": 3,
+          "programs": 4
+        }
+      }
+    },
+    {
+      "round": 3,
+      "enabled": false,
+      "frames": 4499,
+      "seconds": 60.0105,
+      "fps": 74.97021354596279,
+      "medianMs": 13.300000000046566,
+      "p95Ms": 13.400000000023283,
+      "resources": {
+        "min": {
+          "calls": 57,
+          "triangles": 2272,
+          "geometries": 30,
+          "textures": 3,
+          "programs": 4
+        },
+        "max": {
+          "calls": 57,
+          "triangles": 2272,
+          "geometries": 30,
+          "textures": 3,
+          "programs": 4
+        }
+      }
+    },
+    {
+      "round": 3,
+      "enabled": true,
+      "frames": 4499,
+      "seconds": 60.01029999999993,
+      "fps": 74.97046340378243,
+      "medianMs": 13.300000000046566,
+      "p95Ms": 13.400000000023283,
+      "resources": {
+        "min": {
+          "calls": 58,
+          "triangles": 3040,
+          "geometries": 30,
+          "textures": 3,
+          "programs": 4
+        },
+        "max": {
+          "calls": 58,
+          "triangles": 3040,
+          "geometries": 30,
+          "textures": 3,
+          "programs": 4
+        }
+      }
+    }
+  ]
+}

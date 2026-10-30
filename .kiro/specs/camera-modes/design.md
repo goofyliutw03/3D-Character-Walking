@@ -89,3 +89,9 @@ inline PASS：15條需求、依賴方向、檔案、lens角度／跟隨例外與
 MouseOrbitGesture只辨識mouse左鍵hold／drag並傳遞開始／結束／取消，不依賴Three或導航。沿用單一ViewerApp loop以delta辨識350ms，drag門檻8px；觸發時取消TapGesture候選以避免hold誤觸Run。capture階段開始，正常pointerup完成剩餘置中；cancel／blur／hidden／resize及生命週期取消。
 CameraController在允許Orbit時擁有獨立centering狀態；0.8秒smoothstep的逐幀增量將camera.position與target同量平移，OrbitControls保留當前手動旋轉／縮放／阻尼，沒有快照重播。按住追蹤最新角色軀幹（height*0.65）；放開後完成再凍結，Follow旗標不變。非靜態視角沿用遮擋保護，可能縮短距離；不承諾任意平移路徑避障。First person及專用Follow視角不啟動。取消／select／setFollowing重設centering。無新依賴／loop／資產。
 自動設計審閱inline PASS，依使用者授權；依賴方向input→callback→ViewerApp→camera，未擴張navigation或角色責任。
+
+## 2026-10-31 Mobile Orbit（1L-1）
+沿用MouseOrbitGesture檔名及ViewerApp接線，擴充mouse／touch單指；不新增依賴。Set記錄canvas pointerdown的所有pointerId；第二指只清候選而不清Set，最後一指離開前不建立新候選。window capture pointerup先移除ID並正常結束；canvas取消／失去capture僅處理仍在Set的ID，避免implicit capture在正常up後誤取消。無preventDefault／stopPropagation於pointer事件；canvas contextmenu防止長按選單，dispose以AbortSignal移除。既有相機0.8秒平滑、模式閘門及生命週期不變。測試涵蓋350ms／8px邊界、雙指兩種放開次序、先雙指再單指、無關capture loss及清理；瀏覽器另驗真實OrbitControls接線。Rollback只撤此次差異再依release重建。
+設計inline審閱PASS：輸入→callback→CameraController依賴方向及單一loop維持，無跨界修改；共用檔案依序，未委派。
+
+補充：ViewerApp開始置中時改呼叫TapGesture.cancelCandidate，只清候選不清held pointer Set，避免第二指單獨短放開被誤認Run；完整生命週期cancel仍清Set。新增兩者組合回歸，fresh單指tap仍能觸發。
