@@ -1,5 +1,7 @@
 # 3D Character Walk Viewer
 
+新開發者：[硬體預檢、完整安裝 CLI Prompt 與 Claude Code／Codex 初始化指引](docs/onboarding.md)。先執行 `./scripts/onboarding.ps1`（預設只報告）。
+
 開發團隊引用：[v02 開發索引、keywords 與 Git tag](docs/development-reference.md)。
 
 2026-10-31：**Scene display → Lighting & shadows → Night** 新增夜晚，六盞路燈會發亮並照亮街道。**Particle interaction → Light** 可設定隨行光源開關、獨立顏色、強度cd、照射半徑m與衰減，再按Apply settings；只影響新發射。最多8個效果同時照明，額外效果仍可發射；無點光陰影／bloom。既有水Shader不接場景點光。[可重用物件光源API](docs/lighting-api.md)・[規格與驗證](.kiro/specs/night-object-lighting/validation.md)。

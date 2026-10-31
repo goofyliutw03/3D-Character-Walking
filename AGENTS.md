@@ -1,5 +1,9 @@
 # 專案協作規則（Codex）
 
+## 開發環境初始化入口
+- 初始化／安裝環境時先讀取 [單一 onboarding 指引](docs/onboarding.md)，執行 `./scripts/onboarding.ps1` 唯讀預檢，向開發者顯示硬體／工具結果、unknown 與分級建議，再依明確選用範圍安裝。一般功能工作不必重跑。
+- 無執行權限時提供命令與該文件的 CLI prompt，不宣稱已偵測；不自動安裝、下載模型、啟動服務或變更全域設定。
+
 ## 正式操作目錄增量發佈（2026-10-29 使用者授權）
 - 始終在原始專案修改。每次修改完成且適當驗證成功後，執行 `./scripts/project.ps1 release`（tests → build → sync），將 `dist` 內容增量發佈至 `D:\Work_Mine\Testing\3D Character Walk Viewer\Release`。失敗須停止並如實報告，不能宣稱已發佈。
 - 本項明確授權既有目的地的必要建置產物新增／更新；workspace 外寫入仍須遵守宿主 sandbox 權限，不繞過限制。不複製 source、node_modules、.git 或機密；不 mirror／刪除目的地陌生檔案或舊 hashed 資產。
