@@ -1,5 +1,7 @@
 # 3D Character Walk Viewer
 
+開發團隊引用：[v02 開發索引、keywords 與 Git tag](docs/development-reference.md)。
+
 2026-10-31：**Scene display → Lighting & shadows → Night** 新增夜晚，六盞路燈會發亮並照亮街道。**Particle interaction → Light** 可設定隨行光源開關、獨立顏色、強度cd、照射半徑m與衰減，再按Apply settings；只影響新發射。最多8個效果同時照明，額外效果仍可發射；無點光陰影／bloom。既有水Shader不接場景點光。[可重用物件光源API](docs/lighting-api.md)・[規格與驗證](.kiro/specs/night-object-lighting/validation.md)。
 
 2026-10-31：瀑布新增落水／飛濺粒子；鏡頭靠近時出現薄霧及少量水滴，離開後水滴下滑淡出、霧氣消退。**Scene display → Water feature → Camera mist & droplets** 可關閉鏡頭效果；`water.html` 的「噴濺 · 鏡頭沾水」可直接觀察。沿用暫停／品質及 reduced-motion。[規格與驗證](.kiro/specs/waterfall-spray/validation.md)・[可重用 API](docs/water-api.md)。

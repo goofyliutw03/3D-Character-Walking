@@ -1,0 +1,21 @@
+[mcp_servers.socraticode]
+command = 'C:\Users\goofy\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe'
+args = ['D:\Work_Mine\AI-Projects\3D Character Walk Viewer\tools\rag\node_modules\socraticode\dist\index.js']
+cwd = 'D:\Work_Mine\AI-Projects\3D Character Walk Viewer'
+startup_timeout_sec = 30
+tool_timeout_sec = 600
+
+[mcp_servers.socraticode.env]
+QDRANT_MODE = 'external'
+QDRANT_URL = 'http://127.0.0.1:16333'
+OLLAMA_MODE = 'external'
+OLLAMA_URL = 'http://127.0.0.1:11434'
+EMBEDDING_PROVIDER = 'ollama'
+EMBEDDING_MODEL = 'nomic-embed-text'
+EMBEDDING_DIMENSIONS = '768'
+SOCRATICODE_AUTO_RESUME = 'off'
+SOCRATICODE_WATCHER = 'off'
+
+EMBEDDING_BATCH_SIZE = '8'
+OLLAMA_MAX_CONNECTIONS = '1'
+
