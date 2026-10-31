@@ -817,3 +817,18 @@ main[data-panel-collapsed=true] #panel-toggle { justify-content:center; padding:
   main[data-panel-collapsed=true] #panel-toggle { justify-content:flex-start; padding:8px }
   .panel-resize-copy { display:none }
 }
+/* Scene graph inspection is a DOM overlay; it never intercepts scene gestures. */
+.object-label-layer { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 4; }
+.object-number-label { position: absolute; left: 0; top: 0; padding: 1px 4px; border: 1px solid #ffe4a3; border-radius: 3px; background: #18221ee6; color: #fff0bd; font: 11px/1.3 monospace; white-space: nowrap; }
+.object-number-label[hidden] { display: none; }
+.object-inspector > input { width: 100%; min-width: 0; padding: 8px; border: 1px solid #ccd2c4; border-radius: 5px; background: #fffef8; color: #273f35; box-sizing: border-box; }
+.object-filter-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.object-filter-actions button { padding: 7px 9px; border: 1px solid #ccd2c4; border-radius: 5px; color: #273f35; background: #fffef8; font-size: 12px; }
+.object-filter-error { color: #a33227; }
+.object-tree { max-height: 380px; overflow: auto; overscroll-behavior: contain; border: 1px solid #ccd2c4; border-radius: 6px; padding: 5px; }
+.object-children { padding-left: 14px; }
+.object-node { width: max-content; min-width: 100%; }
+.object-node > summary { cursor: pointer; padding: 3px 2px; font-size: 12px; white-space: nowrap; }
+.object-node > summary input { width: 15px; height: 15px; margin: 0 5px 0 0; vertical-align: middle; }
+.object-node[data-matched="false"] > summary span { opacity: .6; }
+.object-node > summary:focus-visible, .object-node input:focus-visible { outline: 2px solid #9a5b21; outline-offset: 2px; }

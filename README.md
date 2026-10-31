@@ -1,5 +1,9 @@
 # 3D Character Walk Viewer
 
+2026-10-31：**Scene display → Lighting & shadows → Night** 新增夜晚，六盞路燈會發亮並照亮街道。**Particle interaction → Light** 可設定隨行光源開關、獨立顏色、強度cd、照射半徑m與衰減，再按Apply settings；只影響新發射。最多8個效果同時照明，額外效果仍可發射；無點光陰影／bloom。既有水Shader不接場景點光。[可重用物件光源API](docs/lighting-api.md)・[規格與驗證](.kiro/specs/night-object-lighting/validation.md)。
+
+2026-10-31：瀑布新增落水／飛濺粒子；鏡頭靠近時出現薄霧及少量水滴，離開後水滴下滑淡出、霧氣消退。**Scene display → Water feature → Camera mist & droplets** 可關閉鏡頭效果；`water.html` 的「噴濺 · 鏡頭沾水」可直接觀察。沿用暫停／品質及 reduced-motion。[規格與驗證](.kiro/specs/waterfall-spray/validation.md)・[可重用 API](docs/water-api.md)。
+
 2026-10-31：Camera → Objects block mode 新增 **4 · X-ray character · 50%**，僅以半透明反相／高對比效果顯示主角被不透明環境擋住的部分。水、粒子、原始透明／半透明材質不列入判定；可見部分正常，First person 暫停效果。[規格與驗證](.kiro/specs/occluded-character-xray/validation.md)。
 
 2026-10-31：街尾植栽島改為程序水池／小瀑布；由 **Scene display → Water feature** 調整效果、暫停、品質、波浪與流速。池岸不可通行，可從兩側繞行；低品質僅調整水景，不改整個場景的 DPR。獨立原型仍可於 `water.html` 開啟。[Shader Module／API 使用說明](docs/water-api.md)・[街道整合規格](.kiro/specs/street-water-integration/)。手機與跨 GPU 效能仍待實機驗證。
@@ -77,3 +81,8 @@ The Particle interaction panel sets color, speed (0.5–30 m/s), radius (0.03–
 Mobile Orbit：在允許自由 Orbit 的鏡頭中，單指按住超過350ms或拖曳超過8px會平滑對準目前角色；雙指維持縮放／平移並取消置中，全部放開後可開始新手勢。短點地仍可跑向目的地。手機端請重新整理既有 LAN 預覽；iOS／Android及摺疊裝置的實機相容／效能仍待驗收。
 
 使用者驗收更新（2026-10-31）：iOS／Android的Mobile Orbit操作皆確認OK，依要求略過機型；本次Mobile Orbit已結案。此確認不代表所有瀏覽器／摺疊形態或效能測試通過。
+# 場景物件編號檢視
+
+Control Panel → Scene display → Scene objects 可展開實際父子物件樹。Show object numbers 預設關閉；每個 checkbox 只控制該物件的世界原點編號標籤，不會隱藏物件。編號在本次頁面載入中穩定，重新載入可能不同。標籤會重疊，可用篩選縮小觀察範圍。
+
+Name / path regex 接受區分大小寫的 JavaScript 裸 pattern（例如 `rigged-character$`，不含 `/` 分隔符）；Number ranges 接受 `10-30,45,70-80`。兩者取交集，空白不限制，Apply filters 或 Enter 套用；錯誤保留前一次有效篩選，Clear filters 清空篩選但保留 checkbox。樹保留必要祖先，`ancestor only` 不代表其標籤通過篩選。驗證與限制見 `.kiro/specs/scene-object-inspector/validation.md`。

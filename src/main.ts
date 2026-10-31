@@ -1,6 +1,7 @@
 import type { ViewerApp, CameraPreset, CharacterStatus } from './engine/ViewerApp';
 import type { CharacterVariant } from './character/motion';
 import type { MoveDirection } from './input/InputManager';
+import type { TimeOfDay } from './scene/CityScene';
 import { emotions, speechLimit, type Emotion } from './expression/ExpressionManager';
 import { presentLoading, type LoadingState } from './ui/LoadingFeedback';
 import { SpeechEditor } from './ui/SpeechEditor';
@@ -162,6 +163,7 @@ try {
     const text = `${state.lastEvent} · Active ${state.active} · Hits ${state.hits} · Expired ${state.expired}`;
     if(element.textContent !== text) element.textContent = text;
   });
+  viewer.mountObjectInspector(document.querySelector<HTMLElement>('#scene-object-inspector')!);
   controls.forEach(control => { control.disabled = false; });
   const syncWater = (): void => {
     if (!viewer) return;
@@ -170,6 +172,9 @@ try {
     document.querySelector('#water-wave-value')!.textContent = state.waveStrength.toFixed(1);
     document.querySelector('#water-flow-value')!.textContent = state.flowSpeed.toFixed(1);
   };
+  document.querySelector<HTMLInputElement>('#water-lens')!.addEventListener('change', event => {
+    viewer?.setWaterLensEnabled((event.target as HTMLInputElement).checked);
+  }, {signal:uiEvents.signal});
   for (const [id, key] of [['water-enabled','enabled'],['water-paused','paused']] as const) {
     document.querySelector<HTMLInputElement>(`#${id}`)!.addEventListener('change', event => {
       viewer?.configureWater({[key]:(event.target as HTMLInputElement).checked}); syncWater();
@@ -206,6 +211,9 @@ try {
     const valid = !invalid && viewer?.configureParticles({
       color:document.querySelector<HTMLInputElement>('#particle-color')!.value,
       speed:number('speed'),size:number('size'),lifetime:number('lifetime'),maxCount:number('limit'),
+      lightEnabled:document.querySelector<HTMLInputElement>('#particle-light-enabled')!.checked,
+      lightColor:document.querySelector<HTMLInputElement>('#particle-light-color')!.value,
+      lightIntensity:number('light-intensity'),lightRadius:number('light-radius'),lightDecay:number('light-decay'),
     });
     document.querySelector('#particle-settings-status')!.textContent = valid ? 'Settings applied to new shots.' : 'Check the allowed ranges. Settings were not changed.';
   },{signal:uiEvents.signal});
@@ -245,7 +253,7 @@ try {
   };
   cameraButtons.forEach(button => button.addEventListener('click', () => selectCamera(button.dataset.camera as CameraPreset), { signal: uiEvents.signal }));
   document.querySelector('#reset')!.addEventListener('click', () => selectCamera('overview'), { signal: uiEvents.signal });
-  document.querySelector<HTMLSelectElement>('#lighting')!.addEventListener('change', event => viewer?.setEvening((event.target as HTMLSelectElement).value === 'evening'), { signal: uiEvents.signal });
+  document.querySelector<HTMLSelectElement>('#lighting')!.addEventListener('change', event => viewer?.setTimeOfDay((event.target as HTMLSelectElement).value as TimeOfDay), { signal: uiEvents.signal });
   document.querySelector<HTMLInputElement>('#shadows')!.addEventListener('change', event => viewer?.setShadows((event.target as HTMLInputElement).checked), { signal: uiEvents.signal });
 } catch (cause) {
   fatal = true;

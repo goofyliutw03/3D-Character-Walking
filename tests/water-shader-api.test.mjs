@@ -24,11 +24,12 @@ test('water API 3.1–3.3: material-only instances are independent, atomic and d
 
 test('water API 2.3/3.2: appearance copies share animation but own opacity and restore safely', () => {
   const water = new WaterFeature(), environment = new Group(); environment.add(water.root);
-  const appearance=new SceneAppearance(environment), originals=water.root.children.map(m=>m.material);
+  const meshes=water.root.children.filter(m=>m.isMesh);
+  const appearance=new SceneAppearance(environment), originals=meshes.map(m=>m.material);
   for (const mode of ['transparent','wireframe','transparent']) {
     appearance.apply(mode,new Set([water.root]));
     water.configure({flowSpeed:2,waveStrength:.5}); water.update(.05);
-    water.root.children.forEach((mesh,i)=>{
+    meshes.forEach((mesh,i)=>{
       const clone=mesh.material; assert.notEqual(clone,originals[i]);
       assert.equal(clone.uniforms.uTime,originals[i].uniforms.uTime);
       assert.equal(clone.uniforms.uTime.value,water.elapsed);
@@ -39,6 +40,6 @@ test('water API 2.3/3.2: appearance copies share animation but own opacity and r
       assert.equal(clone.wireframe,mode==='wireframe');
     });
   }
-  appearance.dispose(); water.root.children.forEach((m,i)=>assert.equal(m.material,originals[i]));
+  appearance.dispose(); meshes.forEach((m,i)=>assert.equal(m.material,originals[i]));
   water.dispose();
 });

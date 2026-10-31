@@ -1,11 +1,14 @@
 import { Group, Mesh, PlaneGeometry, ShaderMaterial } from 'three';
 import { WaterShaderModule, type WaterQuality, type WaterSettings } from './WaterShaderModule.ts';
+import { WaterfallSpray } from './WaterfallSpray.ts';
+import type { SpraySource } from './SpraySource.ts';
 export type { WaterQuality, WaterSettings } from './WaterShaderModule.ts';
 
 /** Owns only its meshes; the host owns rendering, timing and lights. */
 export class WaterFeature {
   readonly root = new Group();
   private readonly shader = new WaterShaderModule();
+  private readonly spray = new WaterfallSpray();
   private disposed = false;
   private readonly surface: Mesh<PlaneGeometry, ShaderMaterial>;
   private readonly fall: Mesh<PlaneGeometry, ShaderMaterial>;
@@ -22,10 +25,17 @@ export class WaterFeature {
     this.fall.name = 'Waterfall';
     this.surface.userData.cameraObstruction = false;
     this.fall.userData.cameraObstruction = false;
-    this.root.add(this.surface,this.fall);
+    this.root.add(this.surface,this.fall,this.spray.points);
   }
   get settings(): WaterSettings { return this.shader.settings; }
   get elapsed(): number { return this.shader.elapsed; }
+  getSpraySource(target: SpraySource): boolean {
+    if(this.disposed) return false;
+    this.root.updateWorldMatrix(true,false);
+    target.matrixWorld.copy(this.root.matrixWorld);
+    target.center.set(0,1.1,-.85);target.halfSize.set(.65,.9,.35);
+    return true;
+  }
 
   configure(patch: Partial<WaterSettings>): boolean {
     if (this.disposed) return false;
@@ -38,10 +48,12 @@ export class WaterFeature {
       old.dispose();
     }
     this.fall.visible = next.enabled;
+    this.spray.update(next,this.elapsed);
     return true;
   }
   update(deltaSeconds: number): void {
     this.shader.update(deltaSeconds);
+    this.spray.update(this.settings,this.elapsed);
   }
   dispose(): void {
     if (this.disposed) return;
@@ -49,6 +61,7 @@ export class WaterFeature {
     this.root.removeFromParent();
     this.surface.geometry.dispose(); this.fall.geometry.dispose();
     this.shader.dispose();
+    this.spray.dispose();
     this.root.clear();
   }
   private surfaceGeometry(quality: WaterQuality): PlaneGeometry {

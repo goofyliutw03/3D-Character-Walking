@@ -1,0 +1,22 @@
+{
+  "feature_name": "night-object-lighting",
+  "created_at": "2026-10-31T18:23:51.2540569+08:00",
+  "updated_at": "2026-10-31T18:33:25.5455700+08:00",
+  "language": "zh-TW",
+  "phase": "implementation-complete",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": true
+    }
+  },
+  "ready_for_implementation": true
+}

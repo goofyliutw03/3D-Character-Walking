@@ -1,5 +1,5 @@
 import { BoxGeometry, Group, Mesh, MeshStandardMaterial } from 'three';
-import { WaterFeature, type WaterSettings } from '../water/index.ts';
+import { WaterFeature, type WaterSettings, type SpraySource } from '../water/index.ts';
 import type { WalkableBounds } from '../character/motion';
 
 export const streetWaterBounds: Readonly<WalkableBounds> = Object.freeze({
@@ -33,6 +33,7 @@ export class StreetWaterFeature {
   }
   get settings(): WaterSettings { return this.water.settings; }
   get elapsed(): number { return this.water.elapsed; }
+  getSpraySource(target: SpraySource): boolean { return this.water.getSpraySource(target); }
   configure(patch: Partial<WaterSettings>): boolean { return this.water.configure(patch); }
   update(delta: number): void { this.water.update(delta); }
   dispose(): void {

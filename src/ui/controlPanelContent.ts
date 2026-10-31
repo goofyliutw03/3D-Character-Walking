@@ -28,6 +28,13 @@ export function controlPanelContent(obstructionHint: string): string {
         <button id="retry-target" type="button" hidden>Retry target</button>
         ` },
       { id: 'particle-appearance', label: 'Appearance', open: true, content: `<div class="particle-settings"><label for="particle-color">Color<input id="particle-color" type="color" value="#66ddff"></label><label for="particle-size">Size · m<input id="particle-size" type="number" min="0.03" max="0.5" step="0.01" value="0.14"></label></div>` },
+      { id: 'particle-lighting', label: 'Light', open: true, content: `<div class="particle-settings">
+        <label class="toggle-row" for="particle-light-enabled"><span>Light up surroundings</span><input id="particle-light-enabled" type="checkbox" checked></label>
+        <label for="particle-light-color">Light color<input id="particle-light-color" type="color" value="#66ddff"></label>
+        <label for="particle-light-intensity">Intensity · cd<input id="particle-light-intensity" type="number" min="0" max="200" step="1" value="20"></label>
+        <label for="particle-light-radius">Light radius · m<input id="particle-light-radius" type="number" min="0.1" max="30" step="0.1" value="5"></label>
+        <label for="particle-light-decay">Decay<input id="particle-light-decay" type="number" min="0" max="4" step="0.1" value="2"></label>
+        </div><p class="hint">Up to 8 effects light their surroundings at once. Extra shots still appear; lighting resumes as slots become free. No light shadows.</p>` },
       { id: 'particle-motion', label: 'Motion & limits', open: true, content: `<div class="particle-settings"><label for="particle-speed">Speed · m/s<input id="particle-speed" type="number" min="0.5" max="30" step="0.5" value="8"></label><label for="particle-lifetime">Lifetime · s<input id="particle-lifetime" type="number" min="0.1" max="10" step="0.1" value="3"></label><label for="particle-limit">Effect limit<input id="particle-limit" type="number" min="1" max="128" step="1" value="32"></label></div>
         <button id="apply-particles" type="button">Apply settings</button>
         <p id="particle-settings-status" class="hint" role="status" aria-live="polite">Settings apply to new shots.</p>` }
@@ -58,13 +65,16 @@ export function controlPanelContent(obstructionHint: string): string {
         ` }
     ] },
     { id: 'scene', label: 'Scene display', open: false, children: [
+      { id: 'scene-objects', label: 'Scene objects', open: false, content: '<div id="scene-object-inspector"></div>' },
       { id: 'atmosphere', label: 'Lighting & shadows', open: true, content: `<label class="select-label" for="lighting">Time of day</label>
-        <select id="lighting"><option value="day">☀ &nbsp; Soft daylight</option><option value="evening">◐ &nbsp; Golden hour</option></select>
+        <select id="lighting"><option value="day">☀ &nbsp; Soft daylight</option><option value="evening">◐ &nbsp; Golden hour</option><option value="night">☾ &nbsp; Night</option></select>
         <label class="toggle-row" for="shadows"><span>Cast shadows</span><input id="shadows" type="checkbox" checked></label>` },
       { id: 'water-feature', label: 'Water feature', open: true, content: `
         <p class="hint">A small cascade at the far end of the street. Walk around the stone basin.</p>
         <label class="toggle-row" for="water-enabled"><span>Dynamic water</span><input id="water-enabled" type="checkbox" checked></label>
         <label class="toggle-row" for="water-paused"><span>Pause water animation</span><input id="water-paused" type="checkbox"></label>
+        <label class="toggle-row" for="water-lens"><span>Camera mist & droplets</span><input id="water-lens" type="checkbox" checked></label>
+        <p class="hint">Move the camera close to the cascade to catch a little spray. Droplets drain away when you leave.</p>
         <label class="select-label" for="water-quality">Water quality</label>
         <select id="water-quality"><option value="standard">Standard</option><option value="low">Low</option></select>
         <label class="select-label" for="water-wave">Wave strength · <output id="water-wave-value" for="water-wave">1.0</output></label>

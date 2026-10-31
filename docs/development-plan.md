@@ -1,5 +1,9 @@
 # Development plan
 
+2026-10-31 LIGHT-01／1R-1：使用者核准 [night-object-lighting](../.kiro/specs/night-object-lighting/) 夜晚、六路燈、粒子群組照明、可重用掛載API及光源UI；沿用白天／黃昏、有界8槽且無點光陰影。依序規格／實作／inline審閱／驗證，非第七里程碑，M6／SCENE-04/05/FOLD待驗保留。詳見該spec驗證。
+
+2026-10-31 WATER-03／1N-1：使用者核准 [waterfall-spray](../.kiro/specs/waterfall-spray/) 落水／飛濺粒子與相機接近時的薄霧／少量鏡頭水滴，遠離後下滑消退。街道／water.html 共用模組、固定容量、可關閉鏡頭效果、沿用品質／暫停與 reduced-motion；依序規格／實作／inline審閱／驗證。既有 Caster→Target 不變；非第七里程碑，M6／SCENE-05 含 FOLD 待驗維持。結果與限制見該 spec validation。
+
 2026-10-31 CAM-04（1M-1）：使用者核准 [occluded-character-xray](../.kiro/specs/occluded-character-xray/) 第4遮擋模式，僅凸顯操作主角被不透明環境遮住的像素；排除水／粒子／原始透明材質。已依序完成實作、inline審閱、93 tests／build／GPU及Release，驗證及限制見該spec。非第七里程碑，M6／SCENE-05維持。
 
 2026-10-31 WATER-02（1P-1）：使用者確認原型並核准街尾植栽島水景整合，另明確要求 Shader 可重用 Module／API；規格見 [street-water-integration](../.kiro/specs/street-water-integration/)。中心約 (0,-24.6)、完整池岸障礙與相機相容、Scene display 水景控制，兩入口共用公開 API；本次依序實作與 inline 審閱。下方原型「街道整合尚未授權」為原型交付時點，已由本項取代。非第七里程碑，M6／SCENE-05 未驗事項維持。
@@ -81,3 +85,6 @@ The historical plan requests confirmation of each stage design before implementa
 2026-10-31 Mobile Orbit（1L-1）：依使用者明確授權擴充角色中心Orbit至單指觸控，雙指取消置中並維持OrbitControls操作；camera-modes追加需求6.1–6.4。手機實機、M6／SCENE-05驗收維持待辦，詳見該spec validation。
 
 2026-10-31 Mobile Orbit結案：使用者回報iOS／Android皆OK，依要求忽略機型；本次追加需求實機驗收與結束確認完成。僅涵蓋本次操作，不推定所有瀏覽器／摺疊形態／效能皆通過，M6／SCENE-05其餘未驗項保留。見camera-modes validation。
+# 2026-10-31 追加場景物件檢視（1S-0）
+
+使用者核准 `scene-object-inspector`，在 Control Panel 顯示實際物件樹、頁面內穩定編號及可篩選的世界編號標籤。總開關／checkbox／regex與編號區間交集僅影響標籤。規格／審閱／驗證見 `.kiro/specs/scene-object-inspector/`；非第七里程碑，不更改既有M6／SCENE-05等人工待驗。共用檔案於水霧及夜間交付後依序修改，未委派。

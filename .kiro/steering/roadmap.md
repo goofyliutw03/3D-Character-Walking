@@ -1,5 +1,9 @@
 # cc-sdd 規劃對應與待辦
 
+2026-10-31 LIGHT-01／1R-1：[night-object-lighting](../specs/night-object-lighting/) 已由使用者核准夜晚／物件光源整體方案；依序自動inline審閱／實作，無委派。瀑布chat完成後才修改共用ViewerApp／main／CityScene／UI，必須依序進行，不可平行。非第七里程碑，M6／SCENE-04/05/FOLD與其餘LATER保留。
+
+2026-10-31 WATER-03／1N-1：[waterfall-spray](../specs/waterfall-spray/) 已由使用者核准瀑布粒子與相機濕潤整體方案；同範圍依序自動審閱／實作，不委派。世界 source 由水景公開API取得，兩入口共用效果；ViewerApp／SceneRenderer／main等必須依序進行，不可平行。非第七里程碑，M6／SCENE-05-FOLD及其餘延後項維持。
+
 2026-10-31 CAM-04（1M-1）：[occluded-character-xray](../specs/occluded-character-xray/) 已由使用者核准並完成第4模式實作及本機驗證；水景chat交付後依序修改ViewerApp／CameraObstruction／UI，未平行。排除水、粒子及原始透明／半透明材質，見validation；M6／SCENE-05與LATER項目維持。
 
 2026-10-31 WATER-02（1P-1）：[street-water-integration](../specs/street-water-integration/) 已由使用者核准街尾植栽島替換方案及可重用 Shader Module／API。依序完成模組、街道障礙／遮擋、主迴圈／UI、整合驗證；ViewerApp／main／CityScene 必須依序進行，不可平行。原型 WATER-01 已確認，本項取代舊時點等待街道整合授權說法；非第七里程碑，M6／SCENE-05 與其他 LATER 項維持。
@@ -89,3 +93,6 @@
 2026-10-31 剩餘驗收（1Q-1）：Galaxy S25+ 的 Mobile Orbit 操作由使用者回報 OK；沿用 1L-1 的 iOS OK，未取得 OS／瀏覽器版號。SCENE-05-FOLD（雙摺／三摺外屏、各展開形態、切換 resize、預設／放大 display scale、手勢與背景返回）依明確要求列 TODO，不阻擋下一階段。詳細來源與範圍見 camera-modes validation；未概括關閉 M6／SCENE-05，不啟動 LATER 新功能。
 
 2026-10-31 1Q-1：剩餘驗收盤點與本機故障注入見 [remaining-acceptance](../../docs/remaining-acceptance.md)。SCENE-02真ViewerApp合成pan、SCENE-03導航中原生context loss／恢復、SCENE-04 WebGL初始化失敗提示已補本機證據；SCENE-04跨GPU／瀏覽器與SCENE-05其餘人工項仍保留。歷史未驗文字不回寫；未新增功能。
+# 2026-10-31 INSPECT-01（1S-0）追加授權
+
+使用者已核准 [scene-object-inspector](../specs/scene-object-inspector/)：場景父子樹、頁面內穩定整數ID、總開關及個別checkbox、regex與編號範圍交集、祖先保留及世界標籤；只控制label。依序接續水霧／夜間交付，未平行修改。此為LATER-02中物件結構檢視的明確有限追加授權，不擴張到XYZ／速度滑桿或編輯器；非第七里程碑，M6／SCENE-04/05/FOLD及其他LATER保留。進度與證據見spec tasks／validation。

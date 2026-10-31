@@ -1,0 +1,23 @@
+{
+  "feature_name": "scene-object-inspector",
+  "created_at": "2026-10-31T18:43:04+08:00",
+  "updated_at": "2026-10-31T18:54:01.5745042+08:00",
+  "language": "zh-TW",
+  "phase": "implementation-complete",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": true
+    }
+  },
+  "ready_for_implementation": true,
+  "approval_note": "依使用者已核准整體追加範圍自動inline審閱；不代表逐份人工核准"
+}

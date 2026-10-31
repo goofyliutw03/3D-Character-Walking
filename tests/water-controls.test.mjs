@@ -6,7 +6,7 @@ test('water controls 2.1: accessible controls stay inside Scene display with cor
   const source=readFileSync(new URL('../src/ui/controlPanelContent.ts',import.meta.url),'utf8');
   const scene=source.slice(source.indexOf("id: 'scene'"));
   assert.match(scene,/id: 'water-feature'/);
-  for(const id of ['water-enabled','water-paused','water-quality','water-wave','water-flow']) {
+  for(const id of ['water-enabled','water-paused','water-quality','water-wave','water-flow','water-lens']) {
     assert.match(scene,new RegExp(`for="${id}"`)); assert.match(scene,new RegExp(`id="${id}"`));
     assert.equal((source.match(new RegExp(`id="${id}"`,'g'))??[]).length,1);
   }

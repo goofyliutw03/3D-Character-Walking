@@ -2,7 +2,7 @@ import { Mesh, MeshBasicMaterial, PerspectiveCamera, SphereGeometry, Vector3 } f
 import { TargetActor } from '../character/TargetActor';
 import { ParticleInteraction, type ParticleSettings, type ParticleSnapshot } from '../interaction/ParticleInteraction';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { CityScene } from '../scene/CityScene';
+import { CityScene, type TimeOfDay } from '../scene/CityScene';
 import { SceneRenderer, type RenderStats } from './SceneRenderer';
 import { Character } from '../character/Character';
 import { CharacterController } from '../character/CharacterController';
@@ -23,7 +23,8 @@ import { pickGround } from '../navigation/GroundPicker';
 import { TapGesture } from '../input/TapGesture';
 import { MouseOrbitGesture } from '../input/MouseOrbitGesture';
 import { CameraObstruction, type ObstructionMode } from '../camera/CameraObstruction';
-import type { WaterSettings } from '../water/index.ts';
+import { createSpraySource, type WaterSettings } from '../water/index.ts';
+import { SceneObjectInspector } from '../inspector/SceneObjectInspector';
 
 export type CameraPreset = CameraView;
 export interface CharacterStatus { variant: CharacterVariant; action: MotionSnapshot['action']; running: boolean; following: boolean; firstPerson: boolean; cameraView: CameraView; navigation: NavigationStatus; obstructionMode: ObstructionMode }
@@ -45,7 +46,10 @@ export class ViewerApp {
   private readonly cameras: CameraController;
   private readonly expressions = new ExpressionManager();
   private readonly overlay: ExpressionOverlay;
+  private readonly inspector: SceneObjectInspector;
+  private inspectorSyncTime = -Infinity;
   private readonly anchor = new Vector3();
+  private readonly waterSource = createSpraySource();
   private readonly assets: CharacterAssets;
   private readonly target: TargetActor;
   private readonly particles = new ParticleInteraction();
@@ -76,7 +80,7 @@ export class ViewerApp {
     this.character.update(this.motion, 0);
     this.city.scene.add(this.character.root);
     this.target = new TargetActor(this.city.walkableWorld, state => targetReport?.(state));
-    this.city.scene.add(this.target.root,this.particles.root,this.casterMarker,this.targetMarker);
+    this.city.scene.add(this.target.root,this.particles.root,this.particles.lightRoot,this.casterMarker,this.targetMarker);
     for (const role of ['Caster','Target']) {
       const label = document.createElement('div'); label.className = `actor-label actor-${role.toLowerCase()}`;
       label.textContent = role; label.setAttribute('aria-hidden','true'); label.hidden = true;
@@ -93,6 +97,7 @@ export class ViewerApp {
     this.controls.update();
     this.updateObstruction(0, true);
     this.overlay = new ExpressionOverlay(container);
+    this.inspector = new SceneObjectInspector(container, this.city.scene);
     this.assets = new CharacterAssets({
       load: async (url, reportProgress) => {
         const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
@@ -137,8 +142,10 @@ export class ViewerApp {
       event.preventDefault(); this.contextLost = true;
       this.stop(); this.destinationMarker.hidden = true;
       this.particles.clear(); this.particleReport?.(this.particles.snapshot);
+      this.view.waterLens.clear();
       this.actorLabels.forEach(label => {label.hidden=true;});
       this.overlay.place(null);
+      this.inspector.hide();
       this.report('Graphics connection lost. Waiting for recovery…');
     }, { signal: this.events.signal });
     canvas.addEventListener('webglcontextrestored', () => { this.contextLost = false; this.lastTime = 0; this.report('WebGL2 · connection restored'); }, { signal: this.events.signal });
@@ -172,6 +179,9 @@ export class ViewerApp {
     this.desiredCamera.updateProjectionMatrix();
     this.cameras.update(this.getCameraSubject(), delta, immediate);
     this.updateObstruction(delta, immediate);
+    this.view.waterLens.update(waterDelta,this.camera,
+      this.city.getWaterSpraySource(this.waterSource)?this.waterSource:undefined,
+      this.city.environment,this.city.waterSettings,immediate);
     this.character.root.visible = !this.assets.current && this.cameras.characterVisible;
     if (this.assets.current) this.assets.current.root.visible = this.cameras.characterVisible;
     this.casterMarker.visible = this.cameras.characterVisible;
@@ -195,6 +205,10 @@ export class ViewerApp {
       this.destinationMarker.style.top = `${marker.y}px`;
       this.destinationMarker.dataset.state = this.navigation.status;
     }
+    if (time - this.inspectorSyncTime >= 250) {
+      this.inspector.sync(); this.inspectorSyncTime = time;
+    }
+    this.inspector.update(this.camera, this.cameras.fisheye);
     this.view.render(this.city.scene, this.cameras.fisheye,
       this.obstruction.mode === 'xray' && this.cameras.characterVisible
         ? { subject: (this.assets.current ?? this.character).root, environment: this.city.environment } : undefined);
@@ -212,6 +226,7 @@ export class ViewerApp {
     if (this.assets.current) this.assets.current.root.visible = this.cameras.characterVisible;
     if (!this.cameras.characterVisible) this.overlay.place(null);
   }
+  mountObjectInspector(host: HTMLElement): void { if (!this.disposed) this.inspector.mount(host); }
   setEmotion(emotion: Emotion): void { this.expressions.setEmotion(emotion); this.updateExpression(); }
   setObstructionMode(mode: ObstructionMode): void {
     this.obstruction.setMode(mode);
@@ -228,7 +243,14 @@ export class ViewerApp {
     this.overlay.setContent(state, emotions[state.emotion].icon);
   }
   setEvening(evening: boolean): void { this.city.setEvening(evening); }
-  configureWater(patch: Partial<WaterSettings>): boolean { return !this.disposed && this.city.configureWater(patch); }
+  setTimeOfDay(time: TimeOfDay): boolean { return !this.disposed && this.city.setTimeOfDay(time); }
+  configureWater(patch: Partial<WaterSettings>): boolean {
+    if(this.disposed || !this.city.configureWater(patch)) return false;
+    if(!this.city.waterSettings.enabled)this.view.waterLens.clear();
+    return true;
+  }
+  setWaterLensEnabled(enabled: boolean): void { if(!this.disposed)this.view.waterLens.enabled=enabled; }
+  getWaterLensEnabled(): boolean { return this.view.waterLens.enabled; }
   getWaterSettings(): WaterSettings { return this.city.waterSettings; }
   getWaterElapsed(): number { return this.city.waterElapsed; }
   setCharacter(variant: CharacterVariant): void {
@@ -275,6 +297,7 @@ export class ViewerApp {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true; this.events.abort();
+    this.inspector.dispose();
     this.mouseOrbit.dispose(); this.tap.dispose(); this.destinationMarker.remove();
     this.assets.dispose(); this.input.dispose(); this.character.dispose(); this.overlay.dispose();
     this.target.dispose(); this.particles.dispose(); this.actorLabels.forEach(label=>label.remove());

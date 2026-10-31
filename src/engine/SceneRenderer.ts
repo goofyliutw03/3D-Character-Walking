@@ -1,9 +1,11 @@
 import { ACESFilmicToneMapping, PCFShadowMap, PerspectiveCamera, Scene, WebGLRenderer, type Object3D } from 'three';
 import { FisheyePass } from './FisheyePass';
 import { CharacterXrayPass } from './CharacterXrayPass';
+import { WetLensEffect } from '../water/index.ts';
 export interface RenderStats { drawCalls: number; triangles: number; geometries: number; textures: number }
 
 export class SceneRenderer {
+  readonly waterLens = new WetLensEffect();
   readonly renderer: WebGLRenderer;
   private readonly observer: ResizeObserver;
   private fisheye: FisheyePass | undefined;
@@ -43,12 +45,13 @@ export class SceneRenderer {
       if (xray) this.xray!.render(this.renderer, scene, camera, xray.subject, xray.environment);
       else this.renderer.render(scene, camera);
     };
-    if (!fisheye) { capture(this.camera); return; }
+    if (!fisheye) { capture(this.camera); this.waterLens.render(this.renderer); return; }
     if (!this.fisheye) {
       this.fisheye = new FisheyePass(this.renderer.extensions.has('EXT_color_buffer_float'));
       this.fisheye.resize(this.width, this.height, this.renderer.getPixelRatio());
     }
     this.fisheye.render(this.renderer, scene, this.camera, capture);
+    this.waterLens.render(this.renderer,true);
   }
   setShadows(enabled: boolean): void { this.renderer.shadowMap.enabled = enabled; }
   get stats(): RenderStats {
@@ -60,6 +63,7 @@ export class SceneRenderer {
     this.renderer.setAnimationLoop(null);
     this.fisheye?.dispose();
     this.xray?.dispose();
+    this.waterLens.dispose();
     this.renderer.dispose();
     this.renderer.domElement.remove();
   }

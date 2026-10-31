@@ -3,7 +3,7 @@ import {
   HemisphereLight, Mesh, MeshStandardMaterial, PCFShadowMap, PerspectiveCamera, Scene, Vector3, WebGLRenderer,
 } from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { WaterFeature, type WaterSettings } from './index.ts';
+import { WaterFeature, WetLensEffect, createSpraySource, type WaterSettings } from './index.ts';
 import { WaterBenchmark } from './WaterBenchmark.ts';
 import type { WaterStats } from './WaterBenchmark.ts';
 
@@ -13,6 +13,8 @@ export class WaterPrototype {
   private readonly renderer: WebGLRenderer;
   private readonly controls: OrbitControls;
   private water=new WaterFeature();
+  private readonly lens=new WetLensEffect();
+  private readonly spraySource=createSpraySource();
   private readonly environment=new Group();
   private readonly benchmark=new WaterBenchmark();
   private readonly observer: ResizeObserver;
@@ -44,10 +46,11 @@ export class WaterPrototype {
           <fieldset id="water-settings"><legend>水景設定</legend>
             <label class="toggle">動態效果<input id="enabled" type="checkbox" checked></label>
             <label class="toggle">暫停動畫<input id="paused" type="checkbox"></label>
+            <label class="toggle" for="lens">鏡頭薄霧與水滴<input id="lens" type="checkbox" checked></label>
             <label for="wave">波浪強度 <output id="wave-value">1.0</output></label><input id="wave" type="range" min="0" max="2" step="0.1" value="1">
             <label for="flow">水流速度 <output id="flow-value">1.0</output></label><input id="flow" type="range" min="0" max="3" step="0.1" value="1">
             <label for="quality">渲染品質</label><select id="quality"><option value="standard">標準 · 細緻波面</option><option value="low">低 · 輕量波面</option></select>
-            <label for="view">觀察鏡頭</label><select id="view"><option value="overview">全景 · 斜角</option><option value="near">近看 · 落水處</option><option value="far">遠看 · 整體輪廓</option><option value="side">側面 · 接合</option></select>
+            <label for="view">觀察鏡頭</label><select id="view"><option value="overview">全景 · 斜角</option><option value="near">近看 · 落水處</option><option value="spray">噴濺 · 鏡頭沾水</option><option value="far">遠看 · 整體輪廓</option><option value="side">側面 · 接合</option></select>
           </fieldset>
           <section class="measurement"><h3>效能比較</h3><p>固定 960×600 / DPR 1 / 陰影開<br>每段暖機 5 秒，關／開各 60 秒 × 3 輪。</p>
             <button id="benchmark" type="button">開始三輪比較 <span>約 6 分半</span></button>
@@ -82,6 +85,7 @@ export class WaterPrototype {
     this.resize();
     this.renderer.domElement.addEventListener('webglcontextlost',event=>{
       event.preventDefault(); this.cancel('WebGL context lost');
+      this.lens.clear();
       this.status.textContent='WebGL 連線中斷，請重新整理頁面。'; this.renderer.setAnimationLoop(null);
     },{signal:this.listeners.signal});
     document.addEventListener('visibilitychange',()=>{
@@ -96,7 +100,7 @@ export class WaterPrototype {
   dispose(): void {
     if(this.disposed) return; this.disposed=true;
     this.renderer.setAnimationLoop(null); this.listeners.abort(); this.observer.disconnect(); this.controls.dispose();
-    this.water.dispose();
+    this.water.dispose();this.lens.dispose();
     const geometries=new Set<BoxGeometry|CylinderGeometry>(),materials=new Set<MeshStandardMaterial>();
     this.environment.traverse(o=>{if(o instanceof Mesh){geometries.add(o.geometry);materials.add(o.material);}});
     geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());
@@ -107,7 +111,8 @@ export class WaterPrototype {
   private input(id: string): HTMLInputElement { return this.element(id) as HTMLInputElement; }
   private bindUI(): void {
     const on=(id:string,event:string,fn:()=>void)=>this.element(id).addEventListener(event,fn,{signal:this.listeners.signal});
-    on('enabled','change',()=>this.water.configure({enabled:this.input('enabled').checked}));
+    on('enabled','change',()=>{this.water.configure({enabled:this.input('enabled').checked});if(!this.water.settings.enabled)this.lens.clear();});
+    on('lens','change',()=>{this.lens.enabled=this.input('lens').checked;});
     on('paused','change',()=>this.water.configure({paused:this.input('paused').checked}));
     on('wave','input',()=>{
       const value=Number(this.input('wave').value); this.water.configure({waveStrength:value});
@@ -123,8 +128,9 @@ export class WaterPrototype {
     on('resources','click',()=>this.checkResources());
   }
   private setView(view:string): void {
-    const views:Record<string,[number,number,number]>={overview:[6.7,5.3,7.4],near:[2.6,1.7,2.8],far:[10,8,12],side:[6,1.1,-.2]};
+    const views:Record<string,[number,number,number]>={overview:[6.7,5.3,7.4],near:[2.6,1.7,2.8],spray:[.7,1.3,.9],far:[10,8,12],side:[6,1.1,-.2]};
     this.controls.target.set(0,view==='near'?.55:.65,view==='near'?-.55:0);
+    if(view==='spray')this.controls.target.set(0,1,-.9);
     this.camera.position.copy(new Vector3(...(views[view]??views.overview))); this.controls.update();
   }
   private resize(): void {
@@ -144,7 +150,7 @@ export class WaterPrototype {
   }
   private frame(now:number): void {
     if(this.disposed) return;
-    const delta=this.last ? (now-this.last)/1000 : 0;this.last=now;
+    const delta=this.last && !document.hidden ? (now-this.last)/1000 : 0;this.last=now;
     if(this.benchmark.running && this.fixedViewport) {
       const f=this.fixedViewport;
       if(window.innerWidth!==f.width || window.innerHeight!==f.height || window.devicePixelRatio!==f.dpr) this.cancel('視窗尺寸或 DPR 改變');
@@ -152,7 +158,10 @@ export class WaterPrototype {
     if(this.benchmark.running && this.water.settings.enabled!==this.benchmark.enabled) this.water.configure({enabled:this.benchmark.enabled});
     this.water.update(delta);
     if(!this.benchmark.running) this.controls.update();
+    this.lens.update(delta,this.camera,this.water.getSpraySource(this.spraySource)?this.spraySource:undefined,
+      this.environment,this.water.settings,window.matchMedia('(prefers-reduced-motion: reduce)').matches);
     this.renderer.render(this.scene,this.camera);
+    this.lens.render(this.renderer);
     if(this.benchmark.running) {
       this.benchmark.sample(now,this.stats());
       if(!this.benchmark.running) {
