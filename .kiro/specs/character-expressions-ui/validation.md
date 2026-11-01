@@ -113,3 +113,10 @@
 - Ownership候選：camera-modes／FollowCamera.constrain。程式審閱顯示其遮擋約束允許target距離低至0.4，可能使近距離幾何遮擋；這是推論，尚待獨立重現。本里程碑未改相機構圖／遮擋策略，也未把此觀察當作已修復。
 - 此觀察不阻擋表達模組依實際camera裁切正確隱藏的驗收；但限制整體鏡頭品質宣稱，交由使用者決定是否另行調查。上方「無阻擋缺陷」限里程碑5範圍，不代表上游所有位置皆驗收完成。
 - 最後preview已reload，恢復起點man、日光、陰影、Happy、中英文多行及Front，泡泡可見；viewport override已reset。未stage／commit／push，staged diff為空。
+
+## 2026-10-31 IME 追加驗收（1Q-2）
+既有 SpeechEditor／InputManager／ExpressionManager 測試8/8 PASS，屬合成事件與狀態契約證據。main focus／Clear 與 inspector isComposing Enter 接線已 inline 審閱，未修改產品。Windows Computer Use 因無法可靠辨識 Chrome URL 停止，未取得真實中文組字證據；不以 paste／fill／合成事件冒稱真實 IME。結論 MANUAL_VERIFY_REQUIRED／ToDo；六項原生組字待驗步驟及工具限制見 [remaining-acceptance](../../../docs/remaining-acceptance.md#ime-驗收進度1q-22026-10-31)。本次不關閉其他人工驗收、不 commit／push。Token 用量：無法取得精確值，缺少官方起點。
+
+2026-10-31 1Q-2人工回報追加：使用者於中文組字、Enter／Space選字、Escape取消、Clear及角色不誤移動／跳躍的操作請求後回覆「OK No problem, please go on」，此組基本操作依使用者回報PASS，非工具實測。組字草稿／blur特定時序、160字邊界、inspector及未單獨確認細節仍ToDo／MANUAL_VERIFY_REQUIRED；詳見docs/remaining-acceptance.md的1Q-2使用者人工驗收追加。無runtime變更、commit或push。
+
+2026-10-31 1Q-2最終裁定：使用者對組字中blur後返回、160字上限組字、inspector候選Enter隔離三組明確操作回覆「三項皆正常」。結合基本IME操作先前回報，本階段記Done／USER_REPORTED_PASS，取代歷史IME待驗狀態；為使用者人工驗收，非工具直接實測或所有輸入法／平台相容承諾。詳細範圍與限制見docs/remaining-acceptance.md的1Q-2最終裁定。其他跨GPU／效能／讀屏待辦不變。無runtime修改、commit／push。

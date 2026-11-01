@@ -1,6 +1,8 @@
 # Development plan
 
-2026-10-31 LIGHT-01／1R-1：使用者核准 [night-object-lighting](../.kiro/specs/night-object-lighting/) 夜晚、六路燈、粒子群組照明、可重用掛載API及光源UI；沿用白天／黃昏、有界8槽且無點光陰影。依序規格／實作／inline審閱／驗證，非第七里程碑，M6／SCENE-04/05/FOLD待驗保留。詳見該spec驗證。
+2026-11-01 LATER-03／1T-0：使用者明確要求執行NavMesh、NPC AI、車輛、紅綠燈行為、LOD、多角色模擬，整合規格為 [city-traffic-simulation](../.kiro/specs/city-traffic-simulation/)。本次覆蓋現有程序街道的凸表面導航、有限NPC與雙向車流協調、兩級LOD及數量／暫停／重置控制；無新增依賴或外部資產。依序自動inline審閱，不另增第七里程碑。歷史LATER-03延後說法由本次範圍授權取代；主角自動巡迴、WebGPU與Blender城市仍不在範圍。M6人工待驗以remaining-acceptance最新裁定為準，不由本次測試概括通過。進度／證據見該spec tasks與validation。
+
+2026-10-31 LIGHT-01／1R-1：使用者核准 [night-object-lighting](../.kiro/specs/night-object-lighting/) 夜晚、六路燈、粒子群組照明、可重用掛載API及光源UI；沿用白天／黃昏、有界8槽且粒子無點光陰影；1R-2追加授權Night且Shadows開啟時最近單一路燈投影。依序規格／實作／inline審閱／驗證，非第七里程碑，M6／SCENE-04/05/FOLD待驗保留。詳見該spec驗證。
 
 2026-10-31 WATER-03／1N-1：使用者核准 [waterfall-spray](../.kiro/specs/waterfall-spray/) 落水／飛濺粒子與相機接近時的薄霧／少量鏡頭水滴，遠離後下滑消退。街道／water.html 共用模組、固定容量、可關閉鏡頭效果、沿用品質／暫停與 reduced-motion；依序規格／實作／inline審閱／驗證。既有 Caster→Target 不變；非第七里程碑，M6／SCENE-05 含 FOLD 待驗維持。結果與限制見該 spec validation。
 
@@ -88,3 +90,9 @@ The historical plan requests confirmation of each stage design before implementa
 # 2026-10-31 追加場景物件檢視（1S-0）
 
 使用者核准 `scene-object-inspector`，在 Control Panel 顯示實際物件樹、頁面內穩定編號及可篩選的世界編號標籤。總開關／checkbox／regex與編號區間交集僅影響標籤。規格／審閱／驗證見 `.kiro/specs/scene-object-inspector/`；非第七里程碑，不更改既有M6／SCENE-05等人工待驗。共用檔案於水霧及夜間交付後依序修改，未委派。
+
+2026-10-31 LIGHT-01／1R-3追加授權：Control Panel的Night shadow lights六checkbox，所有勾選路燈同時投影；以手動選擇及獨立shadow取代1R-2最近單燈共享策略。非第七里程碑，不更動M6／SCENE-04/05既有人工範圍；共用檔依序修改，見night-object-lighting requirement6/tasks8–10與validation。
+
+2026-10-31 LIGHT-01／1R-4：night-object-lighting requirement7/tasks11–13追加陰影自動觸發偵測，候選燈依主角含跳躍的完整3D距離≤半徑同時投影；預設auto off，1–30m預設10m。保留手動／日夜設定，非第七里程碑，M6／SCENE-04/05/FOLD待驗不變；證據見該spec validation。
+
+2026-11-01 SOLAR-01／1U-0：使用者核准 [solar-sport](../.kiro/specs/solar-sport/)，Time of Day追加24小時轉盤（每小時5格）、相機指北針及四季／緯度太陽控制；太陽時間及代表季節，非民用時間／精密天文。沿用既有光照及路燈，無新增依賴／資產；依序實作、inline審閱，非第七里程碑，保留最新人工驗收裁定。詳見spec validation。

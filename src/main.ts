@@ -1,3 +1,4 @@
+import { SolarControls } from './ui/SolarControls';
 import type { ViewerApp, CameraPreset, CharacterStatus } from './engine/ViewerApp';
 import type { CharacterVariant } from './character/motion';
 import type { MoveDirection } from './input/InputManager';
@@ -9,6 +10,7 @@ import { LoadingPanel } from './ui/LoadingPanel';
 import type { ObstructionMode } from './camera/CameraObstruction';
 import { controlPanelContent } from './ui/controlPanelContent';
 import { ControlPanel } from './ui/ControlPanel';
+import type { TrafficSnapshot } from './simulation/TrafficSimulation';
 import './style.css';
 
 const cameraNames: Record<CameraPreset, string> = {
@@ -23,6 +25,7 @@ const obstructionHints: Record<ObstructionMode, string> = {
   xray: 'Reveal only hidden parts of your character with a 50% contrast overlay. Water, particles and transparent materials do not block this view.',
 };
 
+let solarControls: SolarControls | undefined;
 const app = document.querySelector<HTMLDivElement>('#app');
 if (!app) throw new Error('Application root was not found.');
 app.innerHTML = `
@@ -151,6 +154,12 @@ try {
   const { ViewerApp } = await import('./engine/ViewerApp');
   if (uiEvents.signal.aborted) return;
   reportAsset({ phase: 'loading', stage: 'scene', message: 'Building the city scene…' });
+  const reportTraffic = (state: TrafficSnapshot): void => {
+    const phases = { vehicles: 'Vehicle green', yellow: 'Vehicle yellow', 'all-red': 'All red · clearing vehicles', pedestrians: 'Pedestrian green', clearance: 'All red · clearing pedestrians' };
+    const text = `${!state.settings.enabled ? 'Simulation off' : state.settings.paused ? 'Simulation paused' : phases[state.phase]} · ${state.npcs.length} pedestrians · ${state.vehicles.length} vehicles`;
+    const element = document.querySelector('#traffic-status')!;
+    if (element.textContent !== text) element.textContent = text;
+  };
   viewer = new ViewerApp(scene, message => { status.textContent = message; }, value => { fps.textContent = String(value); }, updateCharacterStatus, reportAsset, metrics => {
     const element = document.querySelector<HTMLElement>('#scene-metrics')!;
     element.textContent = `${metrics.drawCalls} draws · ${(metrics.triangles / 1000).toFixed(1)}k triangles`;
@@ -162,8 +171,32 @@ try {
     const element = document.querySelector('#particle-status')!;
     const text = `${state.lastEvent} · Active ${state.active} · Hits ${state.hits} · Expired ${state.expired}`;
     if(element.textContent !== text) element.textContent = text;
-  });
+  }, reportTraffic);
   viewer.mountObjectInspector(document.querySelector<HTMLElement>('#scene-object-inspector')!);
+  const syncTraffic = (): void => {
+    if (!viewer) return;
+    const state = viewer.getTrafficState();
+    for (const [id,key] of [['traffic-enabled','enabled'],['traffic-paused','paused'],['traffic-lod','lod']] as const)
+      document.querySelector<HTMLInputElement>(`#${id}`)!.checked = state.settings[key];
+    for (const [id,key] of [['traffic-npcs','npcCount'],['traffic-vehicles','vehicleCount']] as const)
+      document.querySelector<HTMLInputElement>(`#${id}`)!.value = String(state.settings[key]);
+    reportTraffic(state);
+  };
+  for (const [id,key] of [['traffic-enabled','enabled'],['traffic-paused','paused'],['traffic-lod','lod']] as const) {
+    document.querySelector<HTMLInputElement>(`#${id}`)!.addEventListener('change', event => {
+      viewer?.configureTraffic({[key]:(event.target as HTMLInputElement).checked}); syncTraffic();
+    }, {signal:uiEvents.signal});
+  }
+  for (const [id,key] of [['traffic-npcs','npcCount'],['traffic-vehicles','vehicleCount']] as const) {
+    const field = document.querySelector<HTMLInputElement>(`#${id}`)!;
+    field.addEventListener('input', () => {
+      if (viewer?.configureTraffic({[key]:field.valueAsNumber})) reportTraffic(viewer.getTrafficState());
+    }, {signal:uiEvents.signal});
+    field.addEventListener('change', () => {
+      viewer?.configureTraffic({[key]:field.valueAsNumber}); syncTraffic();
+    }, {signal:uiEvents.signal});
+  }
+  document.querySelector('#traffic-reset')!.addEventListener('click', () => { viewer?.resetTraffic(); syncTraffic(); }, {signal:uiEvents.signal});
   controls.forEach(control => { control.disabled = false; });
   const syncWater = (): void => {
     if (!viewer) return;
@@ -253,8 +286,37 @@ try {
   };
   cameraButtons.forEach(button => button.addEventListener('click', () => selectCamera(button.dataset.camera as CameraPreset), { signal: uiEvents.signal }));
   document.querySelector('#reset')!.addEventListener('click', () => selectCamera('overview'), { signal: uiEvents.signal });
-  document.querySelector<HTMLSelectElement>('#lighting')!.addEventListener('change', event => viewer?.setTimeOfDay((event.target as HTMLSelectElement).value as TimeOfDay), { signal: uiEvents.signal });
-  document.querySelector<HTMLInputElement>('#shadows')!.addEventListener('change', event => viewer?.setShadows((event.target as HTMLInputElement).checked), { signal: uiEvents.signal });
+  const lighting = document.querySelector<HTMLSelectElement>('#lighting')!;
+  const shadows = document.querySelector<HTMLInputElement>('#shadows')!;
+  const lampFieldset = document.querySelector<HTMLFieldSetElement>('#lamp-shadows')!;
+  const lampAuto = document.querySelector<HTMLInputElement>('#lamp-shadow-auto')!;
+  const lampRadius = document.querySelector<HTMLInputElement>('#lamp-shadow-radius')!;
+  const lampRadiusValue = document.querySelector<HTMLOutputElement>('#lamp-shadow-radius-value')!;
+  const lampInputs = [...document.querySelectorAll<HTMLInputElement>('[data-lamp-shadow]')];
+  const syncLampControls = (): void => {
+    const options = viewer!.getLampShadowOptions();
+    for (const input of lampInputs) input.checked = options.find(option => option.id === Number(input.dataset.lampShadow))!.selected;
+    lampFieldset.disabled = viewer!.getTimeOfDay() !== 'night' || !shadows.checked;
+    const detection = viewer!.getLampShadowDetection();
+    lampAuto.checked = detection.enabled;
+    lampRadius.value = String(detection.radius);
+    lampRadius.disabled = !detection.enabled;
+    lampRadiusValue.value = `${detection.radius} m`;
+  };
+  lampInputs.forEach(input => input.addEventListener('change', () => {
+    viewer?.setLampShadowSelection(lampInputs.filter(option => option.checked).map(option => Number(option.dataset.lampShadow)));
+    syncLampControls();
+  }, { signal: uiEvents.signal }));
+  const updateLampDetection = (): void => {
+    viewer?.setLampShadowDetection(lampAuto.checked, lampRadius.valueAsNumber);
+    syncLampControls();
+  };
+  lampAuto.addEventListener('change', updateLampDetection, { signal: uiEvents.signal });
+  lampRadius.addEventListener('input', updateLampDetection, { signal: uiEvents.signal });
+  solarControls = new SolarControls(document.querySelector<HTMLElement>('.solar-controls')!, viewer!, syncLampControls);
+  lighting.addEventListener('change', () => { viewer?.setTimeOfDay(lighting.value as TimeOfDay); solarControls?.sync(); syncLampControls(); }, { signal: uiEvents.signal });
+  shadows.addEventListener('change', () => { viewer?.setShadows(shadows.checked); syncLampControls(); }, { signal: uiEvents.signal });
+  syncLampControls();
 } catch (cause) {
   fatal = true;
   reportAsset({ phase: 'error', message: 'Scene unavailable.', recovery: 'Reload the page to retry. If the problem continues, check your connection and WebGL2 hardware acceleration.' });
@@ -267,6 +329,6 @@ try {
 }
 }
 void initialize();
-const dispose = (): void => { uiEvents.abort(); controlPanel.dispose(); viewer?.dispose(); };
+const dispose = (): void => { uiEvents.abort(); solarControls?.dispose(); controlPanel.dispose(); viewer?.dispose(); };
 window.addEventListener('pagehide', event => { if (!event.persisted) dispose(); }, { signal: uiEvents.signal });
 if (import.meta.hot) import.meta.hot.dispose(dispose);

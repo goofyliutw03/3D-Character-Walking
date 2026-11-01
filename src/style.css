@@ -832,3 +832,38 @@ main[data-panel-collapsed=true] #panel-toggle { justify-content:center; padding:
 .object-node > summary input { width: 15px; height: 15px; margin: 0 5px 0 0; vertical-align: middle; }
 .object-node[data-matched="false"] > summary span { opacity: .6; }
 .object-node > summary:focus-visible, .object-node input:focus-visible { outline: 2px solid #9a5b21; outline-offset: 2px; }
+
+#lamp-shadows { min-width: 0; margin: 12px 0 0; padding: 8px; border: 1px solid #a5b4a8; border-radius: 8px; }
+#lamp-shadows legend { font-size: .85rem; }
+#lamp-shadows .toggle-row span { min-width: 0; overflow-wrap: anywhere; }
+#lamp-shadows:disabled { opacity: .6; }
+
+#lamp-shadow-radius { width: 100%; min-width: 0; box-sizing: border-box; }
+
+/* Solar instruments stay inside the resizable control panel. */
+.solar-controls { margin: .6rem 0; padding: .6rem; border: 1px solid #526778; border-radius: .6rem; }
+.solar-controls summary { cursor: pointer; font-weight: 650; margin-bottom: .6rem; }
+.solar-controls fieldset { display: grid; gap: .5rem; min-width: 0; }
+.solar-controls label { display: grid; gap: .25rem; }
+.solar-controls > label { display: flex; align-items: center; gap: .5rem; }
+.solar-controls input, .solar-controls select { max-width: 100%; min-width: 0; box-sizing: border-box; }
+.solar-instruments { display: flex; align-items: center; justify-content: space-around; flex-wrap: wrap; gap: .5rem; margin: .7rem 0; }
+.solar-instruments > div { text-align: center; flex: 1 1 100px; min-width: 0; }
+#solar-dial { display: block; width: 100%; max-width: 200px; margin: auto; touch-action: none; cursor: grab; border-radius: 50%; }
+#solar-dial:focus-visible { outline: 3px solid #67dbed; outline-offset: 2px; }
+#solar-dial[aria-disabled="true"] { opacity: .5; cursor: default; }
+.solar-face { fill: #172733; stroke: #7893a3; stroke-width: 1; }
+.solar-major { stroke: #d8e9ed; stroke-width: 1.5; }
+.solar-minor { stroke: #718e9a; stroke-width: .7; }
+#solar-dial text { fill: #d8e9ed; font: 9px system-ui; text-anchor: middle; dominant-baseline: central; }
+#solar-hand { fill: #ffce71; }
+.solar-compass { position: relative; width: 110px; height: 110px; border: 1px solid #7893a3; border-radius: 50%; background: #172733; margin: 1rem auto; }
+#solar-compass-card { position: absolute; inset: 0; border-radius: 50%; }
+#solar-compass-card b { position: absolute; color: #d8e9ed; font-size: 12px; }
+#solar-compass-card .north { top: 5px; left: 50%; transform: translateX(-50%); color: #ff887e; }
+#solar-compass-card .south { bottom: 5px; left: 50%; transform: translateX(-50%); }
+#solar-compass-card .east { right: 7px; top: 50%; transform: translateY(-50%); }
+#solar-compass-card .west { left: 7px; top: 50%; transform: translateY(-50%); }
+.solar-needle { display: block; color: #ff887e; font-size: 52px; line-height: 106px; }
+.solar-view-mark { position: absolute; top: -17px; left: 50%; transform: translateX(-50%); color: #ffce71; }
+.solar-controls output { display: block; color: #425c65; font-size: .8rem; font-variant-numeric: tabular-nums; }

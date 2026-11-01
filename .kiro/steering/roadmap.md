@@ -1,5 +1,9 @@
 # cc-sdd 規劃對應與待辦
 
+2026-10-31 SCENE-04（1Q-3）：本機唯讀清單為GTX1060 6GB／driver32.0.15.8278，Chrome156／Edge156已找到；Chrome既有Release分頁AX可讀WebGL2 ready／Rigged man Ready。原生工具導航／點擊不可靠且此chat無iab，Edge尚未載入Release；未取得本次renderer extension／framebuffer結果。跨GPU／瀏覽器及原生half-float不支援環境維持ToDo／MANUAL_VERIFY_REQUIRED，待驗矩陣COMPAT-01–04見docs/remaining-acceptance.md。無產品修改，不將歷史同GPU證據外推；IME Done、手機操作Done、摺疊專項取消與效能／讀屏待辦維持。
+
+2026-10-31 最新驗收裁定（優先於下方歷史待驗文字）：使用者確認手機完整操作驗收Done；跨GPU／瀏覽器相容性ToDo；雙摺／三摺螢幕專項取消（使用者決定由Browser處理相容性，不冒稱測試通過）；IME輸入法ToDo。效能ACCEPT-01及螢幕閱讀器未變更。詳見[剩餘驗收盤點最新裁定](../../docs/remaining-acceptance.md)。不擴張功能或自動啟動延後項。
+
 2026-10-31 LIGHT-01／1R-1：[night-object-lighting](../specs/night-object-lighting/) 已由使用者核准夜晚／物件光源整體方案；依序自動inline審閱／實作，無委派。瀑布chat完成後才修改共用ViewerApp／main／CityScene／UI，必須依序進行，不可平行。非第七里程碑，M6／SCENE-04/05/FOLD與其餘LATER保留。
 
 2026-10-31 WATER-03／1N-1：[waterfall-spray](../specs/waterfall-spray/) 已由使用者核准瀑布粒子與相機濕潤整體方案；同範圍依序自動審閱／實作，不委派。世界 source 由水景公開API取得，兩入口共用效果；ViewerApp／SceneRenderer／main等必須依序進行，不可平行。非第七里程碑，M6／SCENE-05-FOLD及其餘延後項維持。
@@ -96,3 +100,22 @@
 # 2026-10-31 INSPECT-01（1S-0）追加授權
 
 使用者已核准 [scene-object-inspector](../specs/scene-object-inspector/)：場景父子樹、頁面內穩定整數ID、總開關及個別checkbox、regex與編號範圍交集、祖先保留及世界標籤；只控制label。依序接續水霧／夜間交付，未平行修改。此為LATER-02中物件結構檢視的明確有限追加授權，不擴張到XYZ／速度滑桿或編輯器；非第七里程碑，M6／SCENE-04/05/FOLD及其他LATER保留。進度與證據見spec tasks／validation。
+
+2026-10-31 INSPECT-01結案：使用者回覆「Ok please go on」，完成本次交付的結束確認；未指定其他新功能，M6／SCENE-04/05/FOLD及其餘LATER維持原狀。詳細驗證見scene-object-inspector validation。
+
+2026-10-31 IME（1Q-2）：既有輸入／表達測試8/8 PASS，真實組字因Windows Computer Use網址辨識限制未驗，仍MANUAL_VERIFY_REQUIRED／ToDo。六項待驗與限制見docs/remaining-acceptance.md；沿用M5／M6，不新增里程碑或開展其他驗收。
+
+2026-10-31 1Q-2人工回報追加：使用者於中文組字、Enter／Space選字、Escape取消、Clear及角色不誤移動／跳躍的操作請求後回覆「OK No problem, please go on」，此組基本操作依使用者回報PASS，非工具實測。組字草稿／blur特定時序、160字邊界、inspector及未單獨確認細節仍ToDo／MANUAL_VERIFY_REQUIRED；詳見docs/remaining-acceptance.md的1Q-2使用者人工驗收追加。無runtime變更、commit或push。
+
+2026-10-31 1Q-2最終裁定：使用者對組字中blur後返回、160字上限組字、inspector候選Enter隔離三組明確操作回覆「三項皆正常」。結合基本IME操作先前回報，本階段記Done／USER_REPORTED_PASS，取代歷史IME待驗狀態；為使用者人工驗收，非工具直接實測或所有輸入法／平台相容承諾。詳細範圍與限制見docs/remaining-acceptance.md的1Q-2最終裁定。其他跨GPU／效能／讀屏待辦不變。無runtime修改、commit／push。
+
+2026-10-31 跨GPU補登：使用者回報另一電腦GeForce RTX2050 4GB VRAM／Chrome156.0.8078.74 Official Build64-bit操作OK，記舊版一般操作USER_REPORTED_PASS。非工具直接觀察、不代表1R-2新增路燈陰影或原生half-float fallback已驗；SCENE-04整體PARTIAL，其他矩陣／效能／讀屏待辦保留。以docs/remaining-acceptance.md最新回報為準。
+
+2026-10-31 LIGHT-01／1R-3追加授權：Control Panel的Night shadow lights六checkbox，所有勾選路燈同時投影；以手動選擇及獨立shadow取代1R-2最近單燈共享策略。非第七里程碑，不更動M6／SCENE-04/05既有人工範圍；共用檔依序修改，見night-object-lighting requirement6/tasks8–10與validation。
+
+2026-10-31 LIGHT-01／1R-4：night-object-lighting requirement7/tasks11–13追加陰影自動觸發偵測，候選燈依主角含跳躍的完整3D距離≤半徑同時投影；預設auto off，1–30m預設10m。保留手動／日夜設定，非第七里程碑，M6／SCENE-04/05/FOLD待驗不變；證據見該spec validation。
+# 2026-11-01 LATER-03／1T-0 追加授權
+
+使用者要求執行 [city-traffic-simulation](../specs/city-traffic-simulation/)：NavMesh、NPC AI、車輛、紅綠燈行為、LOD、多角色模擬。採既有程序街道／角色、上限24行人8車、保守輪序過街與路口清空；控制面板預設關閉。此項取代歷史LATER-03延後範圍中的本次六項，非第七里程碑；LATER-01、WebGPU、Blender城市與舊人工驗收維持。ViewerApp／main共用檔必須依序進行，不可平行；未commit／push。詳見spec tasks／validation。
+
+2026-11-01 SOLAR-01／1U-0：使用者核准 [solar-sport](../specs/solar-sport/)，Time of Day追加24小時轉盤（每小時5格）、相機指北針及四季／緯度太陽控制；太陽時間及代表季節，非民用時間／精密天文。沿用既有光照及路燈，無新增依賴／資產；依序實作、inline審閱，非第七里程碑，保留最新人工驗收裁定。詳見spec validation。

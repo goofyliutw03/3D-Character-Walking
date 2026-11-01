@@ -1,3 +1,4 @@
+import { cameraHeading, solarPosition, type SolarSettings } from '../scene/SolarPosition.ts';
 import { Mesh, MeshBasicMaterial, PerspectiveCamera, SphereGeometry, Vector3 } from 'three';
 import { TargetActor } from '../character/TargetActor';
 import { ParticleInteraction, type ParticleSettings, type ParticleSnapshot } from '../interaction/ParticleInteraction';
@@ -25,6 +26,8 @@ import { MouseOrbitGesture } from '../input/MouseOrbitGesture';
 import { CameraObstruction, type ObstructionMode } from '../camera/CameraObstruction';
 import { createSpraySource, type WaterSettings } from '../water/index.ts';
 import { SceneObjectInspector } from '../inspector/SceneObjectInspector';
+import { TrafficSimulation, type TrafficSettings, type TrafficSnapshot } from '../simulation/TrafficSimulation.ts';
+import { TrafficView } from '../simulation/TrafficView.ts';
 
 export type CameraPreset = CameraView;
 export interface CharacterStatus { variant: CharacterVariant; action: MotionSnapshot['action']; running: boolean; following: boolean; firstPerson: boolean; cameraView: CameraView; navigation: NavigationStatus; obstructionMode: ObstructionMode }
@@ -52,6 +55,8 @@ export class ViewerApp {
   private readonly waterSource = createSpraySource();
   private readonly assets: CharacterAssets;
   private readonly target: TargetActor;
+  private readonly traffic: TrafficSimulation;
+  private readonly trafficView = new TrafficView();
   private readonly particles = new ParticleInteraction();
   private readonly casterMarker = new Mesh(new SphereGeometry(.075,12,8), new MeshBasicMaterial({color:'#66ddff'}));
   private readonly targetMarker = new Mesh(new SphereGeometry(.09,12,8), new MeshBasicMaterial({color:'#ffbf69'}));
@@ -60,14 +65,19 @@ export class ViewerApp {
   private variant: CharacterVariant = 'man';
   private motion: Readonly<MotionSnapshot>;
   private readonly events = new AbortController();
+  private solarReport: ((heading: number, elevation: number) => void) | null = null;
+  private solarHeading = 0;
+  private readonly solarDirection = new Vector3();
   private lastTime = 0;
   private sampleTime = 0;
   private frameCount = 0;
   private contextLost = false;
   private disposed = false;
-  constructor(private readonly container: HTMLElement, private readonly report: (message: string) => void, private readonly fps: (value: number) => void, private readonly characterReport?: (status: CharacterStatus) => void, assetReport?: (state: LoadingState) => void, private readonly metricsReport?: (stats: RenderStats) => void, targetReport?: (state: LoadingState) => void, private readonly particleReport?: (state: ParticleSnapshot) => void) {
+  constructor(private readonly container: HTMLElement, private readonly report: (message: string) => void, private readonly fps: (value: number) => void, private readonly characterReport?: (status: CharacterStatus) => void, assetReport?: (state: LoadingState) => void, private readonly metricsReport?: (stats: RenderStats) => void, targetReport?: (state: LoadingState) => void, private readonly particleReport?: (state: ParticleSnapshot) => void, private readonly trafficReport?: (state: TrafficSnapshot) => void) {
     this.view = new SceneRenderer(container, this.camera);
     this.city = new CityScene();
+    this.traffic = new TrafficSimulation(this.city.walkableWorld);
+    this.city.scene.add(this.trafficView.root);
     this.obstruction = new CameraObstruction(this.city.environment);
     const obstructions = [...this.city.environment.children];
     this.desiredCamera.copy(this.camera);
@@ -77,6 +87,7 @@ export class ViewerApp {
     this.navigation = new DestinationNavigation(this.city.walkableWorld);
     this.input = new InputManager(window, document, () => { this.navigation.cancel(); this.tap?.cancel(); });
     this.motion = this.movement.update(0, this.input.sample());
+    this.city.updateLampShadowPosition(this.motion);
     this.character.update(this.motion, 0);
     this.city.scene.add(this.character.root);
     this.target = new TargetActor(this.city.walkableWorld, state => targetReport?.(state));
@@ -165,9 +176,11 @@ export class ViewerApp {
     if (manual.x || manual.z || manual.jump) this.navigation.cancel();
     const intent = this.navigation.status === 'running' ? this.navigation.sample(this.motion, delta) : manual;
     this.motion = this.movement.update(delta, intent);
+    this.city.updateLampShadowPosition(this.motion);
     this.character.update(this.motion, delta);
     this.assets.current?.update(this.motion, delta);
     this.target.update(delta);
+    this.traffic.update(waterDelta, [this.motion, this.target.anchor]);
     const casterAnchor = this.getCasterAnchor();
     const targetAnchor = this.target.anchor;
     this.casterMarker.position.copy(casterAnchor); this.targetMarker.position.copy(targetAnchor);
@@ -179,6 +192,15 @@ export class ViewerApp {
     this.desiredCamera.updateProjectionMatrix();
     this.cameras.update(this.getCameraSubject(), delta, immediate);
     this.updateObstruction(delta, immediate);
+    if (this.solarReport) {
+      this.camera.getWorldDirection(this.solarDirection);
+      this.solarHeading = cameraHeading(this.solarDirection.x, this.solarDirection.z, this.solarHeading);
+      const settings = this.city.getSolarSettings();
+      this.solarReport(this.solarHeading, solarPosition(settings.hour, settings.season, settings.latitude).elevation);
+    }
+    const trafficState = this.traffic.snapshot;
+    this.trafficView.update(trafficState, this.camera, waterDelta);
+    this.trafficReport?.(trafficState);
     this.view.waterLens.update(waterDelta,this.camera,
       this.city.getWaterSpraySource(this.waterSource)?this.waterSource:undefined,
       this.city.environment,this.city.waterSettings,immediate);
@@ -227,6 +249,9 @@ export class ViewerApp {
     if (!this.cameras.characterVisible) this.overlay.place(null);
   }
   mountObjectInspector(host: HTMLElement): void { if (!this.disposed) this.inspector.mount(host); }
+  getTrafficState(): TrafficSnapshot { return this.traffic.snapshot; }
+  configureTraffic(patch: Partial<TrafficSettings>): boolean { return !this.disposed && this.traffic.configure(patch); }
+  resetTraffic(): void { if (!this.disposed) this.traffic.reset(); }
   setEmotion(emotion: Emotion): void { this.expressions.setEmotion(emotion); this.updateExpression(); }
   setObstructionMode(mode: ObstructionMode): void {
     this.obstruction.setMode(mode);
@@ -243,6 +268,14 @@ export class ViewerApp {
     this.overlay.setContent(state, emotions[state.emotion].icon);
   }
   setEvening(evening: boolean): void { this.city.setEvening(evening); }
+  getLampShadowDetection(): ReturnType<CityScene['getLampShadowDetection']> { return this.city.getLampShadowDetection(); }
+  setLampShadowDetection(enabled: boolean, radius: number): boolean { return !this.disposed && this.city.setLampShadowDetection(enabled, radius); }
+  getLampShadowOptions(): ReturnType<CityScene['getLampShadowOptions']> { return this.city.getLampShadowOptions(); }
+  setLampShadowSelection(ids: readonly number[]): boolean { return !this.disposed && this.city.setLampShadowSelection(ids); }
+  getSolarSettings(): SolarSettings { return this.city.getSolarSettings(); }
+  configureSolar(patch: Partial<SolarSettings>): boolean { return !this.disposed && this.city.configureSolar(patch); }
+  getTimeOfDay(): TimeOfDay { return this.city.timeOfDay; }
+  setSolarReport(report: ((heading: number, elevation: number) => void) | null): void { this.solarReport = this.disposed ? null : report; }
   setTimeOfDay(time: TimeOfDay): boolean { return !this.disposed && this.city.setTimeOfDay(time); }
   configureWater(patch: Partial<WaterSettings>): boolean {
     if(this.disposed || !this.city.configureWater(patch)) return false;
@@ -293,11 +326,14 @@ export class ViewerApp {
     this.character.setShadows(enabled);
     this.assets.current?.setShadows(enabled);
     this.target.setShadows(enabled);
+    this.trafficView.setShadows(enabled);
   }
   dispose(): void {
     if (this.disposed) return;
-    this.disposed = true; this.events.abort();
+    this.disposed = true;
+    this.solarReport = null; this.events.abort();
     this.inspector.dispose();
+    this.traffic.dispose(); this.trafficView.dispose();
     this.mouseOrbit.dispose(); this.tap.dispose(); this.destinationMarker.remove();
     this.assets.dispose(); this.input.dispose(); this.character.dispose(); this.overlay.dispose();
     this.target.dispose(); this.particles.dispose(); this.actorLabels.forEach(label=>label.remove());

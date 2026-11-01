@@ -122,4 +122,9 @@ SocratiCode增量更新已完成，status green：62個indexable檔案範圍，1
 ## 2026-10-31 剩餘驗收盤點（1Q-1）
 承接 1Q-0 使用者回報「Galaxy S25+ OK」：確認該 Android 實機本次 Mobile Orbit 操作；iOS OK 沿用 1L-1 使用者來源。沒有 OS／瀏覽器版本，不推定所有瀏覽器、效能或 display scale 通過。
 
-- [ ] SCENE-05-FOLD：依使用者「摺疊機型先列 Todo, 直接進行下一階段」，雙摺／三摺保留後續實機驗收，不阻擋本次盤點。涵蓋外屏、各展開狀態、切換中 resize、預設／放大 display scale、單指 hold／drag、雙指 pinch／pan、多指取消及背景返回。未執行，不概括關閉 SCENE-05。
+- SCENE-05-FOLD：已取消（2026-10-31最新使用者裁定）。原先依「摺疊機型先列 Todo, 直接進行下一階段」保留外屏、展開、resize、display scale、手勢與背景返回專項；使用者現決定由Browser處理相容性，取消此驗收範圍，未執行、不標為測試通過。
+
+### 最新驗收狀態（2026-10-31）
+使用者明確更新：手機完整操作驗收Done；跨GPU／瀏覽器相容性ToDo；雙摺／三摺專項取消；IME輸入法ToDo。手機Done依使用者驗收回報記錄，不虛構裝置或工具證據；效能與螢幕閱讀器待辦未變更。以docs/remaining-acceptance.md最新裁定為準，取代上述舊待驗狀態，不追改歷史測試結果。
+
+2026-10-31 跨GPU補登：使用者回報另一電腦GeForce RTX2050 4GB VRAM／Chrome156.0.8078.74 Official Build64-bit操作OK，記舊版一般操作USER_REPORTED_PASS。非工具直接觀察、不代表1R-2新增路燈陰影或原生half-float fallback已驗；SCENE-04整體PARTIAL，其他矩陣／效能／讀屏待辦保留。以docs/remaining-acceptance.md最新回報為準。

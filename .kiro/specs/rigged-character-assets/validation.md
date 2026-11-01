@@ -106,3 +106,12 @@ main / af73f11fe44c406ec784aeb9e496a710b2c6c939，保留所有里程碑3–5修�
 - EVIDENCE: Fresh39/39 tests、production build及正常browser、真實缺檔＋Retry、19條覆蓋與inline整合審閱、hash readback。
 - GAPS: child與Jump為使用者授權的專案衍生，非獨立原作者小孩／Jump資產、非mocap／臉部動畫。未驗跨GPU／瀏覽器、實機觸控效能、實體IME／螢幕閱讀器、故意context-loss；FPS不是跨平台承諾。原Front近距幾何遮擋未定位／未修復，500kB advisory保留。
 - NOTES: 未stage／commit／push，HEAD未變，所有既有未提交內容保留。六個功能里程碑的程式交付完成仍待使用者6結束確認，人工／環境驗收不是自動完成。
+
+## 2026-10-31 IME 追加驗收（1Q-2）
+既有 SpeechEditor／InputManager／ExpressionManager 測試8/8 PASS，屬合成事件與狀態契約證據。main focus／Clear 與 inspector isComposing Enter 接線已 inline 審閱，未修改產品。Windows Computer Use 因無法可靠辨識 Chrome URL 停止，未取得真實中文組字證據；不以 paste／fill／合成事件冒稱真實 IME。結論 MANUAL_VERIFY_REQUIRED／ToDo；六項原生組字待驗步驟及工具限制見 [remaining-acceptance](../../../docs/remaining-acceptance.md#ime-驗收進度1q-22026-10-31)。本次不關閉其他人工驗收、不 commit／push。Token 用量：無法取得精確值，缺少官方起點。
+
+2026-10-31 1Q-2人工回報追加：使用者於中文組字、Enter／Space選字、Escape取消、Clear及角色不誤移動／跳躍的操作請求後回覆「OK No problem, please go on」，此組基本操作依使用者回報PASS，非工具實測。組字草稿／blur特定時序、160字邊界、inspector及未單獨確認細節仍ToDo／MANUAL_VERIFY_REQUIRED；詳見docs/remaining-acceptance.md的1Q-2使用者人工驗收追加。無runtime變更、commit或push。
+
+2026-10-31 1Q-2最終裁定：使用者對組字中blur後返回、160字上限組字、inspector候選Enter隔離三組明確操作回覆「三項皆正常」。結合基本IME操作先前回報，本階段記Done／USER_REPORTED_PASS，取代歷史IME待驗狀態；為使用者人工驗收，非工具直接實測或所有輸入法／平台相容承諾。詳細範圍與限制見docs/remaining-acceptance.md的1Q-2最終裁定。其他跨GPU／效能／讀屏待辦不變。無runtime修改、commit／push。
+
+2026-10-31 跨GPU補登：使用者回報另一電腦GeForce RTX2050 4GB VRAM／Chrome156.0.8078.74 Official Build64-bit操作OK，記舊版一般操作USER_REPORTED_PASS。非工具直接觀察、不代表1R-2新增路燈陰影或原生half-float fallback已驗；SCENE-04整體PARTIAL，其他矩陣／效能／讀屏待辦保留。以docs/remaining-acceptance.md最新回報為準。

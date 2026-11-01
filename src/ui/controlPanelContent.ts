@@ -1,3 +1,4 @@
+import { solarControlsContent } from './SolarControls';
 import { emotions, speechLimit } from '../expression/ExpressionManager';
 import { renderFunctionTree } from './FunctionTree';
 
@@ -65,10 +66,29 @@ export function controlPanelContent(obstructionHint: string): string {
         ` }
     ] },
     { id: 'scene', label: 'Scene display', open: false, children: [
+      { id: 'traffic-simulation', label: 'City traffic', open: false, content: `
+        <label class="toggle-row" for="traffic-enabled"><span>Enable simulation</span><input id="traffic-enabled" type="checkbox"></label>
+        <label class="toggle-row" for="traffic-paused"><span>Pause traffic & pedestrians</span><input id="traffic-paused" type="checkbox"></label>
+        <div class="particle-settings"><label for="traffic-npcs">Pedestrians · 0–24<input id="traffic-npcs" type="number" min="0" max="24" step="1" value="6"></label>
+        <label for="traffic-vehicles">Vehicles · 0–8<input id="traffic-vehicles" type="number" min="0" max="8" step="1" value="4"></label></div>
+        <label class="toggle-row" for="traffic-lod"><span>Distance LOD</span><input id="traffic-lod" type="checkbox" checked></label>
+        <div class="object-filter-actions"><button id="traffic-reset" type="button">Reset simulation</button></div>
+        <p class="hint" id="traffic-status" role="status" aria-live="polite">Simulation off · 6 pedestrians · 4 vehicles.</p>
+        <p class="hint">Procedural characters follow a surface NavMesh. Pedestrians take turns crossing; vehicles wait for clearance. Counts reset the simulation. Distant models use fewer parts. Your character and Target stay independent.</p>` },
       { id: 'scene-objects', label: 'Scene objects', open: false, content: '<div id="scene-object-inspector"></div>' },
       { id: 'atmosphere', label: 'Lighting & shadows', open: true, content: `<label class="select-label" for="lighting">Time of day</label>
+        ${solarControlsContent}
         <select id="lighting"><option value="day">☀ &nbsp; Soft daylight</option><option value="evening">◐ &nbsp; Golden hour</option><option value="night">☾ &nbsp; Night</option></select>
-        <label class="toggle-row" for="shadows"><span>Cast shadows</span><input id="shadows" type="checkbox" checked></label>` },
+        <label class="toggle-row" for="shadows"><span>Cast shadows</span><input id="shadows" type="checkbox" checked></label>
+        <fieldset id="lamp-shadows" disabled aria-describedby="lamp-shadow-help"><legend>Night shadow lights</legend>
+        <label class="toggle-row" for="lamp-shadow-auto"><span>陰影自動觸發偵測</span><input id="lamp-shadow-auto" type="checkbox"></label>
+        <label class="select-label" for="lamp-shadow-radius">偵測半徑 · <output id="lamp-shadow-radius-value" for="lamp-shadow-radius">10 m</output></label>
+        <input id="lamp-shadow-radius" type="range" min="1" max="30" step="0.5" value="10" disabled>
+        ${[-4.4, 4.4].flatMap((x, side) => [-17, 3, 20].map((z, index) => {
+          const id = side * 3 + index + 1;
+          return `<label class="toggle-row" for="lamp-shadow-${id}"><span>Light ${id} · x ${x}, z ${z} m</span><input id="lamp-shadow-${id}" data-lamp-shadow="${id}" type="checkbox"${id === 2 ? ' checked' : ''}></label>`;
+        })).join('')}</fieldset>
+        <p id="lamp-shadow-help" class="hint">Night + Cast shadows only. Checked lights are candidates. Auto off: all cast simultaneously. Auto on: candidates within the full 3D radius cast. Clear all for no lamp shadows. Default: Light 2. More lights increase GPU cost. Selection stays when disabled.</p>` },
       { id: 'water-feature', label: 'Water feature', open: true, content: `
         <p class="hint">A small cascade at the far end of the street. Walk around the stone basin.</p>
         <label class="toggle-row" for="water-enabled"><span>Dynamic water</span><input id="water-enabled" type="checkbox" checked></label>
