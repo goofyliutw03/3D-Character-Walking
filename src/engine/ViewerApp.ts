@@ -5,6 +5,7 @@ import { ParticleInteraction, type ParticleSettings, type ParticleSnapshot } fro
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CityScene, type TimeOfDay } from '../scene/CityScene';
 import { SceneRenderer, type RenderStats } from './SceneRenderer';
+import type { NeedleRuntime } from './NeedleRuntime';
 import { Character } from '../character/Character';
 import { CharacterController } from '../character/CharacterController';
 import type { CharacterVariant, MotionSnapshot } from '../character/motion';
@@ -73,6 +74,7 @@ export class ViewerApp {
   private frameCount = 0;
   private contextLost = false;
   private disposed = false;
+  private needle?: NeedleRuntime;
   constructor(private readonly container: HTMLElement, private readonly report: (message: string) => void, private readonly fps: (value: number) => void, private readonly characterReport?: (status: CharacterStatus) => void, assetReport?: (state: LoadingState) => void, private readonly metricsReport?: (stats: RenderStats) => void, targetReport?: (state: LoadingState) => void, private readonly particleReport?: (state: ParticleSnapshot) => void, private readonly trafficReport?: (state: TrafficSnapshot) => void) {
     this.view = new SceneRenderer(container, this.camera);
     this.city = new CityScene();
@@ -161,9 +163,33 @@ export class ViewerApp {
     }, { signal: this.events.signal });
     canvas.addEventListener('webglcontextrestored', () => { this.contextLost = false; this.lastTime = 0; this.report('WebGL2 · connection restored'); }, { signal: this.events.signal });
     document.addEventListener('visibilitychange', () => { this.lastTime = 0; }, { signal: this.events.signal });
-    this.view.renderer.setAnimationLoop(time => this.update(time));
+    if (new URLSearchParams(location.search).get('engine') === 'legacy') {
+      this.view.renderer.setAnimationLoop(time => this.update(time));
+    } else {
+      void this.startNeedle();
+    }
     this.report('WebGL2 · ready');
     void this.assets.select(assetCatalog[this.variant]);
+  }
+  private async startNeedle(): Promise<void> {
+    try {
+      const { NeedleRuntime } = await import('./NeedleRuntime');
+      if (this.disposed) return;
+      this.needle = new NeedleRuntime(this.view.renderer, time => this.update(time));
+      await this.needle.start(this.city.scene, this.camera);
+      if (!this.disposed) this.report('Needle Engine · WebGL2 ready');
+    } catch (error) {
+      if (this.disposed) return;
+      console.error('Needle Engine initialization failed', error);
+      try {
+        this.needle?.dispose(true);
+      } catch (cleanupError) {
+        console.error('Needle Engine cleanup failed', cleanupError);
+      }
+      this.needle = undefined;
+      this.view.renderer.setAnimationLoop(time => this.update(time));
+      this.report('WebGL2 · Needle Engine unavailable');
+    }
   }
   private update(time: number): void {
     if (this.disposed || this.contextLost) return;
@@ -338,6 +364,7 @@ export class ViewerApp {
     this.assets.dispose(); this.input.dispose(); this.character.dispose(); this.overlay.dispose();
     this.target.dispose(); this.particles.dispose(); this.actorLabels.forEach(label=>label.remove());
     for(const marker of [this.casterMarker,this.targetMarker]) {marker.geometry.dispose();marker.material.dispose();marker.removeFromParent();}
+    this.needle?.dispose();
     this.controls.dispose(); this.obstruction.dispose(); this.city.dispose(); this.view.dispose();
   }
 }

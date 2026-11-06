@@ -42,3 +42,11 @@ Token 基準：本 chat 首個取得的檢查點 2026-10-29T14:06:21.439Z，inpu
 檢查點2026-10-29T14:10:23Z：input976,442／output7,264／total983,706。可確認區間差額input895,341／output6,881／total902,222；cached input差額867,840已含於input，reasoning624已含於output。本機rollout token_count累計差，不是帳號百分比或估算；不包含開頭缺少基準區間及此檢查點後的文件／索引／回覆。完整階段token用量：無法取得精確值。
 
 索引：2026-10-29 22:11（Asia/Taipei）codebase_update完成；掃描71個可索引檔，新增1／更新2／刪除0，8個新chunks。codebase_status確認green、Incremental update completed、共177 chunks；graph53檔94edges，watcher disabled。範圍為遵守.gitignore／.socraticodeignore的專案可索引檔；不含外部Release，亦不宣稱所有Markdown或資產均有embedding。無索引錯誤、未安裝或下載任何工具／模型。
+
+## Needle Engine Release 驗收（2026-11-06）
+
+- 發佈來源為 `feat/needle-integration`，基底 `2825627`，使用 Needle Engine 5.1.16。123 項測試及正式建置通過。Release 同步新增 11 檔、更新 2 檔、略過 13 檔。入口與 Needle 模組的 SHA-256 均與建置產物一致。
+- 桌面內建瀏覽器在正式 Release 確認 Needle 就緒、點地行走與抵達狀態。獨立水景頁可暫停與切換品質，10 次建立、切換品質與釋放後仍為 31 個幾何物件與 3 張紋理。
+- iPhone Chrome 經 Wi-Fi 區網開啟正式 Release。主場景與獨立水景頁均由使用者實機回報通過。這筆回報未附幀率、載入時間或逐項手勢結果。
+- 在隔離預覽分別模擬 Needle 模組下載失敗及 Context 建立後初始化失敗。兩種情況均在原頁回退 WebGL2，維持場景渲染、骨架角色載入及粒子發射。
+- 此發佈基底早於前一個 Release 的人物位置與手動速度編輯功能。建置仍有大型 chunk 警告，載入與跨裝置效能尚未量測。
