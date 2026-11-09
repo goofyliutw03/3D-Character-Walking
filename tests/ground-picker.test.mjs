@@ -5,7 +5,7 @@ import { CityScene } from '../src/scene/CityScene.ts';
 import { projectAnchor } from '../src/camera/AnchorProjection.ts';
 import { pickGround } from '../src/navigation/GroundPicker.ts';
 
-test('mobile 2.3: real city road/sidewalk/paint are accepted; trees, grass, bounds and occlusion rejected', () => {
+test('mobile 2.3: real city surfaces accepted, obstacle footprints rejected and scenery penetrated', () => {
   const city = new CityScene();
   const camera = new PerspectiveCamera(70, 1, 0.1, 100);
   const pick = (x, z, y, fish = false) => {
@@ -26,6 +26,8 @@ test('mobile 2.3: real city road/sidewalk/paint are accepted; trees, grass, boun
     }
     camera.position.set(7.2, 2, 5); camera.lookAt(7.2, 0.3, -3); camera.updateMatrixWorld();
     const p = projectAnchor(new Vector3(7.2, 0.3, -3), camera, 500, 500, false);
-    assert.equal(pickGround(p, camera, 500, 500, false, city.scene.children, city.walkableWorld), null);
+    const throughScenery = pickGround(p, camera, 500, 500, false, city.scene.children, city.walkableWorld);
+    assert.ok(throughScenery);
+    assert.ok(Math.hypot(throughScenery.x - 7.2, throughScenery.z + 3) < .03);
   } finally { city.dispose(); }
 });

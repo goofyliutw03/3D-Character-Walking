@@ -7,13 +7,36 @@ export class CharacterController {
   private readonly state: MotionSnapshot;
   private velocityY = 0;
   private jumpHeld = false;
+  private walkingSpeed = 1.8;
+  get snapshot(): Readonly<MotionSnapshot> { return { ...this.state }; }
+  get walkSpeed(): number { return this.walkingSpeed; }
+  setWalkSpeed(speed: number): boolean {
+    if (!Number.isFinite(speed) || speed < .5 || speed > 4) return false;
+    this.walkingSpeed = speed;
+    return true;
+  }
+  relocate(position: { x: number; y: number; z: number }, snap = true): boolean {
+    const { x, y, z } = position;
+    const b = this.world.bounds;
+    if (![x, y, z].every(Number.isFinite) || x < b.minX + RADIUS || x > b.maxX - RADIUS ||
+      z < b.minZ + RADIUS || z > b.maxZ - RADIUS || this.world.obstacles.some(o =>
+        x > o.minX - RADIUS && x < o.maxX + RADIUS && z > o.minZ - RADIUS && z < o.maxZ + RADIUS)) return false;
+    const ground = this.world.groundHeight(x, z);
+    if (!Number.isFinite(ground) || (!snap && (y < ground || y > ground + 10))) return false;
+    Object.assign(this.state, { x, y: snap ? ground : y, z, speed: 0, grounded: snap || y === ground,
+      action: snap || y === ground ? 'idle' : 'jump' });
+    this.velocityY = 0;
+    this.jumpHeld = false;
+    return true;
+  }
   constructor(private readonly world: WalkableWorld) {
     this.state = { x: 0, y: world.groundHeight(0, 5), z: 5, heading: Math.PI, speed: 0, grounded: true, action: 'idle' };
   }
-  update(delta: number, intent: MovementIntent): Readonly<MotionSnapshot> {
+  update(delta: number, intent: MovementIntent, speedOverride?: number): Readonly<MotionSnapshot> {
     const dt = Math.min(Math.max(Number.isFinite(delta) ? delta : 0, 0), 0.05);
     const magnitude = Math.hypot(intent.x, intent.z);
-    const scale = (intent.run ? 4 : 1.8) / Math.max(1, magnitude);
+    const speed = speedOverride ?? (intent.run ? 4 : this.walkingSpeed);
+    const scale = speed / Math.max(1, magnitude);
     const vx = intent.x * scale;
     const vz = intent.z * scale;
     if (magnitude > 0) this.state.heading = Math.atan2(intent.x, intent.z);
@@ -42,7 +65,7 @@ export class CharacterController {
       }
     }
     this.state.speed = dt > 0 ? Math.hypot(this.state.x - startX, this.state.z - startZ) / dt : 0;
-    this.state.action = !this.state.grounded ? 'jump' : this.state.speed < 0.00001 ? 'idle' : intent.run ? 'run' : 'walk';
+    this.state.action = !this.state.grounded ? 'jump' : this.state.speed < 0.00001 ? 'idle' : intent.run || speed > 1.8 ? 'run' : 'walk';
     return { ...this.state };
   }
   private moveAxis(axis: 'x' | 'z', distance: number): number {

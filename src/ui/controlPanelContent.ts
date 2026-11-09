@@ -1,4 +1,8 @@
+import { environmentLightsContent } from './EnvironmentLightControls';
+import { tourControlsContent } from './TourControls';
+import { characterEditorContent } from './CharacterEditor';
 import { solarControlsContent } from './SolarControls';
+import { headlampControlsContent } from './HeadlampControls';
 import { emotions, speechLimit } from '../expression/ExpressionManager';
 import { renderFunctionTree } from './FunctionTree';
 
@@ -8,6 +12,15 @@ export function controlPanelContent(obstructionHint: string): string {
       { id: 'character-choice', label: 'Selection', open: true, content: `<span class="tag" id="character-source">LOADING</span><label class="select-label" for="character">Choose a character</label>
         <select id="character"><option value="man">Man</option><option value="woman">Woman</option><option value="child">Child</option></select>
         ` },
+      { id: 'character-tour', label: 'Automatic tour', open: false, content: tourControlsContent },
+      { id: 'auto-run', label: 'Automatic run', open: true, content: `<label class="toggle-row" for="auto-run"><span>Auto run</span><input id="auto-run" type="checkbox"></label>
+        <button id="auto-run-resume" type="button" hidden>Resume auto run</button>
+        <output id="auto-run-status" aria-live="polite">Off</output>
+        <button id="touch-reverse" type="button">反向 180°</button>
+        <button id="touch-look-reset" type="button">鏡頭歸位</button>
+        <p class="hint">手機自動奔跑：單指左右拖曳轉向，上下調整視角。雙指同向拖曳環繞觀察，張開拉近、捏合拉遠。拉近到底後繼續張開可進入第一人稱並暫停；單指拖曳觀看，捏合退出並恢復原跑停狀態。以 Auto run 開關及 Stop 控制奔跑。</p>
+        <p class="hint">Focus the scene and press Y to toggle auto run. Third person / fisheye: move mouse to steer, hold Ctrl to orbit. Vertical motion tilts the view. Middle click reverses, F1 resets the view. Zoom fully in, then scroll again to inspect in first person. Scroll out to return. Stop ends auto run.</p>` },
+      { id: 'character-editor', label: 'Position & manual speed', open: false, content: characterEditorContent },
       { id: 'character-assets', label: 'Asset & action status', open: false, content: `<p class="hint" id="character-asset-hint">Loading a local rigged character. Procedural preview is available.</p>
         <a class="asset-credits" href="/assets/characters/ATTRIBUTION.md" target="_blank" rel="noopener">Character sources & modifications ↗</a>
         <p id="character-status" class="character-status" role="status" aria-live="polite" aria-atomic="true">Man · Idle</p>
@@ -63,9 +76,15 @@ export function controlPanelContent(obstructionHint: string): string {
           <option value="xray">4 · X-ray character · 50%</option>
         </select>
         <p class="hint" id="obstruction-hint">${obstructionHint}</p>
+        <label class="toggle-row" for="ground-penetration"><span>點擊穿透環境</span><input id="ground-penetration" type="checkbox" checked aria-describedby="ground-penetration-hint"></label>
+        <p class="hint" id="ground-penetration-hint">開啟時點地可穿透牆壁與天花板；關閉時環境會遮擋點擊。角色與指定控制物件仍會攔截。</p>
         ` }
     ] },
     { id: 'scene', label: 'Scene display', open: false, children: [
+      { id: 'environment', label: 'Environment', open: true, content: `<label class="select-label" for="environment">Active environment</label>
+        <select id="environment"><option value="city">City street</option><option value="cave">Rock chamber</option></select>
+        <p id="environment-status" class="hint" role="status">City street ready.</p>` },
+      { id: 'city-buildings', label: 'City buildings', open: true, content: `<p id="building-status" class="hint" role="status" aria-live="polite">Loading original Blender buildings…</p><button id="retry-buildings" type="button" hidden>Retry buildings</button><a class="asset-credits" href="/assets/city/ATTRIBUTION.md" target="_blank" rel="noopener">Original buildings & hybrid scene credits ↗</a>` },
       { id: 'traffic-simulation', label: 'City traffic', open: false, content: `
         <label class="toggle-row" for="traffic-enabled"><span>Enable simulation</span><input id="traffic-enabled" type="checkbox"></label>
         <label class="toggle-row" for="traffic-paused"><span>Pause traffic & pedestrians</span><input id="traffic-paused" type="checkbox"></label>
@@ -78,6 +97,8 @@ export function controlPanelContent(obstructionHint: string): string {
       { id: 'scene-objects', label: 'Scene objects', open: false, content: '<div id="scene-object-inspector"></div>' },
       { id: 'atmosphere', label: 'Lighting & shadows', open: true, content: `<label class="select-label" for="lighting">Time of day</label>
         ${solarControlsContent}
+        ${environmentLightsContent}
+        ${headlampControlsContent}
         <select id="lighting"><option value="day">☀ &nbsp; Soft daylight</option><option value="evening">◐ &nbsp; Golden hour</option><option value="night">☾ &nbsp; Night</option></select>
         <label class="toggle-row" for="shadows"><span>Cast shadows</span><input id="shadows" type="checkbox" checked></label>
         <fieldset id="lamp-shadows" disabled aria-describedby="lamp-shadow-help"><legend>Night shadow lights</legend>

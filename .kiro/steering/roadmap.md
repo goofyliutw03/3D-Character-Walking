@@ -1,5 +1,11 @@
 # cc-sdd 規劃對應與待辦
 
+2026-11-08 [1Y-8] auto-run-camera-controls手機適配完成，單／雙指、靜止第一人稱進出、觸控按鈕與提示。158tests及Needle／legacy行動尺寸實際touch事件驗證通過，證據與真機限制見該spec validation；共用檔依序，未commit／push。
+
+2026-11-07 [1Y-5] 已核准auto-run-camera-controls追加管理分工：CameraController、CameraModeManager、CameraInputManager；共用檔依序修改，需求9與tasks4–5，不擴張光源面板。
+
+2026-11-07 [1Y-4] 已核准 [auto-run-camera-controls](../specs/auto-run-camera-controls/)，依序規格／實作／inline 審閱，自動奔跑與鼠控、滾輪第一人稱、頭燈方向及 F5 同步。保留既有修改，共用檔未平行，未 commit／push；不擴大人工驗收結論。
+
 2026-10-31 SCENE-04（1Q-3）：本機唯讀清單為GTX1060 6GB／driver32.0.15.8278，Chrome156／Edge156已找到；Chrome既有Release分頁AX可讀WebGL2 ready／Rigged man Ready。原生工具導航／點擊不可靠且此chat無iab，Edge尚未載入Release；未取得本次renderer extension／framebuffer結果。跨GPU／瀏覽器及原生half-float不支援環境維持ToDo／MANUAL_VERIFY_REQUIRED，待驗矩陣COMPAT-01–04見docs/remaining-acceptance.md。無產品修改，不將歷史同GPU證據外推；IME Done、手機操作Done、摺疊專項取消與效能／讀屏待辦維持。
 
 2026-10-31 最新驗收裁定（優先於下方歷史待驗文字）：使用者確認手機完整操作驗收Done；跨GPU／瀏覽器相容性ToDo；雙摺／三摺螢幕專項取消（使用者決定由Browser處理相容性，不冒稱測試通過）；IME輸入法ToDo。效能ACCEPT-01及螢幕閱讀器未變更。詳見[剩餘驗收盤點最新裁定](../../docs/remaining-acceptance.md)。不擴張功能或自動啟動延後項。
@@ -72,7 +78,7 @@
 | 里程碑 6：rigged GLB／動畫／效能／本機操作 | docs/development-plan.md:23 | a | rigged-character-assets，initialized；原型不能替代真實動畫驗收 | GLB-01 | 角色狀態、UI、public/assets/、README.md |
 | 資產來源／授權、root motion 或 in-place、clip 缺失與閾值／hysteresis | docs/initial-design-plan.md:67；docs/initial-design-plan.md:71 | c | 尚待資產與設計決定；由 GLB spec requirements／design 釐清，不直接採納歷史數值 | GLB-02 | GLB-01、CHAR-01；不自行下載／安裝 Blender |
 | 相容瀏覽器與效能門檻 | docs/initial-design-plan.md:90 | c | 在相關 spec requirements 明定並審閱，SCENE-04／05 與 GLB-01 共用基準 | ACCEPT-01 | SceneRenderer.ts、驗收環境 |
-| WebGPU 與 fallback 評估 | docs/development-plan.md:33 | c | 維持延後，另行評估與核准；目前是 WebGL2 | RENDER-01 | SceneRenderer.ts；不得宣稱已支援 |
+| WebGPU 與 fallback 評估 | [開發計畫](../../docs/development-plan.md) | c | 評估完成。兩種新 backend 均無法呈現現有 GLSL 材質，正式版維持 WebGL2。見 [實測與移植條件](../../docs/webgpu-assessment.md) | RENDER-01 | SceneRenderer、水與後製 |
 | chunk >500 kB | docs/stage-1.2.md:19 | d | advisory，非 build 失敗；資產整合時再評估拆包，非現在修改 | PERF-01 | GLB-01、建置配置 |
 | 歷史自動巡迴／waypoint／loop／pause／speed | docs/initial-design-plan.md:80 | c | 未納入目前六里程碑，延後；日後核准才建 path-navigation spec | LATER-01 | CharacterController、camera；不得默默取消或開發 |
 | Blender 城市／貼地、Inspector／debug／XYZ／速度滑桿 | docs/initial-design-plan.md:79；docs/initial-design-plan.md:81 | c | 靜態程序化街景與 FPS 已有；其餘歷史提案延後，先確認需求 | LATER-02 | CityScene.ts、main.ts、資產來源 |
@@ -119,3 +125,13 @@
 使用者要求執行 [city-traffic-simulation](../specs/city-traffic-simulation/)：NavMesh、NPC AI、車輛、紅綠燈行為、LOD、多角色模擬。採既有程序街道／角色、上限24行人8車、保守輪序過街與路口清空；控制面板預設關閉。此項取代歷史LATER-03延後範圍中的本次六項，非第七里程碑；LATER-01、WebGPU、Blender城市與舊人工驗收維持。ViewerApp／main共用檔必須依序進行，不可平行；未commit／push。詳見spec tasks／validation。
 
 2026-11-01 SOLAR-01／1U-0：使用者核准 [solar-sport](../specs/solar-sport/)，Time of Day追加24小時轉盤（每小時5格）、相機指北針及四季／緯度太陽控制；太陽時間及代表季節，非民用時間／精密天文。沿用既有光照及路燈，無新增依賴／資產；依序實作、inline審閱，非第七里程碑，保留最新人工驗收裁定。詳見spec validation。
+
+2026-11-01 ACCEPT-01／1Q-4：依效能優先授權，固定最新Solar／交通Release、traffic off，完成9組×3輪本機headless工程樣本；方法、數據與限制見docs/performance-acceptance.md。正式門檻未核准，跨裝置效能待驗，ACCEPT-01維持PARTIAL；未開展新功能、未委派／commit／push，不重開手機／IME或摺疊專項。
+
+2026-11-01 LATER-01／1V-0：最新使用者授權取代歷史延後文字，新增 [path-navigation](../specs/path-navigation/) 自動巡迴：可編輯1–32 waypoint、loop、Pause／Resume及0.5–4m/s，手動／點地／Stop／編輯／失焦接管。128tests、正式Release與UI證據見validation。剩餘候選依checkpoint順序自動接續，非新增第七里程碑。ViewerApp／main共用檔必須依序進行，不可平行。
+
+2026-11-02 LATER-02／1W-0：歷史延後由使用者自動續作授權取代，新增 [city-assets-editor](../specs/city-assets-editor/)；八棟原創Blender建築／可重建GLB與.blend、失敗保留程序建築、主角XYZ／貼地／walk速度。原創混合街景範圍明示，無下載或安裝。CharacterController權威、既有導航與Run速度隔離。ViewerApp／CityScene／main必須依序不可平行；非第七里程碑。後續只核對LATER-03真缺口與RENDER-01評估。
+
+2026-11-07 [1Y-7] 已核准 enclosed-space-lights，依序實作與驗證，未委派。32 個場景光源與既有頭燈控制，詳見 spec。
+
+2026-11-08 [1Y-9] 核准 [occlusion-independent-ground-picking](../specs/occlusion-independent-ground-picking/)；城市／洞穴點地穿透、明確角色攔截與自動求交。共用Viewer／場景檔必須依序進行，不可平行；保留既有人工驗收裁定。

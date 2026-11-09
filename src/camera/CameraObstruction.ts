@@ -1,4 +1,4 @@
-import { Mesh, PerspectiveCamera, Raycaster, Vector3, type Group, type Object3D } from 'three';
+import { Mesh, PerspectiveCamera, Raycaster, Vector3, type Box3, type Group, type Object3D } from 'three';
 import type { CameraSubject } from './CameraController';
 import { FollowCamera } from './FollowCamera.ts';
 import { SceneAppearance } from '../scene/SceneAppearance.ts';
@@ -25,26 +25,30 @@ export class CameraObstruction {
     this.appearance.apply('normal');
     this.selected = mode;
   }
-  update(desired: PerspectiveCamera, rendered: PerspectiveCamera, target: Vector3, subject: CameraSubject, delta: number, immediate: boolean, external = true): void {
+  update(desired: PerspectiveCamera, rendered: PerspectiveCamera, target: Vector3, subject: CameraSubject, delta: number, immediate: boolean, external = true, indoorBounds?: Box3): void {
     // Controls own desired; obstruction must never feed its compressed pose back.
     rendered.copy(desired, false);
     this.focus.set(subject.x, subject.y + subject.height * 0.65, subject.z);
+    if (this.selected === 'zoom' && indoorBounds) {
+      indoorBounds.clampPoint(rendered.position, rendered.position);
+      if (external && !rendered.position.equals(desired.position)) rendered.lookAt(target);
+    }
     let destination = 1;
     if (external) {
       this.environment.updateWorldMatrix(true, true);
       this.visibleMeshes.length = 0;
       this.environment.traverseVisible(object => { if (object instanceof Mesh && object.userData.cameraObstruction !== false) this.visibleMeshes.push(object); });
       if (this.selected === 'zoom') {
-        this.probe.position.copy(desired.position);
+        this.probe.position.copy(rendered.position);
         this.constraint.constrain(this.probe, this.focus);
-        const distance = desired.position.distanceTo(this.focus);
+        const distance = rendered.position.distanceTo(this.focus);
         if (distance > 0) destination = Math.min(1, this.probe.position.distanceTo(this.focus) / distance);
       }
       const amount = immediate ? 1 : 1 - Math.exp(-8 * Math.min(Math.max(delta, 0), 0.05));
       this.fraction += (destination - this.fraction) * amount;
       if (Math.abs(destination - this.fraction) < 1e-8) this.fraction = destination;
       if (this.fraction < 1) {
-        rendered.position.lerpVectors(this.focus, desired.position, this.fraction);
+        rendered.position.lerp(this.focus, 1 - this.fraction);
         this.aim.copy(target).lerp(this.focus, 1 - this.fraction);
         rendered.lookAt(this.aim);
       }

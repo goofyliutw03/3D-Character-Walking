@@ -1,5 +1,15 @@
 # Development plan
 
+2026-11-07 [1Y-7] 使用者核准 [封閉空間光源面板](../.kiro/specs/enclosed-space-lights/)。10 火把、20 晶簇、天井與環境光獨立開關／倍率／顏色／特效；頭燈沿用原控制來源。規格及驗證見該目錄。
+
+2026-11-07 相機／輸入交互審查。沿用 [auto-run-camera-controls](../.kiro/specs/auto-run-camera-controls/) requirements10–11，檢查切換矩陣並接入六類空間的 SceneControlPolicy。城市／洞穴使用實際接線，其他空間僅做能力契約驗證。證據與限制見該規格 validation。
+
+2026-11-07 [1Y-5] 已核准相機／輸入／切換流程分類管理，沿用 [auto-run-camera-controls](../.kiro/specs/auto-run-camera-controls/)，保留原操作並依序整合；結果見該規格validation。
+
+2026-11-07 [1Y-4] 使用者核准 [auto-run-camera-controls](../.kiro/specs/auto-run-camera-controls/)：自動奔跑、Ctrl 相機／無 Ctrl 轉向、滾輪進出第一人稱與跑停還原、第一人稱頭燈及 F5 切換。沿用城市／洞穴及相機／頭燈成果，共用檔依序修改。驗證證據與限制見 spec validation。
+
+2026-11-06 多場景階段開始。[多場景基礎規格](../.kiro/specs/multi-scene-foundation/) 以 Needle Engine 排程及既有 WebGL2 多通道渲染為基準。先整合原始專案的城市建築、人物編輯與巡迴，再驗證城市／洞穴切換及共用 Shader 契約。飛行、水域、太空依序接入。
+
 2026-11-01 LATER-03／1T-0：使用者明確要求執行NavMesh、NPC AI、車輛、紅綠燈行為、LOD、多角色模擬，整合規格為 [city-traffic-simulation](../.kiro/specs/city-traffic-simulation/)。本次覆蓋現有程序街道的凸表面導航、有限NPC與雙向車流協調、兩級LOD及數量／暫停／重置控制；無新增依賴或外部資產。依序自動inline審閱，不另增第七里程碑。歷史LATER-03延後說法由本次範圍授權取代；主角自動巡迴、WebGPU與Blender城市仍不在範圍。M6人工待驗以remaining-acceptance最新裁定為準，不由本次測試概括通過。進度／證據見該spec tasks與validation。
 
 2026-10-31 LIGHT-01／1R-1：使用者核准 [night-object-lighting](../.kiro/specs/night-object-lighting/) 夜晚、六路燈、粒子群組照明、可重用掛載API及光源UI；沿用白天／黃昏、有界8槽且粒子無點光陰影；1R-2追加授權Night且Shadows開啟時最近單一路燈投影。依序規格／實作／inline審閱／驗證，非第七里程碑，M6／SCENE-04/05/FOLD待驗保留。詳見該spec驗證。
@@ -96,3 +106,9 @@ The historical plan requests confirmation of each stage design before implementa
 2026-10-31 LIGHT-01／1R-4：night-object-lighting requirement7/tasks11–13追加陰影自動觸發偵測，候選燈依主角含跳躍的完整3D距離≤半徑同時投影；預設auto off，1–30m預設10m。保留手動／日夜設定，非第七里程碑，M6／SCENE-04/05/FOLD待驗不變；證據見該spec validation。
 
 2026-11-01 SOLAR-01／1U-0：使用者核准 [solar-sport](../.kiro/specs/solar-sport/)，Time of Day追加24小時轉盤（每小時5格）、相機指北針及四季／緯度太陽控制；太陽時間及代表季節，非民用時間／精密天文。沿用既有光照及路燈，無新增依賴／資產；依序實作、inline審閱，非第七里程碑，保留最新人工驗收裁定。詳見spec validation。
+
+2026-11-01 LATER-01／1V-0：依使用者明確授權自動完成延後候選，新增 [path-navigation](../.kiro/specs/path-navigation/) 主角waypoint／loop／pause／speed；規格、inline審閱與驗證依序執行。非第七里程碑；既有人工驗收保留。LATER-02、LATER-03缺口核對及RENDER-01將依授權於後續新chat順序接續；不涉及場景切換系統。
+
+2026-11-02 LATER-02／1W-0：依延後候選自動續作授權新增 [city-assets-editor](../.kiro/specs/city-assets-editor/)：既有Blender5.2.2生成八棟原創CC0建築、GLB載入／fallback／Retry與主角XYZ／貼地／手動walk速度。道路／人行道等仍程序幾何，明示混合街景，不冒稱歷史城市原檔。Inspector不重做，控制權維持CharacterController；共用檔依序，非第七里程碑，人工驗收與場景切換範圍不變。實際驗證／發佈／索引以spec validation為準。
+
+2026-11-08 [1Y-9] 使用者核准 [occlusion-independent-ground-picking](../.kiro/specs/occlusion-independent-ground-picking/)：第三人稱點地穿透一般環境，主角／Target／NPC及明確指定物件攔截，依表面能力及複雜度自動求交。保留導航／碰撞，依序規格、實作、inline審閱與驗證；非第七里程碑，不委派／commit／push。

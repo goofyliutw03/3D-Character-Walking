@@ -72,7 +72,7 @@ test('2.1, 2.3: static view follow preserves orbit composition and reduced motio
 });
 test('2.4, 3.3, 4.1: lens changes, first-person visibility and fixed eye anchor remain correct', () => {
   const { rig, camera } = setup();
-  rig.select('first-person', subject, false);
+  rig.select('first-person', subject, true);
   assert.equal(camera.fov, 70);
   assert.equal(rig.characterVisible, false);
   rig.setFollowing(false, subject, true);
@@ -87,6 +87,30 @@ test('2.4, 3.3, 4.1: lens changes, first-person visibility and fixed eye anchor 
   assert.equal(camera.fov, 43);
   assert.equal(camera.near, 0.1);
   assert.equal(rig.fisheye, false);
+});
+
+test('eye transitions start at the rendered pose and can be retargeted without a jump', () => {
+  const { rig, camera } = setup();
+  const rendered = camera.clone();
+  rendered.position.set(0, 3, 1);
+  rendered.lookAt(0, 2, 5);
+  rig.select('first-person', subject, false, rendered);
+  rig.update(subject, 0, false);
+  assert.ok(camera.position.distanceTo(rendered.position) < 1e-8);
+  assert.ok(camera.quaternion.angleTo(rendered.quaternion) < 1e-7);
+  rig.update(subject, .05, false);
+  const current = camera.clone();
+  rig.select('front', subject, false);
+  rig.update(subject, 0, false);
+  assert.ok(camera.position.distanceTo(current.position) < 1e-8);
+  assert.ok(camera.quaternion.angleTo(current.quaternion) < 1e-7);
+  for (let i = 0; i < 16; i++) rig.update(subject, .05, false);
+  assert.equal(rig.transitioning, false);
+  assert.ok(camera.position.z > subject.z);
+  rig.select('first-person', subject, false);
+  rig.update(subject, .016, true);
+  assert.equal(rig.transitioning, false);
+  assert.ok(Math.abs(camera.position.y - (subject.y + subject.eyeHeight)) < 1e-8);
 });
 
 test('2.1: real OrbitControls must not lift a frozen low-angle camera', () => {

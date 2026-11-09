@@ -17,6 +17,15 @@ release 依序執行全部既有 tests、TypeScript／Vite production build、�
 
 ## 同步保護與回復
 
+### Windows 登入自啟與 Debug
+
+先成功執行 `./scripts/project.ps1 release`，再從原始專案用 PowerShell 7 執行 `./scripts/viewer-desktop.ps1 install`。安裝會啟動通知區圖示並建立目前使用者的 Startup 捷徑。若圖示被 Windows 收合，可從工作列通知區的隱藏圖示清單找到。
+
+- 通知區選單的 **Open Release website** 會開啟 `http://127.0.0.1:4174/`。**Restart Release server** 重新啟動該啟動器管理的網站。**Exit** 停止網站並關閉圖示，下次登入時會再啟動。
+- 通知區網站與手動 `preview-release` 共用 4174，擇一使用。如果其他程序已占用連接埠，通知區會回報啟動失敗。排除占用後選 **Restart Release server**。
+- 在 `D:\Work_Mine\Testing\3D Character Walk Viewer\Debug` 雙擊 **Start Debug**，再開啟 `http://127.0.0.1:5173/`。原始碼在原 checkout 編輯，Debug 即時更新。**Build Debug** 將產物輸出到 Debug 的 `dist`，Vite 快取位於 Debug 的 `cache`。也可從原始專案執行 `./scripts/viewer-desktop.ps1 debug` 或 `./scripts/viewer-desktop.ps1 debug-build`。
+- 如需取消登入自啟，先選 **Exit**，再執行 `./scripts/viewer-desktop.ps1 uninstall`。Debug 捷徑與既有 Release 產物會保留。若搬移專案、Node 或 PowerShell，從新位置重建捷徑。
+
 - 預檢完整來源與目的檔案路徑，拒絕來源或目標祖先的 junction／symlink（reparse point）、路徑越界及檔案／目錄衝突。目標不存在時才建立必要目錄。
 - 以 SHA256 比對，內容相同則略過，保留 mtime。變更檔先複製至目標同目錄隨機暫存檔、校驗 hash，再以 File.Move 的 overwrite 更新單檔；index.html 最後更新。輸出 Added／Updated／Skipped／CompletedAt。
 - 不 mirror、不刪除陌生檔案或舊 hashed 資產，避免使用中頁面缺少舊模組。久後可能累積資產；清理須另行授權。

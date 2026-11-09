@@ -12,7 +12,7 @@ export class SceneAppearance {
     if (mode !== 'normal') {
       for (const root of this.environment.children) {
         if (mode === 'transparent' && !blockers.has(root)) continue;
-        root.traverse(object => { if (object instanceof Mesh) affected.add(object); });
+        root.traverse(object => { if (object instanceof Mesh && object.userData.preserveLightMaterial !== true) affected.add(object); });
       }
     }
     for (const [mesh, override] of this.overrides) {

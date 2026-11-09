@@ -1,4 +1,8 @@
+import { bindEnvironmentLights } from './ui/EnvironmentLightControls';
+import { showTourStatus } from './ui/TourControls';
+import { bindCharacterEditor, showEditorState } from './ui/CharacterEditor';
 import { SolarControls } from './ui/SolarControls';
+import { bindHeadlampControls } from './ui/HeadlampControls';
 import type { ViewerApp, CameraPreset, CharacterStatus } from './engine/ViewerApp';
 import type { CharacterVariant } from './character/motion';
 import type { MoveDirection } from './input/InputManager';
@@ -49,7 +53,7 @@ app.innerHTML = `
       <span id="panel-resize-help" class="sr-only">Use Left and Right arrows to resize, Shift for larger steps, Home for minimum and End for maximum width.</span>
     </aside>
     <div class="scene-workspace">
-    <section class="viewport" aria-label="City scene workspace" aria-busy="true">
+    <section class="viewport" aria-label="Scene workspace" aria-busy="true">
       <div id="scene"></div>
       <div class="scene-title"><span class="eyebrow">THE NEIGHBORHOOD</span><h2>Maple Avenue</h2><p>A quiet street. An open canvas.</p></div>
       <div class="scene-badge"><span class="status-dot"></span> LIVE SCENE</div>
@@ -74,6 +78,9 @@ app.innerHTML = `
       <div class="action-controls" role="group" aria-label="Character actions">
         <button id="run" aria-pressed="false">Run</button><button id="jump">Jump</button><button id="stop">Stop</button>
         <button id="fire-particle" type="button">Fire particle</button><button id="reset-target" type="button">Reset target</button>
+        <button id="mobile-auto-run" class="mobile-camera-action" type="button" aria-pressed="false">自動奔跑</button>
+        <button id="mobile-reverse" class="mobile-camera-action" type="button">反向</button>
+        <button id="mobile-look-reset" class="mobile-camera-action" type="button">鏡頭歸位</button>
       </div>
       <div class="movement-copy">
         <p id="navigation-status" role="status" aria-live="polite" aria-atomic="true">Tap the ground to run there.</p>
@@ -115,7 +122,15 @@ retryCharacter.addEventListener('click', () => {
 }, { signal: uiEvents.signal });
 let previousCharacterStatus = '';
 const updateCharacterStatus = (state: CharacterStatus): void => {
-  const key = `${state.variant}/${state.action}/${state.running}/${state.following}/${state.cameraView}/${state.navigation}/${state.obstructionMode}`;
+  document.querySelector<HTMLInputElement>('#auto-run')!.checked = state.autoRun;
+  document.querySelector('#mobile-auto-run')!.setAttribute('aria-pressed', String(state.autoRun));
+  document.querySelector('#mobile-auto-run')!.textContent = state.autoRunPaused && !state.firstPerson ? '恢復奔跑' : state.autoRun ? '停止自動跑' : '自動奔跑';
+  document.querySelector<HTMLButtonElement>('#mobile-reverse')!.disabled = !state.autoRun || state.autoRunPaused;
+  document.querySelector<HTMLButtonElement>('#auto-run-resume')!.hidden = !state.autoRunPaused || state.firstPerson;
+  document.querySelector('#auto-run-status')!.textContent = state.autoRun ? (state.autoRunPaused ? 'Paused' : 'Running') : 'Off';
+  showTourStatus(document, state.tour);
+  showEditorState(document, state.motion, state.walkSpeed, state.buildings);
+  const key = `${state.variant}/${state.action}/${state.running}/${state.following}/${state.cameraView}/${state.navigation}/${state.obstructionMode}/${state.groundPenetration}/${state.autoRun}/${state.autoRunPaused}`;
   if (key === previousCharacterStatus) return;
   previousCharacterStatus = key;
   const names = { man: 'Man', woman: 'Woman', child: 'Child' };
@@ -131,6 +146,7 @@ const updateCharacterStatus = (state: CharacterStatus): void => {
   document.querySelector<HTMLInputElement>('#follow')!.checked = state.following;
   document.querySelector<HTMLInputElement>('#follow')!.disabled = state.firstPerson;
   document.querySelector<HTMLSelectElement>('#obstruction-mode')!.value = state.obstructionMode;
+  document.querySelector<HTMLInputElement>('#ground-penetration')!.checked = state.groundPenetration;
   document.querySelector('#obstruction-hint')!.textContent = state.firstPerson && state.obstructionMode !== 'wireframe'
     ? 'First person keeps your eye position. This mode resumes when you return to an external view.'
     : obstructionHints[state.obstructionMode];
@@ -140,7 +156,16 @@ const updateCharacterStatus = (state: CharacterStatus): void => {
     ? 'Eye-level view stays attached to your character.'
     : state.following ? 'Following your character. Turn off to pause this view.' : 'Tracking paused. Drag to orbit, scroll to zoom.';
   const staticView = ['overview', 'street', 'overhead'].includes(state.cameraView);
-  document.querySelector('#interaction-guide')!.innerHTML = state.following && !staticView
+  const touch = window.matchMedia('(pointer: coarse)').matches;
+  document.querySelector('#interaction-guide')!.innerHTML = touch
+    ? state.firstPerson
+      ? '<span>單指看四周 · 捏合退出</span>'
+      : state.autoRun && (state.cameraView === 'third-person' || state.cameraView === 'fisheye')
+        ? '<span>單指轉向 · 雙指環繞／縮放</span>'
+        : '<span>單指拖曳 · 雙指縮放</span>'
+    : state.autoRun && (state.cameraView === 'third-person' || state.cameraView === 'fisheye' || state.firstPerson)
+    ? '<span><b>Mouse</b> steer / look</span><span><b>Ctrl</b> orbit</span><span><b>F1</b> reset · <b>Y</b> auto run</span>'
+    : state.following && !staticView
     ? '<span><b>WASD / arrows</b> move</span><span><b>Shift</b> run</span><span><b>Space</b> jump</span>'
     : '<span><b>Drag</b> orbit</span><span><b>Scroll</b> zoom</span><span><b>Right drag</b> pan</span>';
   document.querySelector('#camera-status')!.textContent = `Camera: ${cameraNames[state.cameraView]}${state.following ? ' · following' : ''}`;
@@ -172,6 +197,47 @@ try {
     const text = `${state.lastEvent} · Active ${state.active} · Hits ${state.hits} · Expired ${state.expired}`;
     if(element.textContent !== text) element.textContent = text;
   }, reportTraffic);
+  const environment = document.querySelector<HTMLSelectElement>('#environment')!;
+  const environmentStatus = document.querySelector('#environment-status')!;
+  const syncEnvironmentLights = bindEnvironmentLights(document.querySelector<HTMLElement>('#environment-lights')!, viewer, uiEvents.signal);
+  const syncHeadlamp = bindHeadlampControls(document.querySelector<HTMLFieldSetElement>('#headlamp-controls')!, viewer, uiEvents.signal);
+  let environmentRequest = 0;
+  environment.addEventListener('change', async () => {
+    const id = environment.value === 'cave' ? 'cave' : 'city';
+    const request = ++environmentRequest;
+    environmentStatus.textContent = 'Preparing environment…';
+    const ready = await viewer!.selectEnvironment(id);
+    if (uiEvents.signal.aborted || request !== environmentRequest) return;
+    const active = viewer!.environmentId;
+    const city = viewer!.cityFeatures;
+    environment.value = active;
+    viewport.dataset.environment = active;
+    environmentStatus.textContent = ready ? (city ? 'City street ready.' : 'Cave ready.') : 'Could not switch. Current environment kept.';
+    for (const id of ['city-buildings', 'traffic-simulation', 'water-feature', 'character-tour']) {
+      const group = document.querySelector<HTMLElement>(`#function-${id}`)!;
+      group.hidden = !city;
+      group.inert = !city;
+    }
+    lampFieldset.hidden = !city;
+    lampFieldset.inert = !city;
+    lighting.value = viewer!.getTimeOfDay();
+    solarControls?.sync();
+    syncHeadlamp();
+    syncEnvironmentLights();
+    syncLampControls();
+    document.querySelector('.project-name')!.innerHTML = city ? 'City street <span>/</span> Untitled scene' : 'Underground <span>/</span> Validation area';
+    document.querySelector('.scene-title .eyebrow')!.textContent = city ? 'THE NEIGHBORHOOD' : 'UNDERGROUND';
+    document.querySelector('.scene-title h2')!.textContent = city ? 'Maple Avenue' : 'Rock Chamber';
+    document.querySelector('.scene-title p')!.textContent = city ? 'A quiet street. An open canvas.' : 'A walkable chamber with solid walls.';
+  }, { signal: uiEvents.signal });
+  document.querySelector('#tour-start')!.addEventListener('click', () => {
+    viewer?.startTour(document.querySelector<HTMLTextAreaElement>('#tour-route')!.value,
+      document.querySelector<HTMLInputElement>('#tour-loop')!.checked,
+      document.querySelector<HTMLInputElement>('#tour-speed')!.valueAsNumber);
+  }, {signal:uiEvents.signal});
+  document.querySelector('#tour-pause')!.addEventListener('click', () => viewer?.pauseTour(), {signal:uiEvents.signal});
+  document.querySelector('#tour-resume')!.addEventListener('click', () => viewer?.resumeTour(), {signal:uiEvents.signal});
+  document.querySelector('#tour-stop')!.addEventListener('click', () => viewer?.stop(), {signal:uiEvents.signal});
   viewer.mountObjectInspector(document.querySelector<HTMLElement>('#scene-object-inspector')!);
   const syncTraffic = (): void => {
     if (!viewer) return;
@@ -198,6 +264,7 @@ try {
   }
   document.querySelector('#traffic-reset')!.addEventListener('click', () => { viewer?.resetTraffic(); syncTraffic(); }, {signal:uiEvents.signal});
   controls.forEach(control => { control.disabled = false; });
+  bindCharacterEditor(document, viewer, uiEvents.signal);
   const syncWater = (): void => {
     if (!viewer) return;
     const state = viewer.getWaterSettings();
@@ -276,10 +343,21 @@ try {
   document.querySelector<HTMLSelectElement>('#character')!.addEventListener('change', event => viewer?.setCharacter((event.target as HTMLSelectElement).value as CharacterVariant), { signal: uiEvents.signal });
   document.querySelectorAll<HTMLButtonElement>('[data-direction]').forEach(button => viewer?.bindDirection(button, button.dataset.direction as MoveDirection));
   document.querySelector('#run')!.addEventListener('click', () => viewer?.setRunning(!viewer.getCharacterStatus().running), { signal: uiEvents.signal });
+  document.querySelector('#auto-run')!.addEventListener('change', event => viewer?.setAutoRun((event.target as HTMLInputElement).checked), { signal: uiEvents.signal });
+  document.querySelector('#auto-run-resume')!.addEventListener('click', () => viewer?.setAutoRun(true), { signal: uiEvents.signal });
+  document.querySelector('#touch-reverse')!.addEventListener('click', () => viewer?.reverseAutoRun(), { signal: uiEvents.signal });
+  document.querySelector('#touch-look-reset')!.addEventListener('click', () => viewer?.resetCameraLook(), { signal: uiEvents.signal });
+  document.querySelector('#mobile-auto-run')!.addEventListener('click', () => {
+    const state = viewer?.getCharacterStatus();
+    if (state) viewer?.setAutoRun(state.autoRunPaused && !state.firstPerson ? true : !state.autoRun);
+  }, { signal: uiEvents.signal });
+  document.querySelector('#mobile-reverse')!.addEventListener('click', () => viewer?.reverseAutoRun(), { signal: uiEvents.signal });
+  document.querySelector('#mobile-look-reset')!.addEventListener('click', () => viewer?.resetCameraLook(), { signal: uiEvents.signal });
   document.querySelector('#jump')!.addEventListener('click', () => viewer?.jump(), { signal: uiEvents.signal });
   document.querySelector('#stop')!.addEventListener('click', () => viewer?.stop(), { signal: uiEvents.signal });
   document.querySelector<HTMLInputElement>('#follow')!.addEventListener('change', event => viewer?.setFollowing((event.target as HTMLInputElement).checked), { signal: uiEvents.signal });
   document.querySelector<HTMLSelectElement>('#obstruction-mode')!.addEventListener('change', event => viewer?.setObstructionMode((event.target as HTMLSelectElement).value as ObstructionMode), { signal: uiEvents.signal });
+  document.querySelector<HTMLInputElement>('#ground-penetration')!.addEventListener('change', event => viewer?.setGroundPenetration((event.target as HTMLInputElement).checked), { signal: uiEvents.signal });
   const cameraButtons = document.querySelectorAll<HTMLButtonElement>('[data-camera]');
   const selectCamera = (preset: CameraPreset): void => {
     viewer?.setCamera(preset);

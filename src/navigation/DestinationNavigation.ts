@@ -100,7 +100,7 @@ export class DestinationNavigation {
     this.path = []; this.destination = undefined; this.lastPosition = undefined; this.stalled = 0; this.state = 'idle';
   }
   reject(): void { this.cancel(); this.state = 'blocked'; }
-  sample(position: PointXZ, delta: number): MovementIntent {
+  sample(position: PointXZ, delta: number, speed = 4): MovementIntent {
     if (this.state !== 'running' || !this.destination) return stopped();
     if (distance(position, this.destination) <= 0.08) { this.path = []; this.state = 'arrived'; return stopped(); }
     const dt = Math.min(0.05, Math.max(0, Number.isFinite(delta) ? delta : 0));
@@ -110,7 +110,7 @@ export class DestinationNavigation {
     while (this.path.length > 1 && distance(position, this.path[0]!) <= 0.015) this.path.shift();
     const next = this.path[0]!;
     const d = distance(position, next);
-    const divisor = Math.max(d, 4 * dt, 1e-8);
+    const divisor = Math.max(d, speed * dt, 1e-8);
     return { x: (next.x - position.x) / divisor, z: (next.z - position.z) / divisor, run: true, jump: false };
   }
 }

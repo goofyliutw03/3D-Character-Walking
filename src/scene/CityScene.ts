@@ -3,12 +3,14 @@ import { BoxGeometry, Color, CylinderGeometry, DirectionalLight, DodecahedronGeo
 import type { WalkableBounds, WalkableWorld } from '../character/motion';
 import { StreetWaterFeature, streetWaterBounds } from './StreetWaterFeature.ts';
 import type { WaterSettings, SpraySource } from '../water/index.ts';
+import { declareGroundBox } from '../navigation/GroundPicker.ts';
 
 export type TimeOfDay = 'day' | 'evening' | 'night';
 
 export class CityScene {
   readonly scene = new Scene();
   readonly environment = new Group();
+  readonly buildingFallbacks: Group[] = [];
   private readonly obstacles: WalkableBounds[] = [];
   readonly walkableWorld: WalkableWorld = {
     bounds: { minX: -8.3, maxX: 8.3, minZ: -26.5, maxZ: 26.5 },
@@ -68,7 +70,7 @@ export class CityScene {
   }
   private buildStreet(): void {
     const ground = (x: number, y: number, z: number, width: number, height: number, depth: number, color: string): void => {
-      this.box(this.environment, x, y, z, width, height, depth, color).userData.walkable = true;
+      declareGroundBox(this.box(this.environment, x, y, z, width, height, depth, color));
     };
     this.box(this.environment, 0, -0.4, 0, 45, 0.8, 54, '#bfccac');
     ground(0, 0.025, 0, 9, 0.05, 54, '#697272');
@@ -90,6 +92,8 @@ export class CityScene {
   }
   private building(x: number, z: number, height: number, color: string, side: number): void {
     const group = new Group();
+    group.name = `Procedural building ${this.buildingFallbacks.length + 1}`;
+    this.buildingFallbacks.push(group);
     group.position.set(x, 0.3, z);
     this.environment.add(group);
     this.box(group, 0, height / 2, 0, 7.2, height, 9.8, color);

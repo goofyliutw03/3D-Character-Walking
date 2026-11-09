@@ -1,0 +1,12 @@
+{
+  "generator": "tools/assets/prepare_city.py",
+  "blender": "5.2.2 LTS",
+  "license": "CC0-1.0",
+  "origin": "Original project-authored procedural buildings; no third-party inputs",
+  "buildingCount": 8,
+  "meters": true,
+  "upAxis": "Y",
+  "bytes": 244916,
+  "sha256": "5e023ef5fef827b6309e9e4f04bc0885d0b10f008fc9cfe020640261bc585bc2",
+  "scope": "Hybrid streetscape: Blender buildings; runtime procedural road, sidewalks, trees, lights and water"
+}

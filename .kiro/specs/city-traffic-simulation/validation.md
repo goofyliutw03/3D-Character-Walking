@@ -1,5 +1,19 @@
 # Validation — 1T-0
 
+## 2026-11-06 1T-1 既有覆蓋審閱
+
+在 `2825627` 加上 1V-0／1W-0 工作樹的狀態下，inline 審閱確認 spec 為 `implementation-complete`，5/5 任務已勾選，13/13 條驗收條件有對應。此次補記審閱，沿用既有交通程式。
+
+| 條件 | 本次核對 |
+|---|---|
+| 1.1、1.2 | `SurfaceNavMesh` 以人行道與斑馬線生成凸區塊與共享邊入口，依半徑擴張障礙。路徑測試確認非法端點及不連通區域回傳 null。Blender 建築替換視覺模型時沿用 `CityScene.walkableWorld` 靜態障礙。 |
+| 2.1–2.3 | `TrafficSimulation` 管三種程序行人、目的地、讓行及過街輪序。`ViewerApp` 在主角移動後傳入當幀 motion 與 Target anchor，沿用同一接線支援巡迴與位置編輯。 |
+| 3.1–3.3 | `TrafficView` 顯示停止線及同一 phase 的車輛／行人燈。`TrafficSimulation` 管雙向車距、清空與端點重用。600 秒模擬回歸通過。 |
+| 4.1–4.3 | main 經 `ViewerApp` 套用設定並回報狀態。設定驗證、暫停、重置及 dispose 通過測試。隱藏與 context loss 的凍結接線經本次程式核對，原生 context 實測沿用下方 1T-0 證據。 |
+| 5.1、5.2 | 遠距行人及車輛使用單盒模型，24m／15% 遲滯由視覺層管理，模擬層限制 24 人、8 車與 50ms 步長。既有幾何、遲滯及資源釋放測試通過。 |
+
+`pnpm test` 135/135 通過，含 5 項交通測試。正式 Release 於 localhost:4174 的 Chrome headless 檢查 7/7 通過，無 CDP runtime exceptions。畫面載入 WebGL2、骨架主角及八棟建築，確認交通預設關閉、24 人／8 車、暫停、重置保留設定、LOD 與關閉。最終腳本於 07:06:26（Asia/Taipei）以 exit 0 完成，報告在忽略的 `.local/traffic-audit/report.json`。這次檢查涵蓋本機工程回歸，正式效能、跨 GPU 與實機驗收沿用各自紀錄。
+
 ## 授權與起點
 2026-11-01，使用者明確要求執行NavMesh、NPC AI、車輛、紅綠燈行為、LOD、多角色模擬。LATER-03整合追加，非第七里程碑。起點HEAD a1dc0d9638181295c0869de7f7fa10821f2c668a；保留原有20份dirty，含1R-4陰影。未commit／push、未切換模型、未委派。
 

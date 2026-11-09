@@ -25,7 +25,7 @@ export class TargetActor {
   get model(): RiggedCharacter | null { return this.assets.current; }
   get height(): number { return this.model?.height ?? this.fallback.height; }
   get anchor(): Vector3 { return new Vector3(this.motion.x, this.motion.y + this.height * .6, this.motion.z); }
-  constructor(private readonly world: WalkableWorld, report: (state: LoadingState) => void, load: LoadTarget = loadTarget) {
+  constructor(private world: WalkableWorld, report: (state: LoadingState) => void, load: LoadTarget = loadTarget) {
     this.motion = { x: 0, y: world.groundHeight(0,-1), z: -1, heading: 0, speed: 0, grounded: true, action: 'idle' };
     this.root.name = 'target-actor';
     this.fallback.setVariant('woman'); this.root.add(this.fallback.root);
@@ -44,6 +44,7 @@ export class TargetActor {
     if (this.disposed) return;
     this.fallback.update(this.motion,delta); this.model?.update(this.motion,delta);
   }
+  setWorld(world: WalkableWorld): void { this.world = world; this.reset(); }
   reset(): void {
     if (this.disposed) return;
     Object.assign(this.motion,{ x:0, y:this.world.groundHeight(0,-1), z:-1 }); this.update(0);

@@ -9,10 +9,16 @@
 | 跨GPU／瀏覽器相容性 | PARTIAL／SCENE-04 | RTX2050 4GB／Chrome156.0.8078.74舊版操作USER_REPORTED_PASS；新路燈陰影、其餘矩陣及原生half-float fallback仍待驗 |
 | 雙摺／三摺螢幕專項 | 取消／SCENE-05-FOLD | 使用者決定由Browser負責相容問題，取消專項驗收範圍；不是測試通過證據，亦不關閉跨GPU／瀏覽器相容性待辦 |
 | IME輸入法 | Done／M5、M6人工驗收 | 基本組字操作已有使用者通過回報；補充的blur、160字邊界與inspector組字三組操作亦回覆「三項皆正常」。依使用者人工驗收結案，非工具直接實測；詳見1Q-2最終裁定 |
-| 效能門檻與實測 | ToDo／ACCEPT-01 | 本次未變更，維持原待辦 |
+| 效能門檻與實測 | PARTIAL／ACCEPT-01 | 1Q-4固定最新Release執行本機工程樣本；方法、結果與限制見[效能紀錄](performance-acceptance.md)。正式門檻與跨裝置效能仍待確認，不宣稱正式驗收通過 |
 | 螢幕閱讀器 | ToDo／M5、M6人工驗收 | 與IME分列；本次未變更，維持原待辦 |
 
 此次為SIMPLE文件狀態更新，沿用模型／推理；未擴充功能，未commit／push。token用量：無法取得精確值，缺少本次更新的官方起點基準。
+
+## ACCEPT-01 本機工程樣本（1Q-4，2026-11-01）
+
+使用者授權效能驗收優先、暫緩新功能後，固定已交付Solar／交通版Release（HEAD2825627、現行17檔與dist SHA256相同），交通off；沒有回退為NavMesh加入前版本。已完成9組×3輪：1280×720／DPR1、10秒暖機＋30秒RAF測量、單一場景序列，實際GTX1060 6GB／ANGLE D3D11、Chrome156.0.8078.80／driver582.78。一般走跑、魚眼＋X-ray、粒子、水霧及0／1燈約74.87–74.97FPS，6燈74.70–74.84FPS；P95 13.4–13.5ms，6燈三輪合計1個>33.333ms長幀。27輪完成、JS錯誤清單空、輪末GL error皆0。
+
+完整方法、draws／triangles／資產大小、每輪原始證據位置、重現與限制見[效能紀錄](performance-acceptance.md)。僅本機headless engine fixture工程樣本，RAF受約75Hz上限限制，無GPU elapsed；不是正式前景完整UI／手機或跨裝置效能PASS。未核准正式FPS／frame-time門檻，因此ACCEPT-01維持PARTIAL，待目標環境與門檻確認，不倒定標準。SCENE-04、讀屏與已結案／取消項維持；無產品修正、委派、commit／push。
 
 ## SCENE-04 相容性驗收（1Q-3，2026-10-31）
 

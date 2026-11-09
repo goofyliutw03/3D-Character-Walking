@@ -6,7 +6,8 @@ export class FollowCamera {
   private readonly focus = new Vector3();
   private readonly ray = new Raycaster();
   private readonly direction = new Vector3();
-  constructor(private readonly obstructions: Object3D[] = []) {}
+  setObstructions(objects: Object3D[]): void { this.obstructions = objects; }
+  constructor(private obstructions: Object3D[] = []) {}
   update(camera: PerspectiveCamera, target: Vector3, state: Readonly<MotionSnapshot>, height: number, delta: number, immediate: boolean): void {
     this.focus.set(state.x, state.y + height * 0.65, state.z);
     this.destination.set(state.x - Math.sin(state.heading) * 6, state.y + height + 3, state.z - Math.cos(state.heading) * 6);

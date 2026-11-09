@@ -362,6 +362,10 @@ canvas {
   font-size:11px;
   color:#6c7c68
 }
+.viewport[data-environment="cave"] .scene-title :is(.eyebrow, h2, p) {
+  color: #fff3e8;
+  text-shadow: 0 1px 4px #15151d, 0 0 10px #15151d;
+}
 .fisheye-view .scene-title {
   background:#f7f9efeb;
   border-radius:7px;
@@ -568,7 +572,7 @@ footer>span:first-child {
     gap:9px;
     font-size:8px
   }
-  .interaction-guide span:last-child {
+  .interaction-guide span:last-child:not(:first-child) {
     display:none
   }
   .reset-button {
@@ -867,3 +871,10 @@ main[data-panel-collapsed=true] #panel-toggle { justify-content:center; padding:
 .solar-needle { display: block; color: #ff887e; font-size: 52px; line-height: 106px; }
 .solar-view-mark { position: absolute; top: -17px; left: 50%; transform: translateX(-50%); color: #ffce71; }
 .solar-controls output { display: block; color: #425c65; font-size: .8rem; font-variant-numeric: tabular-nums; }
+#environment-lights input[type="range"] { width: 100%; min-width: 0; flex: 1; }
+#environment-lights output { min-width: 3ch; white-space: nowrap; }
+#environment-lights fieldset { margin: .6rem 0; min-width: 0; }
+.mobile-camera-action { display:none }
+@media(max-width:850px), (pointer:coarse) {
+  .action-controls .mobile-camera-action { display:block; min-height:44px }
+}

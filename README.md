@@ -59,13 +59,15 @@ Camera 同時提供 **First person**（角色眼位，垂直 FOV 70°）與 **Th
 
 也可直接使用 `pnpm install --frozen-lockfile`、`pnpm dev`、`pnpm build`。正式建置輸出為 `dist/`；安裝版本以 `pnpm-lock.yaml` 為準。
 
-目前已完成 Stage 1.2 城市街景基礎：道路、人行道、建築、樹木、路燈、長椅、Orbit 鏡頭、Overview／Street level／From above 預設、日光／黃昏與陰影切換。使用 TypeScript OOP，並顯示 WebGL2 與 FPS。人物、GLB 與動畫尚未實作。資產預留於 `public/assets/`，Blender 原始檔預留於 `blender/`。
+以下 Stage 1.2 段落是早期完成紀錄；目前工作樹已有骨架 GLB、表情、導航、交通、光照、水景與城市／洞穴整合。完整名詞、原理、架構與限制請讀 [3D 基礎知識與專案架構指南](docs/3d-knowledge-architecture.md)，相關工程與人工驗收仍依各 validation 及 [剩餘驗收盤點](docs/remaining-acceptance.md)。
+
+Stage 1.2 當時完成城市街景基礎：道路、人行道、建築、樹木、路燈、長椅、Orbit 鏡頭、Overview／Street level／From above 預設、日光／黃昏與陰影切換，並顯示 WebGL2 與 FPS；人物、GLB 與動畫為當時的後續工作。資產位於 `public/assets/`，Blender 原始檔位於 `blender/`。
 
 - [初版設計計畫](docs/initial-design-plan.md)
 - [原始 Viewer session](docs/imported/viewer-session.md)
 - [原始 Web 3D 規畫 session](docs/imported/web-3d-planning-session.md)
 
-操作：拖曳旋轉鏡頭、滾輪縮放、右鍵拖曳平移；Reset view 回到 Overview。下個階段為人物原型、移動與動畫；詳見 [Stage 1.2 完成紀錄與下一階段設計](docs/stage-1.2.md)。
+Stage 1.2 的原始操作與後續設計見 [歷史完成紀錄](docs/stage-1.2.md)；目前操作以本 README 的功能說明與現況指南為準。
 
 ## Particle interaction · Plan v02
 
@@ -104,3 +106,10 @@ LOD在24m切換較少部件的模型，帶15%遲滯；關閉可觀察近距完�
 
 ### Solar Sport
 Scene display → Lighting & shadows → Solar Sport：勾選 Enable solar time，拖曳24小時轉盤時針，或使用時間欄位／方向鍵（±12分鐘）、Home／End。每小時5格；指北針隨實際相機朝向旋轉，北=-Z、東=+X。Season選春分／夏至／秋分／冬至，Latitude預設25°N，可輸入-90至90度；季節名稱依北半球日期，負緯度呈南半球天空。太陽時間不是所在地鐘錶時間，不含時差／折射。選既有光照預設可退出Solar模式；夜間沿用路燈及陰影設定。
+# 自動巡迴（LATER-01／1V-0，2026-11-01）
+
+Character → Automatic tour 可編輯 waypoint，每行 `X, Z`（公尺），上限32點；示範路線繞行現有街道。Loop route 決定終點後是否返回第一點，Tour speed 為0.5–4 m/s。Start route 重新開始；Pause保留下一點，Resume從目前位置重新規劃；Stop tour／下方Stop取消。
+
+手動移動、跑跳、點地、編輯輸入欄位、視窗失焦／隱藏與圖形連線中斷都會取消巡迴；不會自動恢復。修改速度、循環或路線後請重新Start。路線僅留本頁。座標落於障礙／界外或路徑不通時停止並顯示blocked，不會瞬移或跳點。巡迴沿用靜態避障，沒有增加主角對車輛／NPC的動態碰撞。規格／驗證見 [.kiro/specs/path-navigation](.kiro/specs/path-navigation/)。
+
+2026-11-02 LATER-02 / 1W-0: **Character → Position & manual speed** adds authoritative XYZ drafts, Read current / Apply, ground snap and 0.5–4 m/s manual walk speed. Scene display reports eight original CC0 Blender buildings with fallback/Retry; the streetscape remains hybrid. Rebuild and limits: [asset pipeline](docs/asset-pipeline.md), [spec validation](.kiro/specs/city-assets-editor/validation.md). Existing navigation/Run speeds remain independent; no general scene editor or scene switching is implied.

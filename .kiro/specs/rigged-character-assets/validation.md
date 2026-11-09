@@ -115,3 +115,5 @@ main / af73f11fe44c406ec784aeb9e496a710b2c6c939，保留所有里程碑3–5修�
 2026-10-31 1Q-2最終裁定：使用者對組字中blur後返回、160字上限組字、inspector候選Enter隔離三組明確操作回覆「三項皆正常」。結合基本IME操作先前回報，本階段記Done／USER_REPORTED_PASS，取代歷史IME待驗狀態；為使用者人工驗收，非工具直接實測或所有輸入法／平台相容承諾。詳細範圍與限制見docs/remaining-acceptance.md的1Q-2最終裁定。其他跨GPU／效能／讀屏待辦不變。無runtime修改、commit／push。
 
 2026-10-31 跨GPU補登：使用者回報另一電腦GeForce RTX2050 4GB VRAM／Chrome156.0.8078.74 Official Build64-bit操作OK，記舊版一般操作USER_REPORTED_PASS。非工具直接觀察、不代表1R-2新增路燈陰影或原生half-float fallback已驗；SCENE-04整體PARTIAL，其他矩陣／效能／讀屏待辦保留。以docs/remaining-acceptance.md最新回報為準。
+
+2026-11-01 ACCEPT-01／1Q-4：需求5.3補充固定最新Release的本機效能樣本，9組×3輪、1280×720 DPR1／10秒暖機＋30秒RAF；GTX1060 6GB、Chrome156.0.8078.80、driver582.78，完整FPS／P95／draws／triangles／資產大小與限制見docs/performance-acceptance.md。這是headless engine fixture，無GPU elapsed，正式門檻未核准，ACCEPT-01維持PARTIAL；不替代跨GPU／前景完整UI／手機效能或讀屏驗收，不重開已結案項。無runtime修改、commit／push。

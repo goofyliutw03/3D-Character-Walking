@@ -43,3 +43,18 @@ Automated tests parse all three real GLBs, verify skinning and four clips, propo
 The footer's draw/triangle counters include all render passes in that frame, including fish-eye capture plus its screen pass. Geometry/texture counts are recorded during validation to check for obvious growth. FPS is a short local sample, not a benchmark or cross-device guarantee. The existing main-chunk >500kB advisory remains; loader splitting reduces its startup dependency, not the cost of Three.js and animation code already used by the app.
 
 Still unverified: cross-GPU/multi-browser compatibility, real touch-device performance, deliberate graphics context loss, actual screen-reader and physical IME operation. The earlier near-obstacle Front camera occlusion observation belongs to camera-modes and is not repaired by this asset integration. No collision, navigation, rendering backend or camera-policy changes are implied.
+
+## Original Blender buildings and character editor (LATER-02)
+The street now loads eight original CC0 Blender buildings from `public/assets/city/buildings.glb`. Road, sidewalks, trees, lamps and water retain their existing runtime geometry: this is a hybrid streetscape, not a recovered historical city source. Missing/invalid building assets retain the procedural buildings and expose **Scene display → City buildings → Retry buildings**. Credits and output hash are beside the GLB. The compressed editable source is `blender/city-block.blend`.
+
+Rebuild offline with the already installed Blender (no add-ons or downloads):
+
+```powershell
+$env:BLENDER_USER_RESOURCES = Join-Path (Get-Location) '.local/blender-profile'
+& 'C:/Program Files/Blender Foundation/Blender 5.2/blender.exe' --factory-startup --disable-autoexec --background --python tools/assets/prepare_city.py
+./scripts/project.ps1 release
+```
+
+The generator authors in meters, converts Y-up to Blender Z-up, joins geometry per building with shared material primitives, disables file previews/autosave for that process and exports self-contained GLB without external textures. It does not save user preferences. Only GLB, attribution and manifest enter `dist`; the `.blend` and Python source stay in the repository. Blender 5.2's `use_nodes` deprecation warning is harmless for this pinned authoring version.
+
+**Character → Position & manual speed** shows actual world XYZ and speed separately from unapplied drafts. **Read current XYZ** copies full-precision coordinates. **Apply XYZ** passes through CharacterController, stops movement/navigation, rejects expanded obstacles and out-of-bounds coordinates, and snaps Y to destination ground by default. With Snap off, Y may be ground through ground + 10 m; raised characters fall naturally. This uses the existing analytic street/sidewalk ground, not arbitrary imported mesh terrain. Editing is page-local. Manual walk speed is 0.5–4 m/s (default 1.8); Shift/Run stays 4 m/s, while tour/tap keep their own settings. This is a player editor, not a general scene-object editor.

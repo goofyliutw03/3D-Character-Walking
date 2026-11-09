@@ -1,0 +1,14 @@
+{
+  "feature_name": "occlusion-independent-ground-picking",
+  "created_at": "2026-11-08",
+  "updated_at": "2026-11-09",
+  "language": "zh-TW",
+  "phase": "implementation-complete",
+  "approvals": {
+    "requirements": { "generated": true, "approved": true },
+    "design": { "generated": true, "approved": true },
+    "tasks": { "generated": true, "approved": true }
+  },
+  "ready_for_implementation": true,
+  "review": "依使用者本次範圍授權依序自動 inline 審閱通過；需求、設計、任務圖及實作驗證通過。非獨立代理審查或使用者逐份人工核准。"
+}

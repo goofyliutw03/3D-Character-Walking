@@ -1,0 +1,12 @@
+{
+  "feature_name": "auto-run-camera-controls",
+  "language": "zh-TW",
+  "phase": "tasks-generated",
+  "approvals": {
+    "requirements": { "generated": true, "approved": true },
+    "design": { "generated": true, "approved": true },
+    "tasks": { "generated": true, "approved": true }
+  },
+  "ready_for_implementation": true,
+  "review": "依使用者完整範圍授權自動 inline 審閱通過"
+}

@@ -1,0 +1,6 @@
+# Research
+採延伸式light discovery；讀取DestinationNavigation、CharacterController、InputManager、ViewerApp與main。無新套件或外部API。
+
+DestinationNavigation目前預設4m/s且以4*dt避免overshoot，不能單純縮放意圖而不調整該分母；設計加入可選speed以維持轉角。InputManager.stop會觸發onManual，start順序必須先stop再啟動，暫停則不可呼叫stop。focusin對所有input會停止，因此loop/speed以取消巡迴後明確重新Start為可預測行為，Resume按鈕不被focusin取消。採專屬導航組合，避免為巡迴擴大既有NavigationStatus。
+
+設計綜合：重用既有pathfinder與碰撞，不引入NavMesh或route框架；一個PathTour權威狀態即可。需求、設計與tasks依授權在本chat inline審閱，無委派。

@@ -16,6 +16,8 @@ export class TrafficView {
   private signature='';
   private disposed=false;
   private shadows=true;
+  /** Only NPCs intercept ground taps; scenery and vehicles remain penetrable. */
+  get npcPickBlockers(): readonly LOD[] { return this.visuals.filter(v=>v.kind==='npc').map(v=>v.lod); }
   constructor() {
     this.root.name='City traffic simulation';this.actors.name='Traffic actors';this.root.add(this.actors);this.root.visible=false;
     for(const side of [-1,1]) {
