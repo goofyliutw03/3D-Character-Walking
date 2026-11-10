@@ -1,9 +1,17 @@
 type ExternalView = 'third-person' | 'fisheye';
+export interface LookSensitivity { thirdHorizontal: number; thirdVertical: number; firstHorizontal: number; firstVertical: number }
 const radians = Math.PI / 180;
 const clamp = (value: number, min: number, max: number): number => Math.max(min, Math.min(max, value));
 
 /** Movement ownership and desired camera offsets, independent of rendered collision zoom. */
 export class AutoRunControls {
+  private sensitivity: LookSensitivity = { thirdHorizontal: 1, thirdVertical: 1, firstHorizontal: 1, firstVertical: 1 };
+  get lookSensitivity(): LookSensitivity { return { ...this.sensitivity }; }
+  configureSensitivity(patch: Partial<LookSensitivity>): boolean {
+    const next = { ...this.sensitivity, ...patch };
+    if (!Object.values(next).every(value => Number.isFinite(value) && value >= .1 && value <= 5)) return false;
+    this.sensitivity = next; this.resetGestures(); return true;
+  }
   enabled = false;
   paused = false;
   heading = 0;
@@ -44,23 +52,27 @@ export class AutoRunControls {
   resetLook(): void { this.yaw = 0; this.pitch = 0; this.gesture = undefined; }
   reset(): void { this.resetLook(); this.zoom = 1; }
   reverse(): void { this.heading += Math.PI; this.reset(); }
-  move(dx: number, dy: number, width: number, ctrl: boolean, time: number): void {
+  move(dx: number, dy: number, width: number, ctrl: boolean, time: number, view = 'third-person', locked = false): void {
     if (![dx, dy, width, time].every(Number.isFinite) || width <= 0) return;
     const sensitivity = Math.PI / Math.max(1, width / 2);
-    if (this.inspecting || ctrl) this.yaw -= dx * sensitivity;
+    const horizontal = sensitivity * (view === 'first-person' ? this.sensitivity.firstHorizontal : this.sensitivity.thirdHorizontal);
+    const vertical = sensitivity * (view === 'first-person' ? this.sensitivity.firstVertical : this.sensitivity.thirdVertical);
+    if (this.inspecting || ctrl) this.yaw -= dx * horizontal;
+    else if (locked) this.heading -= dx * horizontal;
     else {
       if (!this.gesture || time - this.gesture.time > 200 || this.gesture.ctrl !== ctrl) {
         this.gesture = { time, ctrl, pixels: 0 };
       }
-      const next = clamp(this.gesture.pixels + dx, -width / 2, width / 2);
+      const limit = width / 2 / (view === 'first-person' ? this.sensitivity.firstHorizontal : this.sensitivity.thirdHorizontal);
+      const next = clamp(this.gesture.pixels + dx, -limit, limit);
       // +Z is heading zero, therefore right turn decreases heading.
-      this.heading -= (next - this.gesture.pixels) * sensitivity;
+      this.heading -= (next - this.gesture.pixels) * horizontal;
       this.gesture.pixels = next;
     }
     if (this.gesture && this.gesture.ctrl !== ctrl) this.gesture = undefined;
     this.gesture ??= { time, ctrl, pixels: 0 };
     this.gesture.time = time;
-    this.pitch = clamp(this.pitch - dy * sensitivity, -70 * radians, 60 * radians);
+    this.pitch = clamp(this.pitch - dy * vertical, -70 * radians, 60 * radians);
     if (this.inspecting) this.yaw = clamp(this.yaw, -80 * radians, 80 * radians);
   }
   wheel(delta: number, view: string): 'enter' | ExternalView | undefined {

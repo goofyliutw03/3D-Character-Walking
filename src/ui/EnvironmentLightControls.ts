@@ -30,6 +30,7 @@ export function bindEnvironmentLights(host: HTMLElement, app: LightApp, signal: 
     }
     for (const kind of ['sun', 'ambient', 'torch', 'crystal'] as const) {
       const group = document.createElement('details');
+      group.id = `environment-light-${kind}`;
       const summary = document.createElement('summary');
       summary.textContent = { sun: 'Skylight', ambient: 'Ambient', torch: 'Torches', crystal: 'Crystals' }[kind];
       group.append(summary);

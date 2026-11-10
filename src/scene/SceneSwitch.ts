@@ -6,7 +6,8 @@ import type { EnvironmentLight } from './EnvironmentLights';
 import type { Headlamp } from './Headlamp';
 import { sceneControlPolicy, type SceneControlPolicy } from './SceneControlPolicy.ts';
 
-export type EnvironmentId = 'city' | 'cave';
+export type EnvironmentId = 'city' | 'cave' | 'terrain';
+export interface TerrainSettings { quality: 'standard' | 'low'; wind: boolean }
 export interface Environment {
   readonly id: EnvironmentId;
   readonly scene: Scene;
@@ -19,6 +20,10 @@ export interface Environment {
   readonly maxPlacementHeight?: number;
   readonly headlamp?: Headlamp;
   readonly lights?: readonly EnvironmentLight[];
+  readonly terrain?: {
+    getSettings(): TerrainSettings;
+    configure(patch: Partial<TerrainSettings>): boolean;
+  };
   readonly solar?: {
     getSettings(): SolarSettings;
     configure(patch: Partial<SolarSettings>): boolean;

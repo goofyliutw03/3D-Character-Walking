@@ -26,6 +26,9 @@ const isStatic = (view: CameraView): view is keyof typeof staticPresets => view 
 
 export class CameraController {
   controlOffsets = { active: false, eye: false, yaw: 0, pitch: 0, zoom: 1 };
+  private projection: { fov: number; near: number; lens: number; elapsed: number } | undefined;
+  private lens = 0;
+  get fisheyeAmount(): number { return this.lens; }
   private indoor = false;
   private selected: CameraView = 'overview';
   private tracking = false;
@@ -43,7 +46,7 @@ export class CameraController {
   get view(): CameraView { return this.selected; }
   get following(): boolean { return this.tracking; }
   get characterVisible(): boolean { return this.selected !== 'first-person'; }
-  get fisheye(): boolean { return this.selected === 'fisheye'; }
+  get fisheye(): boolean { return this.lens >= 0.5; }
   get transitioning(): boolean { return this.transition !== undefined; }
   constructor(private readonly camera: PerspectiveCamera, private readonly orbit: Orbit, private readonly obstruction: Pick<FollowCamera, 'constrain'>, private readonly first: FirstPersonCamera) {}
 
@@ -55,26 +58,27 @@ export class CameraController {
     this.centering = undefined;
     const eyeTransition = view === 'first-person' || this.selected === 'first-person' || this.transition?.eyeRotation !== undefined;
     const start = this.currentFrame();
-    if (eyeTransition) start.position.copy(rendered.position);
+    start.position.copy(rendered.position);
+    start.target.copy(rendered.position).addScaledVector(rendered.getWorldDirection(new Vector3()), this.camera.position.distanceTo(this.orbit.target));
+    const projection = { fov: rendered.fov, near: rendered.near, lens: this.lens };
     this.selected = view;
     this.tracking = !isStatic(view);
     this.previousPosition.set(subject.x, subject.y, subject.z);
     this.orbit.enabled = isStatic(view);
     this.orbit.maxPolarAngle = view === 'low-angle' ? Math.PI - 0.05 : Math.PI / 2 - 0.04;
     this.camera.up.set(0, 1, 0);
-    this.first.restoreProjection(this.camera);
-    if (view === 'fisheye') { this.camera.fov = 160; this.camera.updateProjectionMatrix(); }
+    if (immediate) this.first.restoreProjection(this.camera);
+    if (immediate && view === 'fisheye') { this.camera.fov = 160; this.camera.updateProjectionMatrix(); }
     this.transition = undefined;
+    this.projection = immediate ? undefined : { ...projection, elapsed: 0 };
     if (view === 'first-person') {
       if (immediate) this.first.update(this.camera, this.orbit.target, subject, subject.eyeHeight, subject.eyeForward);
       else {
-        this.camera.fov = 70;
-        this.camera.near = 0.04;
-        this.camera.updateProjectionMatrix();
         this.transition = { start, elapsed: 0, eyeRotation: rendered.quaternion.clone() };
       }
     } else if (immediate) this.apply(this.frame(view, subject));
     else this.transition = { start, elapsed: 0, eyeRotation: eyeTransition ? rendered.quaternion.clone() : undefined };
+    if (immediate) this.lens = view === 'fisheye' ? 1 : 0;
   }
   setFollowing(enabled: boolean, subject: CameraSubject, immediate: boolean): void {
     this.centering = undefined;
@@ -108,6 +112,19 @@ export class CameraController {
   }
   update(subject: CameraSubject, delta: number, immediate: boolean): void {
     const dt = Math.min(Math.max(delta, 0), 0.05);
+    if (this.projection) {
+      const state = this.projection;
+      state.elapsed += dt;
+      const t = immediate ? 1 : Math.min(state.elapsed / .8, 1);
+      const amount = t * t * (3 - 2 * t);
+      const fov = this.selected === 'first-person' ? 70 : this.selected === 'fisheye' ? 160 : 43;
+      const near = this.selected === 'first-person' ? .04 : .1;
+      this.camera.fov = state.fov + (fov - state.fov) * amount;
+      this.camera.near = state.near + (near - state.near) * amount;
+      this.camera.updateProjectionMatrix();
+      this.lens = state.lens + ((this.selected === 'fisheye' ? 1 : 0) - state.lens) * amount;
+      if (t === 1) this.projection = undefined;
+    }
     if (this.transition) {
       const state = this.transition;
       state.elapsed += dt;
@@ -127,7 +144,12 @@ export class CameraController {
       }
       if (t === 1) this.transition = undefined;
     } else if (this.selected === 'first-person') {
+      const rotation = this.camera.quaternion.clone();
+      const { fov, near } = this.camera;
       this.updateEye(this.camera, this.orbit.target, subject);
+      this.camera.fov = fov; this.camera.near = near; this.camera.updateProjectionMatrix();
+      this.camera.quaternion.slerpQuaternions(rotation, this.camera.quaternion.clone(), immediate ? 1 : 1 - Math.exp(-12 * dt));
+      this.orbit.target.set(0, 0, -10).applyQuaternion(this.camera.quaternion).add(this.camera.position);
     } else if (this.centering) {
       const state = this.centering;
       const previous = Math.min(state.elapsed / 0.8, 1);

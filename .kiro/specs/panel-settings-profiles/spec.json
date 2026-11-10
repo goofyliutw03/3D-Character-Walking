@@ -1,0 +1,21 @@
+{
+  "feature_name": "panel-settings-profiles",
+  "language": "zh-TW",
+  "phase": "tasks-generated",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": true
+    }
+  },
+  "ready_for_implementation": true,
+  "review": "2026-11-09 依使用者完整提案授權自動inline審閱通過；非逐份人工核准"
+}

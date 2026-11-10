@@ -1,0 +1,23 @@
+{
+  "feature_name": "natural-terrain-validation",
+  "created_at": "2026-11-10",
+  "updated_at": "2026-11-10",
+  "language": "zh-TW",
+  "phase": "implementation-complete",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": true
+    }
+  },
+  "ready_for_implementation": true,
+  "approval_note": "1Y-12 requirements/design/tasks 依使用者接續地表授權自動 inline 審閱通過，非逐份人工核准；三維碰撞及活動範圍新規範仍待確認。"
+}

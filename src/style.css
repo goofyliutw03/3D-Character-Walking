@@ -366,7 +366,8 @@ canvas {
   color: #fff3e8;
   text-shadow: 0 1px 4px #15151d, 0 0 10px #15151d;
 }
-.fisheye-view .scene-title {
+.fisheye-view .scene-title,
+.viewport[data-environment="terrain"] .scene-title {
   background:#f7f9efeb;
   border-radius:7px;
   padding:10px 14px
@@ -878,3 +879,10 @@ main[data-panel-collapsed=true] #panel-toggle { justify-content:center; padding:
 @media(max-width:850px), (pointer:coarse) {
   .action-controls .mobile-camera-action { display:block; min-height:44px }
 }
+/* Local settings profiles */
+.profile-toolbar { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.profile-toolbar button { padding: 7px 9px; font-size: 11px; }
+.profile-toolbar select { flex: 1; min-width: 90px; width: auto; }
+#profile-status { overflow-wrap: anywhere; margin: 8px 0; }
+.profile-help { font-size: 10px; }
+#mouse-lock-status { display: block; font-size: 11px; overflow-wrap: anywhere; }

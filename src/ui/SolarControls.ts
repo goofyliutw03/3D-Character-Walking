@@ -9,7 +9,7 @@ const hours = Array.from({ length: 24 }, (_, hour) => {
   const angle = hour * Math.PI / 12;
   return `<text x="${100 + Math.sin(angle) * 65}" y="${100 - Math.cos(angle) * 65}">${String(hour).padStart(2, '0')}</text>`;
 }).join('');
-export const solarControlsContent = `<details class="solar-controls"><summary>Solar Sport</summary>
+export const solarControlsContent = `<details id="solar-controls" class="solar-controls"><summary>Solar Sport</summary>
   <label><input id="solar-enabled" type="checkbox"> Enable solar time</label>
   <div class="solar-instruments">
     <div><svg id="solar-dial" viewBox="0 0 200 200" role="slider" tabindex="0" aria-label="Solar time" aria-valuemin="0" aria-valuemax="1439" aria-valuenow="720" aria-valuetext="12:00" aria-disabled="true" aria-describedby="solar-help">

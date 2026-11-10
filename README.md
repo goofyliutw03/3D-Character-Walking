@@ -1,5 +1,7 @@
 # 3D Character Walk Viewer
 
+Environment → **Natural terrain / Wind Meadow**：32×32m 靜態丘陵、五棵樹與風動草。Terrain vegetation 可選 Standard（384叢）／Low（96叢）及風動開關；品質不改通行高度，減少動態效果凍結風動。沿用走跑跳、點地、相機與Profiles（terrain00起），地表／陰影／選點使用同源高度。規格及實際驗證見 [natural-terrain-validation](.kiro/specs/natural-terrain-validation/validation.md)。完整三維碰撞／活動範圍遮罩仍為待確認規劃。
+
 新開發者：[硬體預檢、完整安裝 CLI Prompt 與 Claude Code／Codex 初始化指引](docs/onboarding.md)。先執行 `./scripts/onboarding.ps1`（預設只報告）。
 
 開發團隊引用：[v02 開發索引、keywords 與 Git tag](docs/development-reference.md)。
@@ -75,11 +77,11 @@ The selected player is **Caster**; an independent **Target** uses the existing l
 
 Use **Fire particle** below the scene (click, touch, or keyboard activation). Each shot travels toward Target's position at launch without homing. A simple sphere hit creates a brief particle flash once; misses expire. **Reset target** restores its default position and clears effects and counters. There is no damage, health, combat or NPC AI. First person keeps the existing Caster hiding behavior.
 
-The Particle interaction panel sets color, speed (0.5–30 m/s), radius (0.03–0.5 m), lifetime (0.1–10 s), and maximum effects (1–128, including hit bursts). Apply settings affects new shots; reducing the limit removes the oldest excess effects. Full capacity rejects new shots. Settings remain on this page only. [Specification and validation](.kiro/specs/particle-interaction/validation.md).
+The Particle interaction panel sets color, speed (0.5–30 m/s), radius (0.03–0.5 m), lifetime (0.1–10 s), and maximum effects (1–128, including hit bursts). Apply settings affects new shots; reducing the limit removes the oldest excess effects. Full capacity rejects new shots. Settings and drafts are saved with local panel profiles. [Specification and validation](.kiro/specs/particle-interaction/validation.md).
 
 ## Function panel
 
-- 左側 Function panel 按鈕可展開／收合整個面板；五大分類及子群組可各自展開。設定、文字與節點狀態保留於目前頁面，重新整理回到預設。
+- 左側 Function panel 按鈕可展開／收合整個面板；五大分類及子群組可各自展開。設定、文字與節點狀態由本機 panel profiles 保存，重新整理優先恢復 temp；奔跑與角色即時位置不恢復。
 - 桌面拖曳面板右側邊界調寬（260–520px，並為場景保留至少360px）。Tab到邊界後，用Left／Right調整16px，Shift調整32px，Home／End移至最小／最大寬度。
 - 窄版／觸控排列將面板放在場景與移動控制下方，使用全寬並隱藏調寬把手。下方移動與粒子按鈕維持原位。
 - 規格與本機驗證：[left-control-panel-tree](.kiro/specs/left-control-panel-tree/validation.md)。本機模擬窄版不等於手機LAN／真機驗收。
@@ -113,3 +115,15 @@ Character → Automatic tour 可編輯 waypoint，每行 `X, Z`（公尺），�
 手動移動、跑跳、點地、編輯輸入欄位、視窗失焦／隱藏與圖形連線中斷都會取消巡迴；不會自動恢復。修改速度、循環或路線後請重新Start。路線僅留本頁。座標落於障礙／界外或路徑不通時停止並顯示blocked，不會瞬移或跳點。巡迴沿用靜態避障，沒有增加主角對車輛／NPC的動態碰撞。規格／驗證見 [.kiro/specs/path-navigation](.kiro/specs/path-navigation/)。
 
 2026-11-02 LATER-02 / 1W-0: **Character → Position & manual speed** adds authoritative XYZ drafts, Read current / Apply, ground snap and 0.5–4 m/s manual walk speed. Scene display reports eight original CC0 Blender buildings with fallback/Retry; the streetscape remains hybrid. Rebuild and limits: [asset pipeline](docs/asset-pipeline.md), [spec validation](.kiro/specs/city-assets-editor/validation.md). Existing navigation/Run speeds remain independent; no general scene editor or scene switching is implied.
+
+## 本機 Panel Profiles（2026-11-09，1Y-10）
+
+面板頂端提供 **Panel.Reset / profile / Save**。設定變動自動更新 **temp**，reload 優先恢復 temp；Save 新增 city00–99／cave00–99 循環命名的 profile，合計保留最新10筆加temp。選另一profile前保存當前修改；乾淨的已載入profile不覆寫temp。Reset重置面板預設並寫temp，保留已存profiles。
+
+保存runtime設定、各場景光源／頭燈、四靈敏度、粒子已套用值與草稿、巡迴／XYZ草稿、表情文字、物件標籤／篩選、layout等；不恢復角色即時位置、移動、奔跑、按鍵或模擬進度。XYZ草稿不會自動Apply；粒子草稿不會取代已套用值。物件選擇以path還原，數字篩選仍依當次頁面ID，資產階層改變可能影響path對應。
+
+優先OPFS **panel-profiles.json**，瀏覽器管理實體路徑；不可用時以IndexedDB保存相同JSON，面板顯示實際方式或未保存錯誤。手機LAN HTTP使用IndexedDB fallback。不同origin／port／瀏覽器各自保存，清除網站資料會移除；不提供跨分頁合併或外部備份。損壞檔案不會由autosave覆蓋，明確Save／Reset才取代。
+
+PC第三人稱／魚眼自動奔跑會嘗試Pointer Lock；Y停止並解鎖，Esc／失焦／隱藏分頁解鎖並暫停，需明確恢復。拒絕時點畫布重試，未鎖定沿用有界控制。四項水平／垂直靈敏度0.1–5×即時生效；第一人稱指既有滾輪進入的觀看模式，魚眼共用第三人稱。手機保留觸控操作。原生鎖定仍待真人瀏覽器操作確認，headless拒絕與合成成功路徑分開記錄。
+
+[規格與驗證](.kiro/specs/panel-settings-profiles/validation.md)。未改變M6、跨GPU／效能或手機人工驗收狀態。

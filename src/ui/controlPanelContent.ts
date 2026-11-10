@@ -16,6 +16,9 @@ export function controlPanelContent(obstructionHint: string): string {
       { id: 'auto-run', label: 'Automatic run', open: true, content: `<label class="toggle-row" for="auto-run"><span>Auto run</span><input id="auto-run" type="checkbox"></label>
         <button id="auto-run-resume" type="button" hidden>Resume auto run</button>
         <output id="auto-run-status" aria-live="polite">Off</output>
+        <output id="mouse-lock-status" role="status">Mouse unlocked</output>
+        <p class="hint">PC: Y starts and locks the mouse; Y stops and unlocks. Esc pauses and unlocks. Click the scene to retry lock. Mobile keeps touch gestures.</p>
+        ${(['thirdHorizontal', 'thirdVertical', 'firstHorizontal', 'firstVertical'] as const).map((key, index) => `<label class="select-label" for="look-${key}">${['Third person horizontal','Third person vertical','First person horizontal','First person vertical'][index]} ×</label><input id="look-${key}" type="number" min="0.1" max="5" step="0.1" value="1">`).join('')}
         <button id="touch-reverse" type="button">反向 180°</button>
         <button id="touch-look-reset" type="button">鏡頭歸位</button>
         <p class="hint">手機自動奔跑：單指左右拖曳轉向，上下調整視角。雙指同向拖曳環繞觀察，張開拉近、捏合拉遠。拉近到底後繼續張開可進入第一人稱並暫停；單指拖曳觀看，捏合退出並恢復原跑停狀態。以 Auto run 開關及 Stop 控制奔跑。</p>
@@ -33,7 +36,7 @@ export function controlPanelContent(obstructionHint: string): string {
       { id: 'speech', label: 'Speech bubble', open: true, content: `<label class="select-label" for="speech">Your character’s words</label>
         <textarea id="speech" rows="3" aria-describedby="speech-help speech-count" placeholder="A thought for the neighborhood…"></textarea>
         <div class="speech-toolbar"><span id="speech-count">0 / ${speechLimit}</span><button id="clear-speech" type="button">Clear speech</button></div>
-        <p id="speech-help" class="hint">Up to 160 characters. Text stays on this page only. Your character stops while you edit. Overlays are hidden in First person.</p>
+        <p id="speech-help" class="hint">Up to 160 characters. Saved with panel profiles in this browser. Your character stops while you edit. Overlays are hidden in First person.</p>
         <p id="expression-status" class="expression-status" role="status" aria-live="polite" aria-atomic="true">Mood: None. No speech.</p>` }
     ] },
     { id: 'particles', label: 'Particle interaction', open: false, children: [
@@ -82,7 +85,12 @@ export function controlPanelContent(obstructionHint: string): string {
     ] },
     { id: 'scene', label: 'Scene display', open: false, children: [
       { id: 'environment', label: 'Environment', open: true, content: `<label class="select-label" for="environment">Active environment</label>
-        <select id="environment"><option value="city">City street</option><option value="cave">Rock chamber</option></select>
+        <select id="environment"><option value="city">City street</option><option value="cave">Rock chamber</option><option value="terrain">Natural terrain</option></select>
+        <fieldset id="terrain-controls" hidden><legend>Terrain vegetation</legend>
+          <label for="terrain-quality">Vegetation quality</label><select id="terrain-quality"><option value="standard">Standard · 384 grass clumps</option><option value="low">Low · 96 grass clumps</option></select>
+          <label><input id="terrain-wind" type="checkbox" checked> Grass wind</label>
+          <p class="hint">Static hills share movement, picking and shadow heights. Quality changes vegetation only; reduced motion freezes wind.</p>
+        </fieldset>
         <p id="environment-status" class="hint" role="status">City street ready.</p>` },
       { id: 'city-buildings', label: 'City buildings', open: true, content: `<p id="building-status" class="hint" role="status" aria-live="polite">Loading original Blender buildings…</p><button id="retry-buildings" type="button" hidden>Retry buildings</button><a class="asset-credits" href="/assets/city/ATTRIBUTION.md" target="_blank" rel="noopener">Original buildings & hybrid scene credits ↗</a>` },
       { id: 'traffic-simulation', label: 'City traffic', open: false, content: `

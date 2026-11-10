@@ -1,4 +1,5 @@
 import { bindEnvironmentLights } from './ui/EnvironmentLightControls';
+import { PanelProfiles, profileControlsContent } from './ui/PanelProfiles';
 import { showTourStatus } from './ui/TourControls';
 import { bindCharacterEditor, showEditorState } from './ui/CharacterEditor';
 import { SolarControls } from './ui/SolarControls';
@@ -30,6 +31,7 @@ const obstructionHints: Record<ObstructionMode, string> = {
 };
 
 let solarControls: SolarControls | undefined;
+let panelProfiles: PanelProfiles | undefined;
 const app = document.querySelector<HTMLDivElement>('#app');
 if (!app) throw new Error('Application root was not found.');
 app.innerHTML = `
@@ -45,6 +47,7 @@ app.innerHTML = `
       </div>
       <div id="control-panel-content" class="panel-content">
         <h1 class="panel-title">Your workspace</h1>
+        ${profileControlsContent}
         <p class="panel-help">Expand a category to explore.<span class="panel-resize-copy"> Drag the right edge to resize.</span></p>
         <nav class="function-tree" aria-label="Viewer functions">${controlPanelContent(obstructionHints.zoom)}</nav>
         <div class="sidebar-bottom"><span class="status-dot"></span> Everything runs on your computer.</div>
@@ -122,6 +125,7 @@ retryCharacter.addEventListener('click', () => {
 }, { signal: uiEvents.signal });
 let previousCharacterStatus = '';
 const updateCharacterStatus = (state: CharacterStatus): void => {
+  if (viewer) document.querySelector('#mouse-lock-status')!.textContent = viewer.getMouseLockStatus();
   document.querySelector<HTMLInputElement>('#auto-run')!.checked = state.autoRun;
   document.querySelector('#mobile-auto-run')!.setAttribute('aria-pressed', String(state.autoRun));
   document.querySelector('#mobile-auto-run')!.textContent = state.autoRunPaused && !state.firstPerson ? '恢復奔跑' : state.autoRun ? '停止自動跑' : '自動奔跑';
@@ -202,8 +206,9 @@ try {
   const syncEnvironmentLights = bindEnvironmentLights(document.querySelector<HTMLElement>('#environment-lights')!, viewer, uiEvents.signal);
   const syncHeadlamp = bindHeadlampControls(document.querySelector<HTMLFieldSetElement>('#headlamp-controls')!, viewer, uiEvents.signal);
   let environmentRequest = 0;
-  environment.addEventListener('change', async () => {
-    const id = environment.value === 'cave' ? 'cave' : 'city';
+  let environmentOperation = Promise.resolve();
+  const changeEnvironment = async (): Promise<void> => {
+    const id = environment.value === 'terrain' ? 'terrain' : environment.value === 'cave' ? 'cave' : 'city';
     const request = ++environmentRequest;
     environmentStatus.textContent = 'Preparing environment…';
     const ready = await viewer!.selectEnvironment(id);
@@ -212,7 +217,14 @@ try {
     const city = viewer!.cityFeatures;
     environment.value = active;
     viewport.dataset.environment = active;
-    environmentStatus.textContent = ready ? (city ? 'City street ready.' : 'Cave ready.') : 'Could not switch. Current environment kept.';
+    environmentStatus.textContent = ready ? (city ? 'City street ready.' : active === 'terrain' ? 'Terrain ready.' : 'Cave ready.') : 'Could not switch. Current environment kept.';
+    const terrain = viewer!.getTerrainSettings();
+    document.querySelector<HTMLElement>('#terrain-controls')!.hidden = !terrain;
+    document.querySelector<HTMLElement>('#terrain-controls')!.inert = !terrain;
+    if (terrain) {
+      document.querySelector<HTMLSelectElement>('#terrain-quality')!.value = terrain.quality;
+      document.querySelector<HTMLInputElement>('#terrain-wind')!.checked = terrain.wind;
+    }
     for (const id of ['city-buildings', 'traffic-simulation', 'water-feature', 'character-tour']) {
       const group = document.querySelector<HTMLElement>(`#function-${id}`)!;
       group.hidden = !city;
@@ -225,10 +237,20 @@ try {
     syncHeadlamp();
     syncEnvironmentLights();
     syncLampControls();
-    document.querySelector('.project-name')!.innerHTML = city ? 'City street <span>/</span> Untitled scene' : 'Underground <span>/</span> Validation area';
-    document.querySelector('.scene-title .eyebrow')!.textContent = city ? 'THE NEIGHBORHOOD' : 'UNDERGROUND';
-    document.querySelector('.scene-title h2')!.textContent = city ? 'Maple Avenue' : 'Rock Chamber';
-    document.querySelector('.scene-title p')!.textContent = city ? 'A quiet street. An open canvas.' : 'A walkable chamber with solid walls.';
+    document.querySelector('.project-name')!.innerHTML = city ? 'City street <span>/</span> Untitled scene' : active === 'terrain' ? 'Natural terrain <span>/</span> Validation area' : 'Underground <span>/</span> Validation area';
+    document.querySelector('.scene-title .eyebrow')!.textContent = city ? 'THE NEIGHBORHOOD' : active === 'terrain' ? 'THE HILLS' : 'UNDERGROUND';
+    document.querySelector('.scene-title h2')!.textContent = city ? 'Maple Avenue' : active === 'terrain' ? 'Wind Meadow' : 'Rock Chamber';
+    document.querySelector('.scene-title p')!.textContent = city ? 'A quiet street. An open canvas.' : active === 'terrain' ? 'Rolling ground. Shared heights. Moving grass.' : 'A walkable chamber with solid walls.';
+    panelProfiles?.changed();
+  };
+  environment.addEventListener('change', () => { environmentOperation = changeEnvironment(); }, { signal: uiEvents.signal });
+  document.querySelector<HTMLSelectElement>('#terrain-quality')!.addEventListener('change', event => {
+    viewer?.configureTerrain({ quality: (event.target as HTMLSelectElement).value as 'standard' | 'low' });
+    panelProfiles?.changed();
+  }, { signal: uiEvents.signal });
+  document.querySelector<HTMLInputElement>('#terrain-wind')!.addEventListener('change', event => {
+    viewer?.configureTerrain({ wind: (event.target as HTMLInputElement).checked });
+    panelProfiles?.changed();
   }, { signal: uiEvents.signal });
   document.querySelector('#tour-start')!.addEventListener('click', () => {
     viewer?.startTour(document.querySelector<HTMLTextAreaElement>('#tour-route')!.value,
@@ -263,7 +285,7 @@ try {
     }, {signal:uiEvents.signal});
   }
   document.querySelector('#traffic-reset')!.addEventListener('click', () => { viewer?.resetTraffic(); syncTraffic(); }, {signal:uiEvents.signal});
-  controls.forEach(control => { control.disabled = false; });
+  controls.forEach(control => { if (!control.closest('.profile-toolbar')) control.disabled = false; });
   bindCharacterEditor(document, viewer, uiEvents.signal);
   const syncWater = (): void => {
     if (!viewer) return;
@@ -344,6 +366,12 @@ try {
   document.querySelectorAll<HTMLButtonElement>('[data-direction]').forEach(button => viewer?.bindDirection(button, button.dataset.direction as MoveDirection));
   document.querySelector('#run')!.addEventListener('click', () => viewer?.setRunning(!viewer.getCharacterStatus().running), { signal: uiEvents.signal });
   document.querySelector('#auto-run')!.addEventListener('change', event => viewer?.setAutoRun((event.target as HTMLInputElement).checked), { signal: uiEvents.signal });
+  for (const key of ['thirdHorizontal', 'thirdVertical', 'firstHorizontal', 'firstVertical'] as const) {
+    const input = document.querySelector<HTMLInputElement>(`#look-${key}`)!;
+    input.addEventListener('input', () => {
+      if (input.checkValidity()) viewer?.configureLookSensitivity({ [key]: input.valueAsNumber });
+    }, { signal: uiEvents.signal });
+  }
   document.querySelector('#auto-run-resume')!.addEventListener('click', () => viewer?.setAutoRun(true), { signal: uiEvents.signal });
   document.querySelector('#touch-reverse')!.addEventListener('click', () => viewer?.reverseAutoRun(), { signal: uiEvents.signal });
   document.querySelector('#touch-look-reset')!.addEventListener('click', () => viewer?.resetCameraLook(), { signal: uiEvents.signal });
@@ -395,6 +423,14 @@ try {
   lighting.addEventListener('change', () => { viewer?.setTimeOfDay(lighting.value as TimeOfDay); solarControls?.sync(); syncLampControls(); }, { signal: uiEvents.signal });
   shadows.addEventListener('change', () => { viewer?.setShadows(shadows.checked); syncLampControls(); }, { signal: uiEvents.signal });
   syncLampControls();
+  panelProfiles = new PanelProfiles(document.querySelector<HTMLElement>('.control-panel')!, viewer, controlPanel, async () => {
+    environment.value = viewer!.environmentId;
+    await changeEnvironment();
+    syncTraffic(); syncWater(); syncExpression(false);
+    syncHeadlamp(); syncEnvironmentLights(); solarControls?.sync(); syncLampControls();
+    updateCharacterStatus(viewer!.getCharacterStatus());
+  }, () => environmentOperation);
+  await panelProfiles.initialize();
 } catch (cause) {
   fatal = true;
   reportAsset({ phase: 'error', message: 'Scene unavailable.', recovery: 'Reload the page to retry. If the problem continues, check your connection and WebGL2 hardware acceleration.' });
@@ -407,6 +443,6 @@ try {
 }
 }
 void initialize();
-const dispose = (): void => { uiEvents.abort(); solarControls?.dispose(); controlPanel.dispose(); viewer?.dispose(); };
+const dispose = (): void => { uiEvents.abort(); panelProfiles?.dispose(); solarControls?.dispose(); controlPanel.dispose(); viewer?.dispose(); };
 window.addEventListener('pagehide', event => { if (!event.persisted) dispose(); }, { signal: uiEvents.signal });
 if (import.meta.hot) import.meta.hot.dispose(dispose);

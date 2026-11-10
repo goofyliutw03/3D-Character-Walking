@@ -22,6 +22,10 @@ export class ControlPanel {
   private preferredWidth = defaultWidth;
   private collapsed = false;
   private drag: { pointer: number; x: number; width: number } | undefined;
+  getSettings(): { width: number; collapsed: boolean } { return { width: this.preferredWidth, collapsed: this.collapsed }; }
+  applySettings(settings: { width: number; collapsed: boolean }): void {
+    this.finishDrag(); this.preferredWidth = settings.width; this.collapsed = settings.collapsed; this.render();
+  }
 
   constructor(root: HTMLElement) {
     this.root = root;

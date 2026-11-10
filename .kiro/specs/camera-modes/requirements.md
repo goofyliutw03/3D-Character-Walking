@@ -58,3 +58,9 @@ inline PASS：15 個數字驗收條件具可觀察結果；魚眼角度與投影
 - 6.3 pointercancel／有效lostpointercapture、blur／hidden／resize及既有模式／角色切換、Stop、dispose清除；正常pointerup之後的lostcapture不得把正常完成改成取消。長按選單僅在canvas抑制。
 - 6.4 普通／魚眼沿用同一控制器；Follow與First person閘門不變。桌面合成觸控不等於iOS／Android／摺疊裝置實機驗收，M6／SCENE-05保留。
 需求inline審閱PASS：依使用者授權自動審閱，非逐份人工核准。
+
+## 2026-11-10 平滑視角追加（1Y-11）
+- 7.1 切換方向、角度與縮放時約0.8秒平滑過渡，連續切換從當前顯示姿態接續。
+- 7.2 FOV與near連續變化，魚眼投影淡入淡出；轉場期間仍可操作且沿用遮擋保護。
+- 7.3 第一人稱眼位即時跟隨、方向短時間平滑；減少動態效果直接到位。
+依使用者 OK please go on 授權自動inline審閱PASS，非逐份人工核准。

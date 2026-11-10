@@ -1,5 +1,7 @@
 # Development plan
 
+2026-11-10 [1Y-12] 接續多場景授權，新增 [自然地表 Shader 驗證區](../.kiro/specs/natural-terrain-validation/)：共用量化高度、CPU貼地／射線與GPU置換、法線／陰影、程序草木、品質與生命週期。依序自動inline審閱，保留既有相機／Profiles；不新增第七里程碑。全場景三維碰撞／活動範圍規範另待確認，本次僅沿用既有WalkableWorld。實際驗證、Release及索引見該spec validation。
+
 2026-11-07 [1Y-7] 使用者核准 [封閉空間光源面板](../.kiro/specs/enclosed-space-lights/)。10 火把、20 晶簇、天井與環境光獨立開關／倍率／顏色／特效；頭燈沿用原控制來源。規格及驗證見該目錄。
 
 2026-11-07 相機／輸入交互審查。沿用 [auto-run-camera-controls](../.kiro/specs/auto-run-camera-controls/) requirements10–11，檢查切換矩陣並接入六類空間的 SceneControlPolicy。城市／洞穴使用實際接線，其他空間僅做能力契約驗證。證據與限制見該規格 validation。
@@ -112,3 +114,5 @@ The historical plan requests confirmation of each stage design before implementa
 2026-11-02 LATER-02／1W-0：依延後候選自動續作授權新增 [city-assets-editor](../.kiro/specs/city-assets-editor/)：既有Blender5.2.2生成八棟原創CC0建築、GLB載入／fallback／Retry與主角XYZ／貼地／手動walk速度。道路／人行道等仍程序幾何，明示混合街景，不冒稱歷史城市原檔。Inspector不重做，控制權維持CharacterController；共用檔依序，非第七里程碑，人工驗收與場景切換範圍不變。實際驗證／發佈／索引以spec validation為準。
 
 2026-11-08 [1Y-9] 使用者核准 [occlusion-independent-ground-picking](../.kiro/specs/occlusion-independent-ground-picking/)：第三人稱點地穿透一般環境，主角／Target／NPC及明確指定物件攔截，依表面能力及複雜度自動求交。保留導航／碰撞，依序規格、實作、inline審閱與驗證；非第七里程碑，不委派／commit／push。
+
+2026-11-10 [1Y-11] 已核准camera-modes追加7.1–7.3：相機姿態／投影平滑、魚眼淡入淡出及第一人稱短時間轉向平滑；依序實作與inline審閱，驗證及限制見該spec validation。非新里程碑，保留其他人工待驗；未commit/push/委派。

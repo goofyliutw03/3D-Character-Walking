@@ -1,6 +1,7 @@
 import type { CameraInputMode } from '../camera/CameraModeManager';
 
 interface Actions {
+  lockEnabled?(): boolean;
   mode(): CameraInputMode;
   clearGesture(): void;
   wheelEnabled(): boolean;
@@ -14,13 +15,62 @@ interface Actions {
 }
 
 export class CameraInputManager {
+  lockStatus = 'Unlocked · start auto run or click scene to lock mouse';
+  private lockWanted = false;
+  private lockPending = false;
+  private unlock: () => void = () => {};
+  private request: () => void = () => {};
+  get locked(): boolean { return this.canvas?.ownerDocument.pointerLockElement === this.canvas; }
+  get lockActive(): boolean { return this.lockWanted || this.locked; }
+  private canvas: HTMLElement | undefined;
+  requestLock(): void { this.request(); }
+  releaseLock(): void { this.unlock(); }
   private previous: { x: number; y: number; ctrl: boolean } | undefined;
   private resetTouch = (): void => {};
   private localReset = false;
   reset(): void { this.previous = undefined; if (!this.localReset) this.resetTouch(); }
   private readonly events = new AbortController();
   constructor(canvas: HTMLElement, actions: Actions) {
+    this.canvas = canvas;
     const options = { capture: true, signal: this.events.signal };
+    const doc = canvas.ownerDocument;
+    const eligible = (): boolean => !!actions.lockEnabled?.() && !doc.hidden;
+    const fail = (): void => { this.lockPending = false; this.lockWanted = false; this.lockStatus = 'Mouse lock denied · click scene to retry (Esc unlocks)'; };
+    this.unlock = (): void => {
+      this.lockWanted = false;
+      if (this.locked) doc.exitPointerLock();
+    };
+    this.request = (): void => {
+      if (!eligible() || this.locked || this.lockPending || window.matchMedia?.('(pointer: coarse)').matches) return;
+      if (!canvas.requestPointerLock) { this.lockStatus = 'Mouse lock unsupported · using bounded mouse control'; return; }
+      this.lockWanted = true; this.lockPending = true; this.lockStatus = 'Requesting mouse lock…';
+      canvas.focus({ preventScroll: true });
+      try {
+        const result = canvas.requestPointerLock();
+        if (result && typeof result.catch === 'function') void result.then(() => {
+          if ((!this.lockWanted || this.events.signal.aborted) && this.locked) doc.exitPointerLock();
+        }).catch(fail);
+      } catch { fail(); }
+    };
+    let wasLocked = false;
+    doc.addEventListener('pointerlockchange', () => {
+      this.lockPending = false;
+      this.previous = undefined; actions.clearGesture();
+      if (this.locked) {
+        if (!this.lockWanted || !eligible()) { this.unlock(); return; }
+        wasLocked = true; this.lockStatus = 'Mouse locked · Y stops and unlocks · Esc pauses';
+      } else {
+        const unexpected = wasLocked && this.lockWanted;
+        wasLocked = false; this.lockWanted = false; this.lockStatus = 'Mouse unlocked · click scene to lock';
+        if (unexpected) actions.suspend();
+      }
+    }, options);
+    doc.addEventListener('pointerlockerror', fail, options);
+    doc.addEventListener('mousemove', event => {
+      if (!this.locked || !eligible()) return;
+      event.stopImmediatePropagation();
+      actions.move(event.movementX, event.movementY, event.ctrlKey, event.timeStamp);
+    }, options);
     const focused = (): boolean => canvas.ownerDocument.activeElement === canvas && !canvas.ownerDocument.hidden;
     const fingers = new Map<number, { x: number; y: number }>();
     let blocked = false;
@@ -116,6 +166,7 @@ export class CameraInputManager {
     window.addEventListener('blur', clearTouch, options);
     canvas.addEventListener('pointermove', event => {
       if (event.pointerType !== 'mouse') return;
+      if (this.locked) { event.stopImmediatePropagation(); return; }
       if (!focused() || actions.mode() === 'standard') { this.previous = undefined; return; }
       event.stopImmediatePropagation();
       const current = { x: event.clientX, y: event.clientY, ctrl: event.ctrlKey };
@@ -127,6 +178,7 @@ export class CameraInputManager {
     canvas.addEventListener('pointerleave', () => actions.clearGesture(), options);
     canvas.addEventListener('pointercancel', () => actions.clearGesture(), options);
     canvas.addEventListener('pointerdown', event => {
+      if (event.pointerType === 'mouse' && event.button === 0 && eligible()) this.requestLock();
       if (event.pointerType !== 'mouse' || (actions.mode() === 'standard' && !(event.button === 1 && actions.reverseEnabled()))) return;
       canvas.focus({ preventScroll: true });
       event.preventDefault();
@@ -145,6 +197,7 @@ export class CameraInputManager {
     }, { ...options, passive: false });
     canvas.addEventListener('keydown', event => {
       if (canvas.ownerDocument.activeElement !== canvas) return;
+      if (event.code === 'Escape') { this.releaseLock(); actions.suspend(); return; }
       if (event.code === 'KeyY' && !event.ctrlKey && !event.shiftKey && !event.altKey && !event.metaKey && !event.isComposing) {
         event.preventDefault();
         event.stopImmediatePropagation();
@@ -160,15 +213,31 @@ export class CameraInputManager {
     for (const type of ['keydown', 'keyup'] as const) window.addEventListener(type, event => {
       if (event.code === 'ControlLeft' || event.code === 'ControlRight') actions.clearGesture();
     }, options);
-    canvas.addEventListener('blur', () => actions.clearGesture(), options);
+    canvas.addEventListener('blur', () => {
+      actions.clearGesture();
+      if (this.locked || this.lockPending) { this.releaseLock(); actions.suspend(); }
+    }, options);
     window.addEventListener('blur', event => {
       if (event.target !== window) return;
       this.previous = undefined;
+      this.releaseLock();
       actions.suspend();
     }, options);
     canvas.ownerDocument.addEventListener('visibilitychange', () => {
-      if (canvas.ownerDocument.hidden) { this.previous = undefined; actions.suspend(); }
+      if (canvas.ownerDocument.hidden) { this.previous = undefined; this.releaseLock(); actions.suspend(); }
     }, options);
   }
-  dispose(): void { this.reset(); this.events.abort(); }
+  dispose(): void {
+    this.releaseLock();
+    if (this.lockPending) {
+      const doc = this.canvas!.ownerDocument;
+      const finish = (): void => {
+        if (this.locked) doc.exitPointerLock();
+        doc.removeEventListener('pointerlockchange', finish); doc.removeEventListener('pointerlockerror', finish);
+      };
+      doc.addEventListener('pointerlockchange', finish, { once: true });
+      doc.addEventListener('pointerlockerror', finish, { once: true });
+    }
+    this.reset(); this.events.abort();
+  }
 }

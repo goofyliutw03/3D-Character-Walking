@@ -124,3 +124,41 @@ test('2.1: real OrbitControls must not lift a frozen low-angle camera', () => {
   rig.update(subject, 1 / 60, false);
   assert.ok(before.distanceTo(camera.position) < 1e-8);
 });
+
+
+test('7.1–7.3: rendered pose, lens continuity, rapid retarget and reduced motion', () => {
+  const { rig, camera, controls } = setup();
+  const rendered = camera.clone();
+  rendered.position.set(1, 3, 9); rendered.lookAt(0, 2, 5);
+  rig.select('fisheye', subject, false, rendered);
+  rig.update(subject, 0, false);
+  assert.ok(camera.position.distanceTo(rendered.position) < 1e-8);
+  assert.ok(camera.quaternion.angleTo(rendered.quaternion) < 1e-7);
+  assert.equal(camera.fov, 43); assert.equal(rig.fisheyeAmount, 0);
+  for (let i = 0; i < 8; i++) rig.update(subject, .05, false);
+  assert.ok(camera.fov > 43 && camera.fov < 160);
+  assert.ok(rig.fisheyeAmount > 0 && rig.fisheyeAmount < 1);
+  const current = camera.clone(), lens = rig.fisheyeAmount;
+  rig.select('first-person', subject, false, current); rig.update(subject, 0, false);
+  assert.equal(camera.fov, current.fov); assert.equal(rig.fisheyeAmount, lens);
+  assert.ok(camera.position.distanceTo(current.position) < 1e-8);
+  rig.update(subject, .01, true);
+  assert.equal(camera.fov, 70); assert.equal(camera.near, .04); assert.equal(rig.fisheyeAmount, 0);
+  const rotation = camera.quaternion.clone();
+  rig.update({ ...subject, x: 2, heading: Math.PI }, .016, false);
+  assert.ok(camera.quaternion.angleTo(rotation) > 0);
+  assert.ok(camera.quaternion.angleTo(rotation) < Math.PI / 2);
+  assert.ok(Math.abs(camera.position.x - 2) < 1e-8);
+  rig.update({ ...subject, heading: Math.PI }, .016, true);
+  assert.ok(camera.getWorldDirection(new Vector3()).z < -.99);
+  assert.ok(controls.target.distanceTo(camera.position) > 9);
+});
+
+test('7.2: orbit interruption preserves independent projection completion', () => {
+  const { rig, camera } = setup();
+  rig.select('fisheye', subject, true);
+  rig.select('street', subject, false);
+  rig.update(subject, .05, false); rig.interrupt();
+  for (let i = 0; i < 20; i++) rig.update(subject, .05, false);
+  assert.equal(rig.fisheyeAmount, 0); assert.equal(camera.fov, 43);
+});

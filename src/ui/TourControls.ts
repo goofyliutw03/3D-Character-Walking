@@ -10,7 +10,7 @@ export const tourControlsContent = `
 <input id="tour-speed" type="number" min="0.5" max="4" step="0.1" value="1.8">
 <div class="object-filter-actions"><button id="tour-start" type="button">Start route</button><button id="tour-pause" type="button">Pause</button><button id="tour-resume" type="button">Resume</button><button id="tour-stop" type="button">Stop tour</button></div>
 <p id="tour-status" class="hint" role="status" aria-live="polite">Tour off.</p>
-<p id="tour-help" class="hint">One X, Z pair per line, up to 32. Start replaces the current route. Pause keeps your next waypoint. Movement, tapping the ground, editing, leaving the window or Stop cancels the tour. Change settings then Start again. Routes stay on this page only.</p>`;
+<p id="tour-help" class="hint">One X, Z pair per line, up to 32. Start replaces the current route. Pause keeps your next waypoint. Movement, tapping the ground, editing, leaving the window or Stop cancels the tour. Change settings then Start again. Route drafts are saved with panel profiles; movement never resumes on reload.</p>`;
 export function showTourStatus(root: ParentNode, state: TourSnapshot): void {
   const labels = {idle:'Tour off',running:'Tour moving',paused:'Tour paused',completed:'Tour completed',blocked:'Tour blocked · check coordinates and clear ground'};
   const text = `${labels[state.status]}${state.count ? ` · Waypoint ${state.index+1}/${state.count} · ${state.speed.toFixed(1)} m/s` : ''}.`;

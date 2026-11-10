@@ -80,3 +80,6 @@ Chrome headless／SwiftShader的localhost:4174正式Release回歸，Needle及leg
 瀏覽器使用headless Chrome／SwiftShader與合成事件。未驗證無限事件排列、真實滑鼠手感、實機GPU/手機/讀屏、所有空間真實場景或長時間效能。矩陣檢查狀態及姿態有效性，不代表每種遮擋的像素結果已人工驗收。半開放、半封閉、過渡區、水下僅驗證契約fixture。Rollback僅撤回本輪政策、clear/focus/F1修正、接線與測試／文件差異，保留既有dirty。
 
 Token用量：無法取得精確值，缺少可取得的官方階段起始與結束基準。索引採SocratiCode增量更新並查status，最終範圍與完成時間以本chat工具結果為準。
+
+## 1Y-10 Pointer Lock／四靈敏度與Profiles（2026-11-09）
+控制task11.1／11.2完成並依授權inline審閱通過，無獨立委派。四倍率0.1–5即時套用，鎖定相對位移連續轉向；未鎖定保留預設180度分段上限。Y／Stop、Esc／失焦／hidden、模式與場景、manual接管、pending晚到與dispose清理測試涵蓋。與全部panel profiles整合，具體fresh tests／Release／browser證據、原生headless拒絕及人工限制見[本輪驗證](../panel-settings-profiles/validation.md)。全套175pass；未commit／push，既有手機／GPU人工驗收不變。Token用量無法取得精確值，缺少可取得官方起訖基準。

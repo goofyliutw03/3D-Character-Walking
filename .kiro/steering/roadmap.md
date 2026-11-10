@@ -1,5 +1,7 @@
 # cc-sdd 規劃對應與待辦
 
+2026-11-10 [1Y-12] 多場景下一項為 [natural-terrain-validation](../specs/natural-terrain-validation/)，共用高度與地表Shader一致性驗證，規格／審閱／驗證依序。Viewer／main／Profiles共用檔必須依序，不可平行。三維World Query與Range Policy待使用者確認獨立規範；飛行／水域／太空未啟動。
+
 2026-11-08 [1Y-8] auto-run-camera-controls手機適配完成，單／雙指、靜止第一人稱進出、觸控按鈕與提示。158tests及Needle／legacy行動尺寸實際touch事件驗證通過，證據與真機限制見該spec validation；共用檔依序，未commit／push。
 
 2026-11-07 [1Y-5] 已核准auto-run-camera-controls追加管理分工：CameraController、CameraModeManager、CameraInputManager；共用檔依序修改，需求9與tasks4–5，不擴張光源面板。
@@ -135,3 +137,5 @@
 2026-11-07 [1Y-7] 已核准 enclosed-space-lights，依序實作與驗證，未委派。32 個場景光源與既有頭燈控制，詳見 spec。
 
 2026-11-08 [1Y-9] 核准 [occlusion-independent-ground-picking](../specs/occlusion-independent-ground-picking/)；城市／洞穴點地穿透、明確角色攔截與自動求交。共用Viewer／場景檔必須依序進行，不可平行；保留既有人工驗收裁定。
+
+2026-11-10 [1Y-11] camera-modes追加平滑相機需求7.1–7.3與tasks6.1–6.3，178tests/build及兩路Release browser通過，待使用者操作感受與結束確認；不擴大其他里程碑。

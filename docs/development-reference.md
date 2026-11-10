@@ -1,5 +1,9 @@
 # v02 development reference
 
+目前 3D 知識與架構總入口（2026-11-08）：[3D 基礎知識與專案架構指南](3d-knowledge-architecture.md)。
+包含原 [2A-1]～[2A-8] 主題索引、名詞中英對照、逐幀流程、目前程式位置與驗證限制；
+下列 tag 為歷史快照，不能代表工作樹中的 Needle、多場景及新輸入功能已包含在該 tag。
+
 Development branch: `codex/v02-particle-system`.
 Annotated Git tag: `dev/v02-water-lighting-inspector`.
 
@@ -13,6 +17,7 @@ RAG, Qdrant, Ollama, VS Code, Windows, incremental-release.
 
 | Topic | Reference |
 |---|---|
+| 3D foundations and current architecture | [繁體中文知識指南](3d-knowledge-architecture.md) |
 | Viewer setup and controls | [README](../README.md) |
 | Water, spray and wet lens API | [Water API](water-api.md) |
 | Reusable object lighting API | [Lighting API](lighting-api.md) |

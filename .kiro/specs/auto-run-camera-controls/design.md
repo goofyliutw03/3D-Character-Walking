@@ -25,3 +25,6 @@ SceneControlPolicy 定義六種 SpaceKind，以及可獨立覆寫的 framing、c
 configureScene 統一清除 inspection、zoom、角度與手勢，避免城市與洞穴間殘留第一人稱回復權限。Ctrl 變化、離開畫布與 pointercancel 清理位移基準。瀏覽器縮放等修飾滾輪不交由相機消費。畫布焦點是滑鼠觀看的必要條件。
 
 依授權 inline 審閱需求10–11，允許局部能力擴充與舊 Environment 相容。Rollback 撤回本節對應的政策、clear/focus 修正、接線與測試差異，保留前階段成果。
+
+## 1Y-10 extension
+CameraInputManager管理Pointer Lock request/change/error/exit生命週期，使用movementX/Y且避免pointermove重複，使用者手勢才request，失敗不假稱成功。ViewerApp在開始時request、stop時exit、模式不適用時exit並暫停，切場景stop，卸載清理。鎖定相對位移傳入AutoRunControls取消每段上限，四倍率按view選擇，俯仰限制不變。main顯示狀態／重試及四inputs，Profile保存設定不保存鎖定。檔案：src/input/CameraInputManager.ts、AutoRunControls.ts、src/engine/ViewerApp.ts、src/main.ts、src/ui/controlPanelContent.ts、tests。鎖定pending後stop的晚到成功必須立即退出。req12.1–12.5以合成生命週期＋原生browser能力分別驗證。2026-11-09依授權requirements/design/tasks inline審閱通過，無委派。

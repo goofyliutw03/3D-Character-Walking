@@ -1,6 +1,8 @@
 import { CameraModeManager } from '../camera/CameraModeManager';
+import type { SceneSettings, ViewerSettings } from '../settings/ViewerSettings';
+import { validViewerSettings } from '../settings/validateViewerSettings';
 import { sceneControlPolicy } from '../scene/SceneControlPolicy';
-import { SceneSwitch, type Environment, type EnvironmentId } from '../scene/SceneSwitch';
+import { SceneSwitch, type Environment, type EnvironmentId, type TerrainSettings } from '../scene/SceneSwitch';
 import { PathTour, parseWaypoints, type TourSnapshot } from '../navigation/PathTour';
 import { cameraHeading, solarPosition, type SolarSettings } from '../scene/SolarPosition.ts';
 import type { LightSettings } from '../scene/EnvironmentLights';
@@ -30,7 +32,7 @@ import { DestinationNavigation, type NavigationStatus } from '../navigation/Dest
 import { GroundPicker } from '../navigation/GroundPicker';
 import { TapGesture } from '../input/TapGesture';
 import { MouseOrbitGesture } from '../input/MouseOrbitGesture';
-import { AutoRunControls } from '../input/AutoRunControls';
+import { AutoRunControls, type LookSensitivity } from '../input/AutoRunControls';
 import { CameraInputManager } from '../input/CameraInputManager';
 import { CameraObstruction, type ObstructionMode } from '../camera/CameraObstruction';
 import { createSpraySource, type WaterSettings } from '../water/index.ts';
@@ -43,6 +45,8 @@ export type CameraPreset = CameraView;
 export interface CharacterStatus { groundPenetration: boolean; autoRun: boolean; autoRunPaused: boolean; variant: CharacterVariant; action: MotionSnapshot['action']; running: boolean; following: boolean; firstPerson: boolean; cameraView: CameraView; navigation: NavigationStatus; tour: TourSnapshot; obstructionMode: ObstructionMode; motion: Readonly<MotionSnapshot>; walkSpeed: number; buildings: CityAssetState }
 
 export class ViewerApp {
+  private sceneSettings: Partial<Record<EnvironmentId, SceneSettings>> = {};
+  private sceneDefaults: Partial<Record<EnvironmentId, SceneSettings>> = {};
   private readonly camera = new PerspectiveCamera(43, 1, 0.1, 200);
   private readonly indoorCameraBounds = new Box3();
   private readonly desiredCamera = this.camera.clone();
@@ -160,7 +164,7 @@ export class ViewerApp {
           this.scenes.root.add(model.root);
         }
         this.character.root.visible = !model && this.cameras.characterVisible;
-        this.view.renderer.domElement.setAttribute('aria-label', `Interactive ${this.environmentId === 'city' ? 'city' : 'cave'} with a ${model ? 'rigged character' : 'procedural fallback'}. Tap the ground to run there. Drag to orbit, pinch to zoom. Keyboard: WASD or arrows, Shift to run, Space to jump.`);
+        this.view.renderer.domElement.setAttribute('aria-label', `Interactive ${this.environmentId} with a ${model ? 'rigged character' : 'procedural fallback'}. Tap the ground to run there. Drag to orbit, pinch to zoom. Keyboard: WASD or arrows, Shift to run, Space to jump.`);
       },
     });
     const canvas = this.view.renderer.domElement;
@@ -169,12 +173,13 @@ export class ViewerApp {
       () => this.cameraInput?.reset());
     this.cameraModes.configureScene(this.scenes.controls);
     this.cameraInput = new CameraInputManager(canvas, {
+      lockEnabled: () => this.autoRun.enabled && !this.autoRun.paused && this.cameraModes.inputMode !== 'standard',
       mode: () => this.cameraModes.inputMode,
       clearGesture: () => this.cameraModes.resetGestures(),
       wheelEnabled: () => this.cameraModes.wheelEnabled,
       reverseEnabled: () => this.autoRun.running,
       move: (dx, dy, ctrl, time) => {
-        this.autoRun.move(dx, dy, canvas.clientWidth, ctrl, time);
+        this.autoRun.move(dx, dy, canvas.clientWidth, ctrl, time, this.cameras.view, this.cameraInput.locked);
         if (ctrl && this.cameraModes.inputMode === 'standard') this.cameraModes.follow();
       },
       wheel: delta => {
@@ -275,6 +280,7 @@ export class ViewerApp {
     this.mouseOrbit.update(delta);
     const manual = this.input.sample();
     if (!this.autoRun.inspecting && (manual.x || manual.z || manual.jump)) { this.autoRun.stop(); this.navigation.cancel(); this.tour.cancel(); }
+    if (this.cameraInput.lockActive && !this.autoRun.enabled) this.cameraInput.releaseLock();
     const automated = this.tour.snapshot.status === 'running' || this.navigation.status === 'running';
     const intent = this.autoRun.running ? { x: Math.sin(this.autoRun.heading), z: Math.cos(this.autoRun.heading), run: true, jump: false }
       : this.autoRun.active ? { x: 0, z: 0, run: false, jump: false }
@@ -346,7 +352,7 @@ export class ViewerApp {
     this.inspector.update(this.camera, this.cameras.fisheye);
     const xray = this.obstruction.mode === 'xray' && this.cameras.characterVisible
       ? { subject: (this.assets.current ?? this.character).root, environment: active.environment } : undefined;
-    const render = () => this.view.render(this.scenes.root, this.cameras.fisheye, xray);
+    const render = () => this.view.render(this.scenes.root, this.cameras.fisheyeAmount, xray);
     if (this.needleReady && this.needle) this.needle.render(render);
     else render();
     this.frameCount++;
@@ -361,10 +367,15 @@ export class ViewerApp {
 
   async selectEnvironment(id: EnvironmentId): Promise<boolean> {
     if (this.disposed || this.contextLost) return false;
+    this.sceneSettings[this.environmentId] = this.captureSceneSettings();
     return this.scenes.select(id, async () => id === 'city'
       ? this.cityEnvironment
+      : id === 'terrain' ? (await import('../scene/TerrainScene')).createTerrain()
       : (await import('../scene/CaveScene')).createCave(), next => {
       this.stop();
+      this.sceneDefaults[next.id] ??= this.captureSceneSettings();
+      const saved = this.sceneSettings[next.id];
+      if (saved) this.applySceneSettings(saved);
       const speed = this.movement.walkSpeed;
       this.movement = new CharacterController(next.walkableWorld);
       this.movement.setWalkSpeed(speed);
@@ -392,14 +403,61 @@ export class ViewerApp {
       this.character.update(this.motion, 0);
       this.assets.current?.update(this.motion, 0);
       next.headlamp?.update(this.getCameraSubject(), 0, this.reducedMotion.matches);
-      this.view.renderer.domElement.setAttribute('aria-label', id === 'city' ? 'Interactive city' : 'Interactive cave');
+      this.view.renderer.domElement.setAttribute('aria-label', `Interactive ${id}`);
     });
+  }
+
+  private captureSceneSettings(): SceneSettings {
+    return { time: this.getTimeOfDay(), solar: this.getSolarSettings(),
+      lights: this.getEnvironmentLights().map(({ id, enabled, intensity, color, effects }) => ({ id, settings: { enabled, intensity, color, effects } })),
+      headlamp: this.getHeadlampSettings() ?? null,
+      ...(this.getTerrainSettings() ? { terrain: this.getTerrainSettings() } : {}) };
+  }
+  private applySceneSettings(settings: SceneSettings): void {
+    this.setTimeOfDay(settings.time); this.configureSolar(settings.solar);
+    for (const light of settings.lights) if (!this.configureEnvironmentLight(light.id, light.settings)) throw Error('Invalid environment light: ' + light.id);
+    if (settings.headlamp && !this.configureHeadlamp(settings.headlamp)) throw Error('Invalid headlamp settings');
+    if (settings.terrain && !this.configureTerrain(settings.terrain)) throw Error('Invalid terrain settings');
+  }
+  getPanelSettings(): ViewerSettings {
+    this.sceneSettings[this.environmentId] = this.captureSceneSettings();
+    this.sceneDefaults[this.environmentId] ??= structuredClone(this.sceneSettings[this.environmentId]!);
+    return structuredClone({ environment: this.environmentId, scenes: this.sceneSettings,
+      variant: this.variant, camera: this.cameras.view, following: this.cameras.following,
+      obstruction: this.obstruction.mode, groundPenetration: this.groundPenetration,
+      sensitivity: this.autoRun.lookSensitivity, walkSpeed: this.movement.walkSpeed,
+      expression: this.getExpression(), traffic: this.traffic.snapshot.settings, particles: this.particles.settings,
+      water: this.getWaterSettings(), waterLens: this.getWaterLensEnabled(), shadows: this.shadows,
+      lamps: this.getLampShadowOptions().filter(item => item.selected).map(item => item.id),
+      lampDetection: this.getLampShadowDetection(), inspector: this.inspector.getSettings() });
+  }
+  async applyPanelSettings(settings: ViewerSettings, reset = false): Promise<void> {
+    if (!validViewerSettings(settings)) throw Error('Invalid panel settings');
+    this.stop();
+    if (!await this.selectEnvironment(settings.environment)) throw Error('Could not restore environment');
+    this.sceneSettings = structuredClone(reset ? this.sceneDefaults : settings.scenes);
+    const active = this.sceneSettings[this.environmentId];
+    if (active) this.applySceneSettings(active);
+    this.setCharacter(settings.variant); this.setWalkSpeed(settings.walkSpeed);
+    this.setEmotion(settings.expression.emotion); this.setSpeech(settings.expression.speech);
+    if (!this.configureTraffic(settings.traffic) || !this.configureParticles(settings.particles) ||
+        !this.configureWater(settings.water) || !this.configureLookSensitivity(settings.sensitivity) ||
+        !this.setLampShadowDetection(settings.lampDetection.enabled, settings.lampDetection.radius) ||
+        !this.setLampShadowSelection(settings.lamps)) throw Error('Invalid panel setting ranges');
+    this.setWaterLensEnabled(settings.waterLens); this.setShadows(settings.shadows);
+    this.setObstructionMode(settings.obstruction); this.setGroundPenetration(settings.groundPenetration);
+    this.setCamera(settings.camera); this.setFollowing(settings.following);
+    this.inspector.applySettings(settings.inspector);
+    this.characterReport?.(this.getCharacterStatus());
   }
 
   setCamera(preset: CameraPreset): void {
     this.tap.cancel();
     this.mouseOrbit.cancel();
     this.cameraModes.select(preset);
+    if (this.cameraModes.inputMode === 'standard' && this.cameraInput.lockActive) {
+      this.cameraInput.releaseLock(); this.autoRun.suspend();
+    }
     this.character.root.visible = !this.assets.current && this.cameras.characterVisible;
     if (this.assets.current) this.assets.current.root.visible = this.cameras.characterVisible;
     if (!this.cameras.characterVisible) this.overlay.place(null);
@@ -451,6 +509,10 @@ export class ViewerApp {
     return !this.disposed && (this.scenes.active.lights?.find(light => light.id === id)?.configure(patch) ?? false);
   }
   getHeadlampSettings(): HeadlampSettings | undefined { return this.scenes.active.headlamp?.getSettings(); }
+  getTerrainSettings(): TerrainSettings | undefined { return this.scenes.active.terrain?.getSettings(); }
+  configureTerrain(patch: Partial<TerrainSettings>): boolean {
+    return !this.disposed && (this.scenes.active.terrain?.configure(patch) ?? false);
+  }
   configureHeadlamp(patch: Partial<HeadlampSettings>): boolean {
     return !this.disposed && (this.scenes.active.headlamp?.configure(patch) ?? false);
   }
@@ -511,6 +573,7 @@ export class ViewerApp {
   startTour(text: string, loop: boolean, speed: number): boolean {
     if (this.disposed || this.contextLost || document.hidden || !this.cityFeatures) return false;
     this.autoRun.stop();
+    this.cameraInput.releaseLock();
     this.input.stop();
     return this.tour.start(this.motion, parseWaypoints(text) ?? [], loop, speed);
   }
@@ -529,7 +592,12 @@ export class ViewerApp {
     this.autoRun.setEnabled(enabled, this.motion.heading);
     this.characterReport?.(this.getCharacterStatus());
     if (this.cameraModes.followingLocked) this.cameraModes.follow();
+    if (enabled) this.cameraInput.requestLock(); else this.cameraInput.releaseLock();
   }
+  getLookSensitivity(): LookSensitivity { return this.autoRun.lookSensitivity; }
+  configureLookSensitivity(patch: Partial<LookSensitivity>): boolean { return this.autoRun.configureSensitivity(patch); }
+  getMouseLockStatus(): string { return this.cameraInput.lockStatus; }
+  requestMouseLock(): void { this.cameraInput.requestLock(); }
   reverseAutoRun(): void {
     if (!this.autoRun.running) return;
     this.autoRun.reverse();
@@ -540,6 +608,7 @@ export class ViewerApp {
   setRunning(enabled: boolean): void { this.input.setRun(enabled); }
   jump(): void { this.input.jump(); }
   stop(): void {
+    this.cameraInput?.releaseLock();
     this.cameraModes.resetGestures(); this.autoRun.stop(); this.mouseOrbit.cancel(); this.cameras.endCharacterOrbit(true); this.input.stop();
     this.characterReport?.(this.getCharacterStatus());
   }

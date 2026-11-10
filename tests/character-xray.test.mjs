@@ -3,6 +3,22 @@ import { test } from 'node:test';
 import { BoxGeometry, Group, Mesh, MeshBasicMaterial, MeshPhysicalMaterial, PerspectiveCamera, Scene, Color, Vector3 } from 'three';
 import { CharacterXrayPass } from '../src/engine/CharacterXrayPass.ts';
 import { CameraObstruction } from '../src/camera/CameraObstruction.ts';
+import { createTerrain } from '../src/scene/TerrainScene.ts';
+
+test('xray: terrain mask retains the visible displacement texture, scale and bias',()=>{
+  const terrain=createTerrain(), subject=new Group(); terrain.scene.add(subject);
+  const surface=terrain.environment.getObjectByName('Displaced terrain'), original=surface.material;
+  const pass=new CharacterXrayPass();let checked=false;
+  const renderer=fakeRenderer(()=>{
+    if(surface.material!==original&&surface.material.visible){
+      assert.equal(surface.material.displacementMap,original.displacementMap);
+      assert.equal(surface.material.displacementScale,original.displacementScale);
+      assert.equal(surface.material.displacementBias,original.displacementBias);checked=true;
+    }
+  });
+  try { pass.render(renderer,terrain.scene,new PerspectiveCamera(),subject,terrain.environment);assert.ok(checked); }
+  finally {pass.dispose();terrain.dispose();}
+});
 
 test('xray: environment filter excludes water, transparency, hidden ancestors and non-environment actors per material', () => {
   const scene = new Scene(), environment = new Group(), subject = new Group(); scene.add(environment, subject);

@@ -45,3 +45,24 @@ test('3.3, 4.2: render target restores on error, resources dispose exactly once'
   pass.dispose(); pass.dispose();
   assert.equal(released, 3);
 });
+
+
+test('7.2: crossfade captures both projections and releases transient target', () => {
+  const pass = new FisheyePass(false), camera = new PerspectiveCamera(80, 2, .06, 200);
+  const scene = new Scene(), calls = []; let target = null;
+  const renderer = { getRenderTarget: () => target, setRenderTarget: value => { target = value; },
+    render: (scene, camera) => calls.push({ scene, camera: camera.clone(), target }) };
+  pass.resize(600, 300, 1);
+  pass.render(renderer, scene, camera, undefined, .4);
+  assert.equal(calls.length, 3);
+  assert.equal(calls[0].camera.fov, 80); assert.equal(calls[0].camera.aspect, 2);
+  assert.equal(calls[1].camera.fov, 160);
+  assert.equal(calls[2].scene.children[0].material.uniforms.blend.value, .4);
+  assert.equal(target, null);
+  let disposed = 0; calls[0].target.addEventListener('dispose', () => disposed++);
+  pass.render(renderer, scene, camera); assert.equal(disposed, 1);
+  pass.render(renderer, scene, camera, undefined, .2);
+  let exitDisposed = 0; calls.at(-3).target.addEventListener('dispose', () => exitDisposed++);
+  pass.finishBlend(); pass.finishBlend(); assert.equal(exitDisposed, 1);
+  pass.dispose(); assert.equal(disposed, 1);
+});

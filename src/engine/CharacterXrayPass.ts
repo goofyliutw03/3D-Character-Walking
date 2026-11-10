@@ -107,6 +107,9 @@ export class CharacterXrayPass {
             depth.alphaTest = material.alphaTest;
             depth.map = 'map' in material ? material.map as MeshDepthMaterial['map'] : null;
             depth.alphaMap = 'alphaMap' in material ? material.alphaMap as MeshDepthMaterial['alphaMap'] : null;
+            depth.displacementMap = 'displacementMap' in material ? material.displacementMap as MeshDepthMaterial['displacementMap'] : null;
+            depth.displacementScale = 'displacementScale' in material ? material.displacementScale as number : 1;
+            depth.displacementBias = 'displacementBias' in material ? material.displacementBias as number : 0;
             depth.clippingPlanes = material.clippingPlanes;
             depth.clipIntersection = material.clipIntersection;
             return depth;

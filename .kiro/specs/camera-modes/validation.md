@@ -128,3 +128,26 @@ SocratiCode增量更新已完成，status green：62個indexable檔案範圍，1
 使用者明確更新：手機完整操作驗收Done；跨GPU／瀏覽器相容性ToDo；雙摺／三摺專項取消；IME輸入法ToDo。手機Done依使用者驗收回報記錄，不虛構裝置或工具證據；效能與螢幕閱讀器待辦未變更。以docs/remaining-acceptance.md最新裁定為準，取代上述舊待驗狀態，不追改歷史測試結果。
 
 2026-10-31 跨GPU補登：使用者回報另一電腦GeForce RTX2050 4GB VRAM／Chrome156.0.8078.74 Official Build64-bit操作OK，記舊版一般操作USER_REPORTED_PASS。非工具直接觀察、不代表1R-2新增路燈陰影或原生half-float fallback已驗；SCENE-04整體PARTIAL，其他矩陣／效能／讀屏待辦保留。以docs/remaining-acceptance.md最新回報為準。
+
+
+## 1Y-11 平滑相機（2026-11-10）
+使用者已核准約0.8秒smooth/crossfade，本chat接續授權，NORMAL、均衡能力／中推理建議；未切換模型、委派、commit或push，保留原dirty。requirements7 → design追加 → tasks6.1/6.2/6.3依序實作與inline審閱。
+
+| 項目／來源 | 分類及動作 | 標籤／依賴 |
+|---|---|---|
+| requirements.md:63，7.1–7.3 | 既有M4相機追加，沿用camera-modes | 1Y-11；CameraController與ViewerApp共用，必須依序進行，不可平行 |
+| 原M6／SCENE-05與Pointer Lock實機限制 | 人工驗收，維持既有待辦 | 不擴大或自動關閉其他里程碑 |
+
+6.1保存rendered姿態與投影作起點，球面／quaternion延續原路徑；FOV與near共用smoothstep，rapid retarget從當前畫面接續。第一人稱眼位即時，旋轉12/s指數平滑。6.2魚眼與普通投影線性混色，只有混合期間多一次capture；暫存target在完成／離開／dispose釋放。Orbit中斷不取消獨立投影計時，避免殘留半魚眼；遮擋維持原最後處理路徑。ViewerApp只更換render的權重參數，未覆蓋原Profiles等修改。
+
+整合審閱依kiro-validate-impl及kiro-verify-completion，inline無獨立審查。7.1對應rendered/retarget及原外部球面測試；7.2對應FOV/near、Orbit interruption、crossfade雙capture/target釋放與原遮擋矩陣；7.3對應即時眼位、短時間轉向及reduced motion測試。需求3/3覆蓋、依賴方向與邊界一致，未新增TODO／機密，git diff --check通過。無本範圍阻擋。
+
+- 全套178/178 tests PASS，TypeScript及Vite build PASS，保留既有chunk-size advisory。
+- ./scripts/project.ps1 release 成功，2026-11-10 07:50:57 +08，Added8／Updated1／Skipped21；目的地為指定Release，無commit/push。
+- preview-release初次sandbox spawn EPERM；升權後發現4174已有服務，未停止它。HTTP入口與Release/index.html一致，沿用服務測試。
+- .local/smooth-camera-smoke.mjs exit0；headless Chrome／SwiftShader，Needle與legacy兩路通過third-person/fisheye/first-person/front/street、快速連續切換及reduced-motion操作。兩路各觀察38次中間blend uniform，glError=0，無Runtime/WebGL錯誤。結果／截圖在忽略的.local/smooth-camera-validation，已目視Needle魚眼混合截圖。
+- 軟體渲染約1FPS，原有delta上限會延長轉場的實際牆鐘時間；不是實機效能證據。魚眼混合存在預期雙影，overlay/picking以權重>=.5的投影處理，混合本身沒有唯一精確投影。真人滑鼠／手機手感待使用者確認，不聲稱LAN或GPU驗收。
+- 索引起初另一既有程序忙碌，未中止；完成後codebase_update成功掃描168個可索引檔，0 changed、168 unchanged/skipped。遵守ignore，含工作樹可索引程式，不含外部Release／排除資產；最終status與時間見本chat工具結果。
+- Token用量：無法取得精確值。原chat與本chat均缺官方階段起終基準，無可歸屬完整區間；未以帳號百分比／估算替代。
+
+程式驗證VERIFIED；實際操作感受待使用者結束確認，不進入下一里程碑。Rollback只撤回1Y-11所列相機／渲染與單行ViewerApp接線／測試及文件差異。

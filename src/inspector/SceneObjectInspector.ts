@@ -1,6 +1,7 @@
 import { Vector3, type Object3D, type PerspectiveCamera } from 'three';
 import { projectAnchor, type ScreenPoint } from '../camera/AnchorProjection.ts';
 import { SceneObjectIndex } from './SceneObjectIndex.ts';
+import type { InspectorSettings } from '../settings/ViewerSettings';
 
 const origin = new Vector3();
 export function projectObjectLabel(object: Object3D, camera: PerspectiveCamera, width: number, height: number, fisheye: boolean): ScreenPoint | null {
@@ -35,6 +36,10 @@ export class SceneObjectInspector {
   private readonly filteredExpanded = new Map<number, boolean>();
   private readonly labels = new Map<number, HTMLSpanElement>();
   private filtered = false;
+  private uncheckedPaths = new Set<string>();
+  private expandedPaths: Record<string, boolean> = {};
+  private activePattern = '';
+  private activeRanges = '';
   private disposed = false;
   constructor(private readonly container: HTMLElement, private readonly scene: Object3D) {
     const doc = container.ownerDocument;
@@ -79,29 +84,53 @@ export class SceneObjectInspector {
     this.tree.addEventListener('change', event => {
       const checkbox = event.target as HTMLInputElement;
       if (!checkbox.dataset.objectCheckbox) return;
+      const row = this.index.rows.find(row => row.id === Number(checkbox.dataset.objectCheckbox));
+      if (row) { if (checkbox.checked) this.uncheckedPaths.delete(row.path); else this.uncheckedPaths.add(row.path); }
       this.index.setChecked(Number(checkbox.dataset.objectCheckbox), checkbox.checked); this.hide();
     }, { signal });
     this.tree.addEventListener('toggle', event => {
       const details = event.target as HTMLDetailsElement;
       const id = Number(details.dataset.objectId), node = this.nodes.get(id);
       if (node?.details === details && node.expectedOpen !== details.open) {
+        const path = this.index.rows.find(row => row.id === id)?.path;
+        if (path) this.expandedPaths[path] = details.open;
         (this.filtered ? this.filteredExpanded : this.expanded).set(id, details.open); node.expectedOpen = details.open;
       }
     }, { signal, capture: true });
     this.sync();
   }
   mount(host: HTMLElement): void { if (!this.disposed) host.append(this.panel); }
+  getSettings(): InspectorSettings {
+    return { enabled: this.master.checked, pattern: this.activePattern, ranges: this.activeRanges,
+      uncheckedPaths: [...this.uncheckedPaths].sort(), expandedPaths: { ...this.expandedPaths } };
+  }
+  applySettings(settings: InspectorSettings): void {
+    this.master.checked = settings.enabled;
+    this.pattern.value = settings.pattern; this.range.value = settings.ranges;
+    this.sync();
+    this.uncheckedPaths = new Set(settings.uncheckedPaths);
+    this.expandedPaths = { ...settings.expandedPaths };
+    for (const row of this.index.rows) {
+      const checked = !this.uncheckedPaths.has(row.path);
+      if (row.checked !== checked) this.index.setChecked(row.id, checked);
+    }
+    this.applyFilters(); this.hide();
+  }
   private applyFilters(): void {
     const error = this.index.configure(this.pattern.value, this.range.value);
     this.error.textContent = error ? `${error} Previous filters remain active.` : '';
     for (const input of [this.pattern, this.range]) input.setAttribute('aria-invalid', String(!!error));
     if (error) return;
+    this.activePattern = this.pattern.value; this.activeRanges = this.range.value;
     this.filtered = !!(this.pattern.value.trim() || this.range.value.trim());
     this.filteredExpanded.clear();
     this.renderTree(); this.hide();
   }
   sync(): void {
-    if (!this.disposed && this.index.sync(this.scene)) this.renderTree();
+    if (!this.disposed && this.index.sync(this.scene)) {
+      for (const row of this.index.rows) if (this.uncheckedPaths.has(row.path) && row.checked) this.index.setChecked(row.id, false);
+      this.renderTree();
+    }
   }
   private renderTree(): void {
     const rows = this.index.treeRows, retained = new Set(rows.map(row => row.id));
@@ -126,8 +155,9 @@ export class SceneObjectInspector {
       node.checkbox.setAttribute('aria-label', `Number label ${row.id}: ${row.name}`);
       node.text.textContent = `#${row.id} ${row.name}${row.matched ? '' : ' · ancestor only'}`;
       node.summary.title = `${row.object.type} · ${row.path}`;
+      node.details.dataset.profileKey = row.path;
       node.details.dataset.matched = String(row.matched);
-      node.expectedOpen = this.filtered ? (this.filteredExpanded.get(row.id) ?? true) : (this.expanded.get(row.id) ?? row.parentId === null);
+      node.expectedOpen = this.expandedPaths[row.path] ?? (this.filtered ? (this.filteredExpanded.get(row.id) ?? true) : (this.expanded.get(row.id) ?? row.parentId === null));
       if (node.details.open !== node.expectedOpen) node.details.open = node.expectedOpen;
     }
     // Reorder only when needed, so active keyboard focus survives routine synchronization.

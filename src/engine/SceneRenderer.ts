@@ -37,7 +37,7 @@ export class SceneRenderer {
     this.renderer.setSize(width, height);
     this.fisheye?.resize(width, height, this.renderer.getPixelRatio());
   }
-  render(scene: Scene, fisheye = false, xray?: { subject: Object3D; environment: Object3D }): void {
+  render(scene: Scene, fisheye: boolean | number = false, xray?: { subject: Object3D; environment: Object3D }): void {
     this.renderer.info.reset();
     if (xray && !this.xray) this.xray = new CharacterXrayPass(this.renderer.extensions.has('EXT_color_buffer_float'));
     if (!xray && this.xray) { this.xray.dispose(); this.xray = undefined; }
@@ -45,13 +45,13 @@ export class SceneRenderer {
       if (xray) this.xray!.render(this.renderer, scene, camera, xray.subject, xray.environment);
       else this.renderer.render(scene, camera);
     };
-    if (!fisheye) { capture(this.camera); this.waterLens.render(this.renderer); return; }
+    if (!fisheye) { this.fisheye?.finishBlend(); capture(this.camera); this.waterLens.render(this.renderer); return; }
     if (!this.fisheye) {
       this.fisheye = new FisheyePass(this.renderer.extensions.has('EXT_color_buffer_float'));
       this.fisheye.resize(this.width, this.height, this.renderer.getPixelRatio());
     }
-    this.fisheye.render(this.renderer, scene, this.camera, capture);
-    this.waterLens.render(this.renderer,true);
+    this.fisheye.render(this.renderer, scene, this.camera, capture, Number(fisheye));
+    this.waterLens.render(this.renderer, Number(fisheye) >= .5);
   }
   setShadows(enabled: boolean): void { this.renderer.shadowMap.enabled = enabled; }
   get stats(): RenderStats {
