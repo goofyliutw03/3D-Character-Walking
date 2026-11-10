@@ -1,6 +1,8 @@
+2026-11-10 [1Y-14] 使用者確認1Y-13並核准第二批 [ground-volume-world-query](../specs/ground-volume-world-query/)：地表同源支撐、洞穴有限三維盒／直立膠囊、洞頂／多層與角色淨空，依序inline審閱與逐項驗證。飛行／水域／太空與任意mesh剛體仍在後續；不概括關閉M6／真機待驗。共用檔必須依序進行，不可平行。
+
 # cc-sdd 規劃對應與待辦
 
-2026-11-10 [1Y-12] 多場景下一項為 [natural-terrain-validation](../specs/natural-terrain-validation/)，共用高度與地表Shader一致性驗證，規格／審閱／驗證依序。Viewer／main／Profiles共用檔必須依序，不可平行。三維World Query與Range Policy待使用者確認獨立規範；飛行／水域／太空未啟動。
+2026-11-10 [1Y-13] 使用者已確認獨立場景規範，核准第一批 [world-query-range-policy](../specs/world-query-range-policy/) 契約／城市planar相容適配。原 [natural-terrain-validation](../specs/natural-terrain-validation/) 交付保留；本批未實作洞頂／多層及完整三維膠囊，飛行／水域／太空未啟動。共用檔必須依序進行，不可平行；驗證及限制見spec。
 
 2026-11-08 [1Y-8] auto-run-camera-controls手機適配完成，單／雙指、靜止第一人稱進出、觸控按鈕與提示。158tests及Needle／legacy行動尺寸實際touch事件驗證通過，證據與真機限制見該spec validation；共用檔依序，未commit／push。
 

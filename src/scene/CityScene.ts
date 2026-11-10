@@ -4,6 +4,7 @@ import type { WalkableBounds, WalkableWorld } from '../character/motion';
 import { StreetWaterFeature, streetWaterBounds } from './StreetWaterFeature.ts';
 import type { WaterSettings, SpraySource } from '../water/index.ts';
 import { declareGroundBox } from '../navigation/GroundPicker.ts';
+import { LegacyWorldQuery } from '../world/LegacyWorldQuery.ts';
 
 export type TimeOfDay = 'day' | 'evening' | 'night';
 
@@ -12,11 +13,15 @@ export class CityScene {
   readonly environment = new Group();
   readonly buildingFallbacks: Group[] = [];
   private readonly obstacles: WalkableBounds[] = [];
-  readonly walkableWorld: WalkableWorld = {
-    bounds: { minX: -8.3, maxX: 8.3, minZ: -26.5, maxZ: 26.5 },
-    obstacles: this.obstacles,
-    groundHeight: (x: number): number => Math.abs(x) >= 4.5 ? 0.32 : 0.075,
-  };
+  readonly walkableWorld: WalkableWorld = this.createWorld();
+  private createWorld(): WalkableWorld {
+    const world = {
+      bounds: { minX: -8.3, maxX: 8.3, minZ: -26.5, maxZ: 26.5 },
+      obstacles: this.obstacles,
+      groundHeight: (x: number): number => Math.abs(x) >= 4.5 ? 0.32 : 0.075,
+    };
+    return Object.assign(world, { query: new LegacyWorldQuery(world) });
+  }
   private readonly boxes = new BoxGeometry(1, 1, 1);
   private readonly canopy = new DodecahedronGeometry(1, 1);
   private readonly pole = new CylinderGeometry(1, 1, 1, 10);

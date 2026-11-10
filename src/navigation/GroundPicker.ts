@@ -5,6 +5,8 @@ import type { WalkableWorld } from '../character/motion';
 import type { PointXZ } from './DestinationNavigation';
 import { isWalkable } from './DestinationNavigation.ts';
 import { screenRay } from '../camera/ScreenRay.ts';
+import { worldQuery } from '../world/LegacyWorldQuery.ts';
+import { defaultCapsule, type Capsule } from '../world/WorldQuery.ts';
 
 const declaredBoxes = new WeakSet<Mesh>();
 /** Declare an undeformed box's finite top as walkable. Rebuild the picker after geometry changes. */
@@ -49,7 +51,8 @@ export class GroundPicker {
   }
 
   pick(point: ScreenPoint, camera: PerspectiveCamera, width: number, height: number,
-    fisheye: boolean, world: WalkableWorld, blockers: readonly Object3D[] = [], penetrateEnvironment = true): PointXZ | null {
+    fisheye: boolean, world: WalkableWorld, blockers: readonly Object3D[] = [], penetrateEnvironment = true,
+    capsule: Capsule = defaultCapsule): PointXZ | null {
     const ray = screenRay(point, camera, width, height, fisheye);
     if (!ray) return null;
     this.caster.ray.copy(ray);
@@ -59,9 +62,10 @@ export class GroundPicker {
       const distance = ray.origin.distanceTo(position);
       const depth = -position.clone().applyMatrix4(camera.matrixWorldInverse).z;
       if (distance >= nearest || depth <= camera.near || depth >= camera.far
-        || normal.y < .9 || !isWalkable(position, world)) return;
+        || normal.y < .9 || !isWalkable(position, world, capsule)) return;
       nearest = distance;
-      result = { x: position.x, z: position.z };
+      result = { x: position.x, z: position.z,
+        ...(worldQuery(world).capabilities.geometry === 'ground-volume' ? { y: position.y } : {}) };
     };
     if (!penetrateEnvironment) {
       // Restore the original first-environment-hit rule when penetration is disabled.

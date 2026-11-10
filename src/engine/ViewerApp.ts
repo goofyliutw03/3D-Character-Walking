@@ -17,6 +17,7 @@ import type { NeedleRuntime } from './NeedleRuntime';
 import { Character } from '../character/Character';
 import { CharacterController } from '../character/CharacterController';
 import type { CharacterVariant, MotionSnapshot } from '../character/motion';
+import { characterCapsules } from '../character/motion';
 import { InputManager, type MoveDirection } from '../input/InputManager';
 import { FollowCamera } from '../camera/FollowCamera';
 import { FirstPersonCamera } from '../camera/FirstPersonCamera';
@@ -214,7 +215,7 @@ export class ViewerApp {
       const target = this.groundPicker.pick({ x: point.x - rect.left, y: point.y - rect.top }, this.camera,
         rect.width, rect.height, this.cameras.fisheye, this.scenes.active.walkableWorld,
         [this.assets.current?.root ?? this.character.root, this.target.root,
-          ...(this.cityFeatures ? this.trafficView.npcPickBlockers : [])], this.groundPenetration);
+          ...(this.cityFeatures ? this.trafficView.npcPickBlockers : [])], this.groundPenetration, this.movement.shape);
       this.input.stop();
       if (target) {
         this.cameraModes.beginDestination();
@@ -338,7 +339,7 @@ export class ViewerApp {
       ? projectAnchor(this.anchor, this.camera, this.container.clientWidth, this.container.clientHeight, this.cameras.fisheye)
       : null);
     const destination = this.tour.target ?? this.navigation.target;
-    const marker = destination ? projectAnchor(new Vector3(destination.x, active.walkableWorld.groundHeight(destination.x, destination.z) + 0.06, destination.z),
+    const marker = destination ? projectAnchor(new Vector3(destination.x, (destination.y ?? active.walkableWorld.groundHeight(destination.x, destination.z)) + 0.06, destination.z),
       this.camera, this.container.clientWidth, this.container.clientHeight, this.cameras.fisheye) : null;
     this.destinationMarker.hidden = !marker;
     if (marker) {
@@ -377,11 +378,11 @@ export class ViewerApp {
       const saved = this.sceneSettings[next.id];
       if (saved) this.applySceneSettings(saved);
       const speed = this.movement.walkSpeed;
-      this.movement = new CharacterController(next.walkableWorld);
+      this.movement = new CharacterController(next.walkableWorld, characterCapsules[this.variant]);
       this.movement.setWalkSpeed(speed);
       this.movement.relocate({ ...next.spawn, y: 0 });
       this.motion = this.movement.snapshot;
-      this.navigation = new DestinationNavigation(next.walkableWorld);
+      this.navigation = new DestinationNavigation(next.walkableWorld, this.movement.shape);
       this.groundPicker = new GroundPicker(next.environment.children);
       this.target.setWorld(next.walkableWorld);
       this.particles.clear();
@@ -438,7 +439,8 @@ export class ViewerApp {
     this.sceneSettings = structuredClone(reset ? this.sceneDefaults : settings.scenes);
     const active = this.sceneSettings[this.environmentId];
     if (active) this.applySceneSettings(active);
-    this.setCharacter(settings.variant); this.setWalkSpeed(settings.walkSpeed);
+    if (!this.setCharacter(settings.variant)) throw Error('Character needs more clearance');
+    this.setWalkSpeed(settings.walkSpeed);
     this.setEmotion(settings.expression.emotion); this.setSpeech(settings.expression.speech);
     if (!this.configureTraffic(settings.traffic) || !this.configureParticles(settings.particles) ||
         !this.configureWater(settings.water) || !this.configureLookSensitivity(settings.sensitivity) ||
@@ -529,18 +531,20 @@ export class ViewerApp {
   getWaterLensEnabled(): boolean { return this.view.waterLens.enabled; }
   getWaterSettings(): WaterSettings { return this.city.waterSettings; }
   getWaterElapsed(): number { return this.city.waterElapsed; }
-  setCharacter(variant: CharacterVariant): void {
+  setCharacter(variant: CharacterVariant): boolean {
+    if (!characterCapsules[variant] || !this.movement.setCapsule(characterCapsules[variant])) return false;
     this.mouseOrbit.cancel(); this.cameras.endCharacterOrbit(true);
     this.stop();
+    this.navigation = new DestinationNavigation(this.scenes.active.walkableWorld, this.movement.shape);
     this.variant = variant; this.character.setVariant(variant);
     void this.assets.select(assetCatalog[variant]);
+    return true;
   }
   retryCharacter(): void { void this.assets.retry(); }
   retryBuildings(): void { void this.buildings.load(); }
   setWalkSpeed(speed: number): boolean { return !this.disposed && this.movement.setWalkSpeed(speed); }
   applyPosition(position: { x: number; y: number; z: number }, snap: boolean): boolean {
     if (this.disposed || this.contextLost || document.hidden ||
-      (!snap && position.y > (this.scenes.active.maxPlacementHeight ?? Infinity)) ||
       !this.movement.relocate(position, snap)) return false;
     this.stop();
     this.motion = this.movement.snapshot;

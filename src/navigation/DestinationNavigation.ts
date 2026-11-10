@@ -1,57 +1,56 @@
 import { characterRadius } from '../character/motion.ts';
 import type { MovementIntent, WalkableBounds, WalkableWorld } from '../character/motion';
+import { worldQuery } from '../world/LegacyWorldQuery.ts';
+import { defaultCapsule, type Capsule } from '../world/WorldQuery.ts';
 
-export interface PointXZ { x: number; z: number }
+export interface PointXZ { x: number; z: number; y?: number }
 export type NavigationStatus = 'idle' | 'running' | 'arrived' | 'blocked';
 const stopped = (): MovementIntent => ({ x: 0, z: 0, run: false, jump: false });
-const distance = (a: PointXZ, b: PointXZ): number => Math.hypot(a.x - b.x, a.z - b.z);
-const expanded = (b: WalkableBounds): WalkableBounds => ({
-  minX: b.minX - characterRadius, maxX: b.maxX + characterRadius,
-  minZ: b.minZ - characterRadius, maxZ: b.maxZ + characterRadius,
+const distance = (a: PointXZ, b: PointXZ): number => Math.hypot(a.x - b.x, a.z - b.z, a.y !== undefined && b.y !== undefined ? a.y - b.y : 0);
+const expanded = (b: WalkableBounds, radius = characterRadius): WalkableBounds => ({
+  minX: b.minX - radius, maxX: b.maxX + radius,
+  minZ: b.minZ - radius, maxZ: b.maxZ + radius,
 });
 
-export function isWalkable(p: PointXZ, world: WalkableWorld): boolean {
-  const b = world.bounds;
-  return Number.isFinite(p.x + p.z)
-    && p.x >= b.minX + characterRadius && p.x <= b.maxX - characterRadius
-    && p.z >= b.minZ + characterRadius && p.z <= b.maxZ - characterRadius
-    && !world.obstacles.some(obstacle => {
-      const o = expanded(obstacle);
-      return p.x > o.minX + 1e-8 && p.x < o.maxX - 1e-8 && p.z > o.minZ + 1e-8 && p.z < o.maxZ - 1e-8;
-    });
+export function isWalkable(p: PointXZ, world: WalkableWorld, capsule: Capsule = defaultCapsule): boolean {
+  const query = worldQuery(world), position = { ...p, y: p.y ?? 0 };
+  const surface = query.surfaceSample(position);
+  if (!surface.ok) return false;
+  if (query.capabilities.geometry === 'ground-volume' && p.y !== undefined && Math.abs(p.y - surface.value.height) > 1e-5) return false;
+  position.y = surface.value.height;
+  const region = query.regionSample(position, capsule), overlap = query.overlap(position, capsule);
+  return region.ok && region.value.allowed && overlap.ok && !overlap.value;
 }
 
-export function segmentClear(a: PointXZ, b: PointXZ, world: WalkableWorld): boolean {
-  if (!isWalkable(a, world) || !isWalkable(b, world)) return false;
-  return !world.obstacles.some(obstacle => {
-    const o = expanded(obstacle);
-    let enter = 0, leave = 1;
-    for (const axis of ['x', 'z'] as const) {
-      const low = (axis === 'x' ? o.minX : o.minZ) + 1e-8;
-      const high = (axis === 'x' ? o.maxX : o.maxZ) - 1e-8;
-      const delta = b[axis] - a[axis];
-      if (Math.abs(delta) < 1e-12) {
-        if (a[axis] <= low || a[axis] >= high) return false;
-      } else {
-        const t1 = (low - a[axis]) / delta, t2 = (high - a[axis]) / delta;
-        enter = Math.max(enter, Math.min(t1, t2));
-        leave = Math.min(leave, Math.max(t1, t2));
-        if (enter >= leave) return false;
-      }
-    }
-    return enter < leave && leave > 0 && enter < 1;
-  });
+export function segmentClear(a: PointXZ, b: PointXZ, world: WalkableWorld, capsule: Capsule = defaultCapsule): boolean {
+  if (!isWalkable(a, world, capsule) || !isWalkable(b, world, capsule)) return false;
+  const query = worldQuery(world), surface = query.surfaceSample({ ...a, y: a.y ?? 0 });
+  if (!surface.ok) return false;
+  if (query.groundSegment) {
+    const target = query.surfaceSample({ ...b, y: b.y ?? 0 });
+    if (!target.ok) return false;
+    const result = query.groundSegment({ ...a, y: surface.value.height }, { ...b, y: target.value.height }, capsule);
+    return result.ok && result.value;
+  }
+  const result = query.sweep({ ...a, y: surface.value.height }, { x: b.x - a.x, y: 0, z: b.z - a.z }, capsule);
+  return result.ok && result.value === null;
 }
 
-function findPath(start: PointXZ, target: PointXZ, world: WalkableWorld): PointXZ[] | undefined {
-  if (!isWalkable(start, world) || !isWalkable(target, world)) return undefined;
-  if (segmentClear(start, target, world)) return [{ ...target }];
+function findPath(start: PointXZ, target: PointXZ, world: WalkableWorld, capsule: Capsule): PointXZ[] | undefined {
+  if (!isWalkable(start, world, capsule) || !isWalkable(target, world, capsule)) return undefined;
+  if (segmentClear(start, target, world, capsule)) return [{ ...target }];
   const nodes: PointXZ[] = [{ ...start }, { ...target }];
   for (const obstacle of world.obstacles) {
-    const o = expanded(obstacle);
+    const o = expanded(obstacle, capsule.radius);
     for (const x of [o.minX - 0.02, o.maxX + 0.02]) {
       for (const z of [o.minZ - 0.02, o.maxZ + 0.02]) {
-        if (isWalkable({ x, z }, world)) nodes.push({ x, z });
+        const point: PointXZ = { x, z };
+        if (worldQuery(world).capabilities.geometry === 'ground-volume') {
+          const surface = worldQuery(world).surfaceSample({ x, z, y: start.y ?? 0 });
+          if (!surface.ok) continue;
+          point.y = surface.value.height;
+        }
+        if (isWalkable(point, world, capsule)) nodes.push(point);
       }
     }
   }
@@ -72,7 +71,7 @@ function findPath(start: PointXZ, target: PointXZ, world: WalkableWorld): PointX
     for (let i = 0; i < nodes.length; i++) {
       if (visited.has(i)) continue;
       const candidate = costs[current]! + distance(nodes[current]!, nodes[i]!);
-      if (candidate < costs[i]! && segmentClear(nodes[current]!, nodes[i]!, world)) {
+      if (candidate < costs[i]! && segmentClear(nodes[current]!, nodes[i]!, world, capsule)) {
         costs[i] = candidate; previous[i] = current;
       }
     }
@@ -85,12 +84,12 @@ export class DestinationNavigation {
   private state: NavigationStatus = 'idle';
   private lastPosition: PointXZ | undefined;
   private stalled = 0;
-  constructor(private readonly world: WalkableWorld) {}
+  constructor(private readonly world: WalkableWorld, private readonly capsule: Capsule = defaultCapsule) {}
   get status(): NavigationStatus { return this.state; }
   get target(): Readonly<PointXZ> | undefined { return this.destination ? { ...this.destination } : undefined; }
   select(start: PointXZ, target: PointXZ): boolean {
     this.cancel();
-    const path = findPath(start, target, this.world);
+    const path = findPath(start, target, this.world, this.capsule);
     if (!path) { this.reject(); return false; }
     this.path = path; this.destination = { ...target }; this.state = 'running';
     this.lastPosition = { ...start };

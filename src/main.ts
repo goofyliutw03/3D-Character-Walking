@@ -362,7 +362,13 @@ try {
   document.querySelector('#clear-speech')!.addEventListener('click', () => {
     viewer?.setSpeech(''); syncExpression(true); speech.focus();
   }, { signal: uiEvents.signal });
-  document.querySelector<HTMLSelectElement>('#character')!.addEventListener('change', event => viewer?.setCharacter((event.target as HTMLSelectElement).value as CharacterVariant), { signal: uiEvents.signal });
+  document.querySelector<HTMLSelectElement>('#character')!.addEventListener('change', event => {
+    const select = event.target as HTMLSelectElement;
+    if (viewer && !viewer.setCharacter(select.value as CharacterVariant)) {
+      select.value = viewer.getCharacterStatus().variant;
+      document.querySelector('#position-result')!.textContent = 'Character change rejected: insufficient clearance.';
+    }
+  }, { signal: uiEvents.signal });
   document.querySelectorAll<HTMLButtonElement>('[data-direction]').forEach(button => viewer?.bindDirection(button, button.dataset.direction as MoveDirection));
   document.querySelector('#run')!.addEventListener('click', () => viewer?.setRunning(!viewer.getCharacterStatus().running), { signal: uiEvents.signal });
   document.querySelector('#auto-run')!.addEventListener('change', event => viewer?.setAutoRun((event.target as HTMLInputElement).checked), { signal: uiEvents.signal });

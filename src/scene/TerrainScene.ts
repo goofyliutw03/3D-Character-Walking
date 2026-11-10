@@ -8,6 +8,7 @@ import type { Environment, TerrainSettings } from './SceneSwitch';
 import { sceneControlPolicy } from './SceneControlPolicy.ts';
 import { solarPosition, validSolar, type SolarSettings } from './SolarPosition.ts';
 import type { TimeOfDay } from './CityScene';
+import { GroundWorldQuery } from '../world/GroundWorldQuery.ts';
 
 export function createTerrain(): Environment {
   const field = new HeightField();
@@ -149,7 +150,11 @@ export function createTerrain(): Environment {
         preset = time; solarSettings.enabled = false; syncSun(); return true;
       },
     },
-    walkableWorld: { bounds: field.bounds, obstacles, groundHeight: (x, z) => field.heightAt(x, z) },
+    walkableWorld: { bounds: field.bounds, obstacles, groundHeight: (x, z) => field.heightAt(x, z),
+      query: new GroundWorldQuery({bounds:{...field.bounds,minY:-2,maxY:14}, surfaces:[],terrain:field,
+        solids:obstacles.map((o,i)=>({...o,id:`tree-trunk-${i}`,
+          minY:field.heightAt((o.minX+o.maxX)/2,(o.minZ+o.maxZ)/2)-.05,
+          maxY:field.heightAt((o.minX+o.maxX)/2,(o.minZ+o.maxZ)/2)+2.75}))}) },
     terrain: {
       getSettings: () => ({ ...settings }),
       configure(patch) {

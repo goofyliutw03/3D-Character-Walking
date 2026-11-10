@@ -1,5 +1,9 @@
 # Development plan
 
+2026-11-10 [1Y-14] 使用者確認1Y-13並核准第二批 [ground-volume-world-query](../.kiro/specs/ground-volume-world-query/)：地表同源支撐、洞穴有限三維盒／直立膠囊、洞頂／多層與角色淨空，依序inline審閱與逐項驗證。飛行／水域／太空與任意mesh剛體仍在後續；不概括關閉M6／真機待驗。共用檔必須依序進行，不可平行。
+
+2026-11-10 [1Y-13]：使用者確認場景碰撞／範圍規範並核准第一批 [world-query-range-policy](../.kiro/specs/world-query-range-policy/)：共用查詢契約、城市 planar 相容適配與移動／導航／巡迴／XYZ一致限制。依序規格、自動inline審閱、逐項實作與驗證；其他場景僅相容回歸，不同時開發飛行／水域／太空或完整三維膠囊。共用檔必須依序進行，不可平行；既有M6／真機待驗保留。
+
 2026-11-10 [1Y-12] 接續多場景授權，新增 [自然地表 Shader 驗證區](../.kiro/specs/natural-terrain-validation/)：共用量化高度、CPU貼地／射線與GPU置換、法線／陰影、程序草木、品質與生命週期。依序自動inline審閱，保留既有相機／Profiles；不新增第七里程碑。全場景三維碰撞／活動範圍規範另待確認，本次僅沿用既有WalkableWorld。實際驗證、Release及索引見該spec validation。
 
 2026-11-07 [1Y-7] 使用者核准 [封閉空間光源面板](../.kiro/specs/enclosed-space-lights/)。10 火把、20 晶簇、天井與環境光獨立開關／倍率／顏色／特效；頭燈沿用原控制來源。規格及驗證見該目錄。

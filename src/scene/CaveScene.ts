@@ -5,6 +5,8 @@ import { environmentLight } from './EnvironmentLights.ts';
 import { Headlamp } from './Headlamp.ts';
 import { sceneControlPolicy } from './SceneControlPolicy.ts';
 import { declareGroundBox } from '../navigation/GroundPicker.ts';
+import { GroundWorldQuery, type GroundSurface } from '../world/GroundWorldQuery.ts';
+import type { SolidBox } from '../world/CapsuleBox.ts';
 
 const width = 22;
 const depth = 32;
@@ -33,6 +35,8 @@ export function createCave(): Environment {
   const rock = new MeshStandardMaterial({ color: '#5b514f', roughness: 1 });
   const floorMaterial = new MeshStandardMaterial({ color: '#463e43', roughness: 1 });
   const meshes: Mesh[] = [];
+  const solids: SolidBox[] = [];
+  const surfaces: GroundSurface[] = [];
 
   function box(name: string, w: number, h: number, d: number, x: number, y: number, z: number, material = rock): Mesh {
     const mesh = new Mesh(new BoxGeometry(w, h, d), material);
@@ -41,10 +45,19 @@ export function createCave(): Environment {
     mesh.receiveShadow = true;
     meshes.push(mesh);
     environment.add(mesh);
+    solids.push({ id: `cave-solid-${solids.length}`, minX: x-w/2, maxX: x+w/2,
+      minY: y-h/2, maxY: y+h/2, minZ: z-d/2, maxZ: z+d/2 });
     return mesh;
   }
 
-  declareGroundBox(box('Walkable cave floor', width, 1, depth, 0, -.5, 0, floorMaterial));
+  function ground(mesh: Mesh): void {
+    declareGroundBox(mesh);
+    const b = solids[solids.length - 1]!;
+    surfaces.push({ id: `cave-surface-${surfaces.length}`, minX:b.minX,maxX:b.maxX,
+      minZ:b.minZ,maxZ:b.maxZ,height:b.maxY });
+  }
+
+  ground(box('Walkable cave floor', width, 1, depth, 0, -.5, 0, floorMaterial));
   for (const side of [-1, 1]) {
     const roofSide = width / 2 + 1 - halfOpening;
     const roofEnd = depth / 2 + 1 - halfOpening;
@@ -56,6 +69,13 @@ export function createCave(): Environment {
   for (const { minX, maxX, minZ, maxZ } of obstacles) {
     box('Rock column', maxX - minX, ceiling, maxZ - minZ, (minX + maxX) / 2, ceiling / 2, (minZ + maxZ) / 2);
   }
+  // One reachable upper surface with a traversable lower layer; each .2m riser shares its visible box.
+  for (let i = 0; i < 14; i++) {
+    const height = (i + 1) * .2;
+    ground(box('Gallery stair', 2.5, height, .4, 8.25, height / 2, -.2 - i * .4, floorMaterial));
+  }
+  ground(box('Upper rock gallery', 2.5, .3, 3.4, 8.25, 2.65, -7.3, floorMaterial));
+  box('Low rock passage', 2, 1, 3, -8, 1.9, -8.5);
   const skylight = createSkylight(ceiling, halfOpening);
   const fixtures = createCaveFixtures();
   const headlamp = new Headlamp();
@@ -76,9 +96,13 @@ export function createCave(): Environment {
     rockTip.name = 'Stalactite';
     rockTip.rotation.z = Math.PI;
     rockTip.position.set(x, ceiling - .42, z);
-    if (Math.abs(x) >= halfOpening + .5 || Math.abs(z) >= halfOpening + .5) {
+    if ((Math.abs(x) >= halfOpening + .5 || Math.abs(z) >= halfOpening + .5) &&
+      !(x > 6.3 && z < 1 && z > -10)) {
       meshes.push(rockTip);
       environment.add(rockTip);
+      const radius = .35 + .04 * i;
+      solids.push({id:`stalactite-${i}`,minX:x-radius,maxX:x+radius,minY:ceiling-.82,maxY:ceiling-.02,
+        minZ:z-radius,maxZ:z+radius});
     } else rockTip.geometry.dispose();
     drops.setXYZ(i, x, 4.05, z);
   }
@@ -88,9 +112,8 @@ export function createCave(): Environment {
     id: 'cave', scene, environment, spawn: { x: 0, z: 5 }, ceiling, cityFeatures: false, solar: skylight.solar, headlamp,
     controls: sceneControlPolicy('enclosed'),
     lights: [skylight.control, ambientControl, ...fixtures.controls],
-    // Leave clearance below hanging rock even after switching to the tallest character.
-    maxPlacementHeight: 2.1,
-    walkableWorld: { bounds, obstacles, groundHeight: () => 0 },
+    walkableWorld: { bounds, obstacles, groundHeight: () => 0,
+      query: new GroundWorldQuery({bounds:{...bounds,minY:0,maxY:8},solids,surfaces}) },
     update(delta, reducedMotion) {
       fixtures.update(delta, reducedMotion);
       drip.visible = !reducedMotion;

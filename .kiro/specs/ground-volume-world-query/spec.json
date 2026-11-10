@@ -1,0 +1,23 @@
+{
+  "feature_name": "ground-volume-world-query",
+  "created_at": "2026-11-10",
+  "updated_at": "2026-11-10",
+  "language": "zh-TW",
+  "phase": "implementation-complete",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": true
+    }
+  },
+  "ready_for_implementation": true,
+  "approval_note": "依1Y-14使用者接續授權自動inline審閱requirements/design/tasks通過，非逐份人工核准。"
+}
