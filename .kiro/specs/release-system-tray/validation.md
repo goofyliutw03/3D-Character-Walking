@@ -18,3 +18,11 @@
 最終實作後驗證：13:22:38 +08:00 release成功，114/114 tests、build成功、Added0/Updated0/Skipped17。異常結束已驗明CommandLine的自有tray host後，自有node在2秒檢查時已退出；修正版重新start後HTTP200，沒有停止其他程序。git diff --check通過。
 
 索引完成：2026-11-11 13:23（Asia/Taipei），codebase_update掃描126個可索引檔，最終更新1檔／5 chunks，status green、Incremental update completed、363 chunks；graph101 files/189 edges。先前本階段新增3／更新1、7 chunks。範圍遵守gitignore/socraticodeignore，不含外部Release；文件未必全部為embedding範圍。無最終索引錯誤。人工驗收未完成，chat維持[?]；不開始下一里程碑。
+
+## 2026-11-11 14:22 接續驗收
+
+使用者「ok please go on」接續同階段驗收，未建立新chat、未擴充功能或commit/push。唯讀確認正式tray與自有Node仍執行、HTTP200、Startup捷徑存在。UI清單重查仍無工作列／系統匣。
+
+為實際測選單，於忽略的.local/tray-ui-check建立暫存腳本：沿用正式腳本與同一ContextMenuStrip，僅附加標準Form及開選單按鈕、指向原始server路徑。系統Get-Process確認具名Form已建立（Character Release Menu Verification），但sky.list_windows仍未列出，因此沒有操作任何選單、不宣稱Browsing/Restart/Exit通過。未對UI工具提供猜測視窗ID或繞過存取界線。
+
+已終止僅屬該fixture的驗證程序並重新啟動正式launcher；14:22:27 +08:00 正式tray PID13444、自有Node PID21332、HTTP200，無驗證視窗保留。正式產品程式未變；原生圖示/三項選單及登入／重開機維持待人工驗收。token用量仍無精確基準。

@@ -1,6 +1,6 @@
 # 團隊交接與環境入口
 
-更新：2026-11-10（Asia/Taipei）。
+更新：2026-11-11（Asia/Taipei）。
 
 ## 取得工作版本
 
@@ -26,8 +26,9 @@
 ## 當前工作與限制
 
 - 既有六里程碑功能及追加功能的證據，以各 spec validation 為準；M6 結束確認、跨 GPU／瀏覽器、手機與摺疊裝置等剩餘驗收見 [remaining-acceptance.md](remaining-acceptance.md) 及 [roadmap](../.kiro/steering/roadmap.md)。
-- 2026-11-10 本機另有 viewer-performance 工作進行中，目標為量測、狀態發布去重及偏好查詢重用；該工作當時尚未提交，不包含於本交接文件的提交。新接手者須先取得該工作負責人的正式提交與驗證紀錄，再確認 spec／task 狀態，不從歷史文件推定完成。
-- 同一 checkout 的共用檔案須依序交接，避免與現行效能工作同時修改。本機 `.codex/config.toml` 修改亦未納入本次交接提交。
+- viewer-performance 已完成 tasks 1–3 並納入 a0579d2；重用 reduced-motion 的 MediaQueryList，保留既有狀態去重。Chrome／Edge 本機量測及回歸完成，不宣稱 FPS 提升；手機、跨 GPU 與前景環境仍待驗。見 [效能驗證](../.kiro/specs/viewer-performance/validation.md)。
+- release-system-tray 已完成 tasks 1–4、6 並納入 a0579d2；task 5（人物圖示、Browsing／Restart／Exit、重新登入／重開機）待人工驗收。最新補充紀錄見 [系統匣驗證](../.kiro/specs/release-system-tray/validation.md)，操作見 [release-tray.md](release-tray.md)。本機 Startup 捷徑不會隨 clone 自動安裝。
+- a0579d2 包含先前工作站 `.codex/config.toml` 調整；其路徑與本機服務設定不可直接假設適用另一台電腦。同一 checkout 的共用檔案須依序交接，不可同時修改。
 - 新工作先規劃並依專案授權規則確認；交接不新增功能或關閉未驗收項目。金鑰、憑證、個人設定與本機測量資料不得加入版本控制。
 
 ## 資產
