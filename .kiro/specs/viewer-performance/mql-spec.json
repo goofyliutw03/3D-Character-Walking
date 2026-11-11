@@ -1,0 +1,23 @@
+{
+  "feature_name": "viewer-performance",
+  "created_at": "2026-11-10T17:38:21.0642482+08:00",
+  "updated_at": "2026-11-10T18:05:22.6263142+08:00",
+  "language": "zh-TW",
+  "phase": "implementation-complete",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": true
+    }
+  },
+  "ready_for_implementation": true,
+  "approval_note": "使用者於本chat核准具體效能方案及手機範圍；同範圍依AGENTS自動inline審閱通過，非逐份人工核准。無委派、commit、push或系統設定修改授權。"
+}

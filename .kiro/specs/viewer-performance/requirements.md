@@ -1,31 +1,37 @@
-# Requirements Document
+# 效能最佳化需求
 
-## Introduction
-桌面與手機使用者需要流暢且可驗證的3D Viewer。目前已有WebGL2、高效能偏好、DPR上限2與FPS，但缺少本工作站固定條件的比較及手機矩陣。本次依2026-11-10使用者「OK please go on」核准，先量測再作局部優化；Chrome主、Edge輔，iPhone Safari必要支援，Android Chrome／Edge／Firefox列入規劃。不是第七里程碑。
+## Project Description (Input)
+使用者需要接續 M6 效能最佳化；交接所稱原 viewer-performance 規格未能取得，2026-11-10 明確授權依目前 main 重建規格並續作。起點 main / 47f5e68，現有 Inspector 定期完整重建索引列及序列化比較，造成可避免的 CPU 與物件配置成本。依實測改善此局部成本，維持可見行為及既有人工驗收界線。
 
 ## Boundary Context
-包含固定條件效能量測、依證據去除重複工作、相容性／畫質驗證方案、Release及索引。不含WebGPU、雙GPU合併渲染、瀏覽器／OS設定修改、依賴升級或安裝、NPC／新視覺效果。既有M6／SCENE-04/05/FOLD未驗項保留，桌面模擬不等同真機。
+- 範圍：Inspector 場景索引同步的 CPU 成本、重用未變資料、可重現前後量測、回歸與正式發佈；追加PC Chrome／Edge production四負載工程量測。
+- 排除：降低畫質、改變同步頻率、場景／角色／動畫／相機／Shader 改造、其他分支整合、跨裝置驗收結案。
+- 鄰接期待：沿用現有編號、篩選、世界標籤及動態場景同步；全套測試及建置仍為必要門檻。
+- 目標平台（使用者 2026-11-10 指定）：PC Chrome／Edge；Android Chrome／Edge／Firefox；iPhone Safari。OS／瀏覽器版本與效能門檻尚未指定；記錄實測版本，不擅自推定數字門檻。
 
 ## Requirements
-### Requirement 1: 可重複的效能證據
-**Objective:** As a 維護者, I want 同條件的實測, so that 優化取捨有證據。
-#### Acceptance Criteria
-1. The Viewer 驗證流程 shall 記錄瀏覽器／平台、實際renderer（不可讀則明示未知）、視窗／canvas尺寸、DPR、場景與量測方式。
-2. When 執行效能比較, the Viewer 驗證流程 shall 對一般街道、夜間水景、魚眼及Xray各暖機後三輪取樣，記錄FPS、幀間隔median／P95、draw calls／triangles及資源數量。
-3. The Viewer 驗證流程 shall 區分幀間隔、CPU提交時間、GPU時間，且不把利用率或FPS當作雙GPU同時工作證據。
 
-### Requirement 2: 保持互動與畫質的局部優化
-**Objective:** As a 使用者, I want 保持操作結果與畫質, so that 減少成本不造成退步。
-#### Acceptance Criteria
-1. When 重複的可見狀態沒有改變, the Viewer shall 保留既有去重以避免反覆重建相同操作說明，仍在角色、動作、Follow、鏡頭、導航與遮擋狀態改變時更新；不因未量得的成本重寫既有機制。
-2. When prefers-reduced-motion偏好在執行中改變, the Viewer shall 於後續更新遵循目前偏好，並在銷毀後釋放監聽資源。
-3. The Viewer shall 保持既有畫質、陰影、水景設定、觸控、相機與角色行為；僅對實測支持的成本進行局部修改。
-4. If 前後比較未超出量測波動, the Viewer 交付紀錄 shall 明示未證實FPS增幅，而不將較少DOM更新宣稱為已量得FPS改善。
+### Requirement 1: 可重現效能證據
+1. The viewer project shall 記錄固定版本、節點數、暖機、重複次數與每次同步耗時的前後樣本。
+2. When 比較最佳化前後結果, the viewer project shall 使用同一場景及量測方式，僅宣稱量到的同步 CPU 成本，不推定 FPS 或 GPU／跨裝置收益。
 
-### Requirement 3: 跨平台驗證與交付界線
-**Objective:** As a 桌面與手機使用者, I want 清楚的相容性界線, so that 可判斷使用條件。
-#### Acceptance Criteria
-1. The Viewer 驗證方案 shall 包含Windows Chrome／Edge、iPhone Safari、Android Chrome／Edge／Firefox；列出能力與建置下限的依據及實機版本／機型尚未取得的限制。
-2. The Viewer 驗證方案 shall 對各組合涵蓋WebGL2／renderer、DPR與適合裝置的品質、觸控、旋轉／resize、背景返回與context恢復，以及1.2的代表場景。
-3. While 缺乏真機或跨GPU證據, the Viewer 交付紀錄 shall 保留待驗項，區分headless、桌面尺寸模擬及真機，不自動完成M6／SCENE-05。
-4. When 修改通過適當本機驗證, the Viewer 交付流程 shall 依序執行tests→build→增量Release並更新本機索引；失敗明示，不冒稱發佈或索引完成。
+### Requirement 2: 同步效率與行為相容
+1. While 場景物件及索引內容未改變, the Inspector shall 保持編號、順序、checkbox 及篩選結果一致，避免重建未變的索引資料。
+2. When 物件新增、移除、重新加入、重新掛載、排序或改名, the Inspector shall 在下一次同步回報變化並產生正確路徑與父子關係，保留仍存活物件的編號。
+3. When 使用者修改 checkbox 或篩選, the Inspector shall 保留既有篩選交集、祖先保留與錯誤輸入原子性，維持同步變化通知語意。
+4. When 索引釋放後再次使用, the Inspector shall 清除舊資料及比較狀態，正確重新發現場景。
+
+### Requirement 3: 交付與限制
+1. The viewer project shall 通過索引回歸、完整測試、型別檢查、production build 與實際瀏覽器啟動及 Inspector 操作驗證。
+2. The viewer project shall 記錄 Release 與增量索引結果，保留 M6／跨裝置與人工驗收待辦，不 commit／push。
+3. The viewer project shall 分別記錄 PC Chrome／Edge、Android Chrome／Edge／Firefox、iPhone Safari 的效能驗證狀態與環境，未實測平台保留待驗，不以 Node 或桌面結果代替。
+
+## 需求審閱
+PASS（inline）：3 區共 9 條條件具數字 ID、EARS、可觀察結果與明確邊界；不加入 FPS 門檻或未授權視覺改動。平台追加已同步設計／驗證任務。依使用者同里程碑授權自動審閱，非逐份人工核准。
+
+## PC 工程量測續作（2026-11-10）
+### Requirement 4: PC 幀時間樣本
+1. The viewer project shall 以同一 production build、固定 stage／DPR／畫質／暖機與測量長度，依序取得 Chrome／Edge 的走跑、魚眼加 xray、粒子水景與夜間樣本。
+2. The viewer project shall 記錄真實 RAF wall-clock FPS、中位／P95 幀間隔、draw calls／triangles、瀏覽器與 GPU 環境及錯誤；不將 RAF 當 GPU elapsed 或正式門檻。
+3. When 樣本顯示可處理瓶頸, the viewer project shall 先保存證據，再做同設定 A/B 與功能回歸；未有可靠證據不為修改而修改。
+審閱 PASS（inline）：使用者「手機平台部分列 ToDo，先進行其他部分」之同 M6 續作，無畫質或 API 變更。

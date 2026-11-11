@@ -4,6 +4,8 @@
 
 2026-11-10 PERF-01／1U-0：[viewer-performance](../specs/viewer-performance/) 已獲使用者核准固定量測與局部優化，Windows Chrome主／Edge輔，並規劃iPhone Safari與Android Chrome／Edge／Firefox能力、畫質／DPR及生命週期驗證。依量測保留既有UI去重，僅重用偏好查詢；共用檔必須依序進行，不可平行。無委派／commit／push，非第七里程碑，M6／SCENE-04/05/FOLD真機與跨GPU未驗項保留；證據見該spec validation。
 
+2026-11-10 M6／viewer-performance：原交接 task 1–3 未能取得，使用者明確核准依 main 重建 [viewer-performance](../specs/viewer-performance/) 並續作。範圍為已量測的 Inspector 索引重用、回歸與交付；不推定原規格已恢復，不整合保留分支多場景內容。目標 PC Chrome／Edge、Android Chrome／Edge／Firefox、iPhone Safari，正式門檻及真機缺口保留，見 spec validation。共用檔案必須依序進行，不可平行；無委派／commit／push。
+
 2026-10-31 LIGHT-01／1R-1：[night-object-lighting](../specs/night-object-lighting/) 已由使用者核准夜晚／物件光源整體方案；依序自動inline審閱／實作，無委派。瀑布chat完成後才修改共用ViewerApp／main／CityScene／UI，必須依序進行，不可平行。非第七里程碑，M6／SCENE-04/05/FOLD與其餘LATER保留。
 
 2026-10-31 WATER-03／1N-1：[waterfall-spray](../specs/waterfall-spray/) 已由使用者核准瀑布粒子與相機濕潤整體方案；同範圍依序自動審閱／實作，不委派。世界 source 由水景公開API取得，兩入口共用效果；ViewerApp／SceneRenderer／main等必須依序進行，不可平行。非第七里程碑，M6／SCENE-05-FOLD及其餘延後項維持。
@@ -100,3 +102,5 @@
 # 2026-10-31 INSPECT-01（1S-0）追加授權
 
 使用者已核准 [scene-object-inspector](../specs/scene-object-inspector/)：場景父子樹、頁面內穩定整數ID、總開關及個別checkbox、regex與編號範圍交集、祖先保留及世界標籤；只控制label。依序接續水霧／夜間交付，未平行修改。此為LATER-02中物件結構檢視的明確有限追加授權，不擴張到XYZ／速度滑桿或編輯器；非第七里程碑，M6／SCENE-04/05/FOLD及其他LATER保留。進度與證據見spec tasks／validation。
+
+2026-11-10 1Q-5：M6同階段續作PC工程量測，手機四平台依明確指示保留M6-MOBILE-01–04 ToDo，詳viewer-performance tasks／validation；非跨里程碑。共用harness與產品依序處理，不委派。
