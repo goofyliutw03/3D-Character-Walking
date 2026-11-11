@@ -1,0 +1,11 @@
+{
+  "date": "2026-11-10T10:03:17.690Z",
+  "base": "http://127.0.0.1:4174/",
+  "browserVersion": "156.0.8078.48",
+  "headless": true,
+  "checks": [
+    "index.html: exact published HTML, usable WebGL page",
+    "water.html: exact published HTML, usable WebGL page"
+  ],
+  "errors": []
+}

@@ -60,6 +60,7 @@ export class ViewerApp {
   private variant: CharacterVariant = 'man';
   private motion: Readonly<MotionSnapshot>;
   private readonly events = new AbortController();
+  private readonly reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   private lastTime = 0;
   private sampleTime = 0;
   private frameCount = 0;
@@ -174,7 +175,7 @@ export class ViewerApp {
     this.particles.update(delta,targetAnchor,this.target.height*.25);
     this.particleReport?.(this.particles.snapshot);
     this.characterReport?.(this.getCharacterStatus());
-    const immediate = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const immediate = this.reducedMotion.matches;
     this.desiredCamera.aspect = this.camera.aspect;
     this.desiredCamera.updateProjectionMatrix();
     this.cameras.update(this.getCameraSubject(), delta, immediate);
@@ -221,7 +222,7 @@ export class ViewerApp {
   }
   setCamera(preset: CameraPreset): void {
     this.mouseOrbit.cancel();
-    this.cameras.select(preset, this.getCameraSubject(), window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    this.cameras.select(preset, this.getCameraSubject(), this.reducedMotion.matches);
     this.character.root.visible = !this.assets.current && this.cameras.characterVisible;
     if (this.assets.current) this.assets.current.root.visible = this.cameras.characterVisible;
     if (!this.cameras.characterVisible) this.overlay.place(null);
@@ -273,7 +274,7 @@ export class ViewerApp {
   private getSubjectHeight(): number { return this.assets.current?.height ?? this.character.height; }
   setFollowing(enabled: boolean): void {
     this.mouseOrbit.cancel();
-    this.cameras.setFollowing(enabled, this.getCameraSubject(), window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    this.cameras.setFollowing(enabled, this.getCameraSubject(), this.reducedMotion.matches);
   }
   private getCameraSubject(): CameraSubject {
     const subject = this.assets?.current ?? this.character;

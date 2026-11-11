@@ -4,7 +4,7 @@
 
 ## 操作
 
-使用 PowerShell 7+（本機7.6.5），始終在 `D:\Work_Mine\AI-Projects\3D Character Walk Viewer` 修改與執行：
+使用 PowerShell 7+（本機7.6.5），始終在 `D:\Work_Mine\AI Project\3D Character Walk Viewer\3D-Character-Walking` 修改與執行（舊版文件的 AI-Projects 路徑已過時）：
 
 ```powershell
 ./scripts/project.ps1 release
@@ -16,6 +16,8 @@ release 依序執行全部既有 tests、TypeScript／Vite production build、�
 預覽以既有 Vite 讀取外部 Release，固定 localhost:4174、strictPort；連接埠占用會報錯，不停止既有4173 preview，不開防火牆。瀏覽器使用 http://127.0.0.1:4174 ，不要直接開啟 index.html。僅本機驗證，不代表 LAN／iPhone 可用。來源編輯不會改變 Release；成功發佈後重新整理瀏覽器載入新入口。
 
 ## 同步保護與回復
+
+目前使用者登入後隱藏啟動的系統匣常駐與獨立 localhost:4175 服務，見 [release-tray.md](release-tray.md)；不取代下方手動4174預覽。
 
 - 預檢完整來源與目的檔案路徑，拒絕來源或目標祖先的 junction／symlink（reparse point）、路徑越界及檔案／目錄衝突。目標不存在時才建立必要目錄。
 - 以 SHA256 比對，內容相同則略過，保留 mtime。變更檔先複製至目標同目錄隨機暫存檔、校驗 hash，再以 File.Move 的 overwrite 更新單檔；index.html 最後更新。輸出 Added／Updated／Skipped／CompletedAt。

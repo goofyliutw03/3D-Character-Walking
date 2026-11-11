@@ -1,5 +1,9 @@
 # Development plan
 
+2026-11-11 TRAY-01／1V-0：使用者核准 Release Windows 系統匣常駐與目前使用者登入自啟；見 [release-system-tray](../.kiro/specs/release-system-tray/) 及 [操作文件](release-tray.md)。實作、服務測試與Release成功；實際系統匣點擊及重開機待人工驗收。非新里程碑、不變更M6手機待驗；無commit/push。
+
+2026-11-10 PERF-01／1U-0：使用者核准 [viewer-performance](../.kiro/specs/viewer-performance/) 固定條件效能調查及依證據的局部優化，Chrome為主／Edge為輔，iPhone Safari必要支援、Android Chrome／Edge／Firefox列入驗證規劃。實測排除既有UI去重候選，只重用reduced-motion查詢，維持畫質；相容性矩陣見 [viewer-performance.md](viewer-performance.md)，實測／Release／索引狀態見spec validation。非第七里程碑，M6／SCENE-04/05/FOLD及手機真機未驗項不自動完成，不改OS／瀏覽器設定。
+
 2026-10-31 LIGHT-01／1R-1：使用者核准 [night-object-lighting](../.kiro/specs/night-object-lighting/) 夜晚、六路燈、粒子群組照明、可重用掛載API及光源UI；沿用白天／黃昏、有界8槽且無點光陰影。依序規格／實作／inline審閱／驗證，非第七里程碑，M6／SCENE-04/05/FOLD待驗保留。詳見該spec驗證。
 
 2026-10-31 WATER-03／1N-1：使用者核准 [waterfall-spray](../.kiro/specs/waterfall-spray/) 落水／飛濺粒子與相機接近時的薄霧／少量鏡頭水滴，遠離後下滑消退。街道／water.html 共用模組、固定容量、可關閉鏡頭效果、沿用品質／暫停與 reduced-motion；依序規格／實作／inline審閱／驗證。既有 Caster→Target 不變；非第七里程碑，M6／SCENE-05 含 FOLD 待驗維持。結果與限制見該 spec validation。

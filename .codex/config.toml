@@ -1,7 +1,7 @@
 [mcp_servers.socraticode]
-command = 'C:\Users\goofy\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe'
-args = ['D:\Work_Mine\AI-Projects\3D Character Walk Viewer\tools\rag\node_modules\socraticode\dist\index.js']
-cwd = 'D:\Work_Mine\AI-Projects\3D Character Walk Viewer'
+command = 'C:\Users\GoofyLiu\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe'
+args = ['D:\Work_Mine\AI Project\3D Character Walk Viewer\3D-Character-Walking\tools\rag\node_modules\socraticode\dist\index.js']
+cwd = 'D:\Work_Mine\AI Project\3D Character Walk Viewer\3D-Character-Walking'
 startup_timeout_sec = 30
 tool_timeout_sec = 600
 

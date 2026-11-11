@@ -1,0 +1,21 @@
+{
+  "feature_name": "release-system-tray",
+  "language": "zh-TW",
+  "phase": "implementation-complete",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": true
+    }
+  },
+  "ready_for_implementation": true,
+  "approval_note": "使用者 OK please go on 核准整體實作與目前使用者登入自啟；同範圍自動 inline 審閱，非逐份人工核准。"
+}

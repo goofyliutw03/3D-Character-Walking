@@ -1,0 +1,16 @@
+{
+  "date": "2026-11-10T09:52:31.429Z",
+  "url": "http://127.0.0.1:5176/",
+  "channel": "chrome",
+  "headless": true,
+  "checks": [
+    "steady-frame query reuse",
+    "same MediaQueryList reflects live preference changes",
+    "all three rigged assets",
+    "camera / follow / obstruction state transitions",
+    "keyboard movement / stop state",
+    "night / fisheye + xray / portrait-landscape resize",
+    "native WebGL context loss / restore"
+  ],
+  "errors": []
+}

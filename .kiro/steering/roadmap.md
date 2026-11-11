@@ -1,5 +1,9 @@
 # cc-sdd 規劃對應與待辦
 
+2026-11-11 TRAY-01／1V-0：[release-system-tray](../specs/release-system-tray/) 為已核准系統匣與目前使用者登入自啟；依序修改scripts及文件，與既有工作不平行。實作、服務測試與Release成功；原生系統匣及重新登入待人工驗收，詳見validation。無委派／commit／push，非新里程碑。
+
+2026-11-10 PERF-01／1U-0：[viewer-performance](../specs/viewer-performance/) 已獲使用者核准固定量測與局部優化，Windows Chrome主／Edge輔，並規劃iPhone Safari與Android Chrome／Edge／Firefox能力、畫質／DPR及生命週期驗證。依量測保留既有UI去重，僅重用偏好查詢；共用檔必須依序進行，不可平行。無委派／commit／push，非第七里程碑，M6／SCENE-04/05/FOLD真機與跨GPU未驗項保留；證據見該spec validation。
+
 2026-10-31 LIGHT-01／1R-1：[night-object-lighting](../specs/night-object-lighting/) 已由使用者核准夜晚／物件光源整體方案；依序自動inline審閱／實作，無委派。瀑布chat完成後才修改共用ViewerApp／main／CityScene／UI，必須依序進行，不可平行。非第七里程碑，M6／SCENE-04/05/FOLD與其餘LATER保留。
 
 2026-10-31 WATER-03／1N-1：[waterfall-spray](../specs/waterfall-spray/) 已由使用者核准瀑布粒子與相機濕潤整體方案；同範圍依序自動審閱／實作，不委派。世界 source 由水景公開API取得，兩入口共用效果；ViewerApp／SceneRenderer／main等必須依序進行，不可平行。非第七里程碑，M6／SCENE-05-FOLD及其餘延後項維持。
