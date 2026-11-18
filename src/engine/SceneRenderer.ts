@@ -54,6 +54,15 @@ export class SceneRenderer {
     this.waterLens.render(this.renderer, Number(fisheye) >= .5);
   }
   setShadows(enabled: boolean): void { this.renderer.shadowMap.enabled = enabled; }
+  releaseContextResources(): void {
+    this.fisheye?.dispose(); this.fisheye = undefined;
+    this.xray?.dispose(); this.xray = undefined;
+    this.waterLens.clear();
+  }
+  restoreContext(): void {
+    this.renderer.setRenderTarget(null);
+    this.resize();
+  }
   get stats(): RenderStats {
     const { render, memory } = this.renderer.info;
     return { drawCalls: render.calls, triangles: render.triangles, geometries: memory.geometries, textures: memory.textures };

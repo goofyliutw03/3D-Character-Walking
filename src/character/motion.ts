@@ -8,7 +8,7 @@ export const characterCapsules = Object.freeze({
   child: Object.freeze({ radius: .28, height: 1.15 }),
 });
 export const characterRadius = defaultCapsule.radius;
-export interface MovementIntent { x: number; z: number; run: boolean; jump: boolean }
+export interface MovementIntent { x: number; z: number; run: boolean; jump: boolean; vertical?: number }
 export interface MotionSnapshot {
   x: number; y: number; z: number; heading: number;
   speed: number; grounded: boolean; action: CharacterAction;

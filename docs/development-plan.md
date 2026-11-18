@@ -1,5 +1,7 @@
 # Development plan
 
+2026-11-18 [1Y-15] 接續使用者確認1Y-14，執行 [bounded-flight](../.kiro/specs/bounded-flight/)：正常Environment入口、有界飛行／禁入／警戒、三維加減速與升降、連續膠囊掃掠及明確合法著陸、程序天空／網格雲、Profiles v1相容。固定步進僅flight；共用Context恢復缺口回修multi-scene-foundation。依序inline審閱、無委派／commit／push。驗證與交付狀態見該spec validation；水域／太空待本批結束確認，既有真機／效能驗收保留。
+
 2026-11-10 [1Y-14] 使用者確認1Y-13並核准第二批 [ground-volume-world-query](../.kiro/specs/ground-volume-world-query/)：地表同源支撐、洞穴有限三維盒／直立膠囊、洞頂／多層與角色淨空，依序inline審閱與逐項驗證。飛行／水域／太空與任意mesh剛體仍在後續；不概括關閉M6／真機待驗。共用檔必須依序進行，不可平行。
 
 2026-11-10 [1Y-13]：使用者確認場景碰撞／範圍規範並核准第一批 [world-query-range-policy](../.kiro/specs/world-query-range-policy/)：共用查詢契約、城市 planar 相容適配與移動／導航／巡迴／XYZ一致限制。依序規格、自動inline審閱、逐項實作與驗證；其他場景僅相容回歸，不同時開發飛行／水域／太空或完整三維膠囊。共用檔必須依序進行，不可平行；既有M6／真機待驗保留。

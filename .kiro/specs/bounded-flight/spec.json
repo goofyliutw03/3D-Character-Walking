@@ -1,0 +1,14 @@
+{
+  "feature_name": "bounded-flight",
+  "created_at": "2026-11-10",
+  "updated_at": "2026-11-18",
+  "language": "zh-TW",
+  "phase": "implementation-complete",
+  "approvals": {
+    "requirements": { "generated": true, "approved": true },
+    "design": { "generated": true, "approved": true },
+    "tasks": { "generated": true, "approved": true }
+  },
+  "ready_for_implementation": true,
+  "approval_note": "依1Y-15來源接續授權自動inline實質審閱通過，非逐份人工核准。"
+}

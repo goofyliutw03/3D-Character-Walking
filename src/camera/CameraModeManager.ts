@@ -3,7 +3,7 @@ import type { AutoRunControls } from '../input/AutoRunControls';
 import type { PerspectiveCamera } from 'three';
 import { sceneControlPolicy, type SceneControlPolicy } from '../scene/SceneControlPolicy.ts';
 
-export type CameraInputMode = 'standard' | 'running-orbit' | 'inspection';
+export type CameraInputMode = 'standard' | 'running-orbit' | 'inspection' | 'stationary-look';
 const externalViews: ReadonlySet<CameraView> = new Set(['third-person', 'fisheye']);
 
 /** Coordinates camera transitions without owning another copy of the movement state. */
@@ -16,15 +16,27 @@ export class CameraModeManager {
     private readonly immediate: () => boolean,
     private readonly rendered: PerspectiveCamera,
     private readonly resetInput: () => void,
+    private readonly stationary: () => boolean = () => false,
   ) {}
 
   get inputMode(): CameraInputMode {
-    if (this.camera.view === 'first-person' && this.run.inspecting) return 'inspection';
-    return this.policy.autoRun && this.run.enabled && externalViews.has(this.camera.view) ? 'running-orbit' : 'standard';
+    const firstPerson = this.camera.view === 'first-person';
+    if (firstPerson && this.run.inspecting) return 'inspection';
+    if ((firstPerson || this.camera.view === 'third-person') && !this.run.running &&
+        (this.run.enabled && this.run.paused || this.stationary())) {
+      return 'stationary-look';
+    }
+    return this.policy.autoRun && this.run.enabled && (firstPerson || externalViews.has(this.camera.view))
+      ? 'running-orbit' : 'standard';
   }
-  get wheelEnabled(): boolean { return externalViews.has(this.camera.view) || this.inputMode === 'inspection'; }
+  get wheelEnabled(): boolean {
+    return externalViews.has(this.camera.view) || (this.camera.view === 'first-person' && this.run.enteredByZoom);
+  }
   get followingLocked(): boolean { return this.inputMode === 'running-orbit'; }
-  get groundTapEnabled(): boolean { return this.policy.groundNavigation && this.inputMode === 'standard'; }
+  get groundTapEnabled(): boolean {
+    const mode = this.inputMode;
+    return this.policy.groundNavigation && (mode === 'standard' || mode === 'stationary-look');
+  }
   get autoRunEnabled(): boolean { return this.policy.autoRun; }
 
   configureScene(policy: SceneControlPolicy): void {

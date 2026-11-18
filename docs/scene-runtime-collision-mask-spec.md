@@ -1,5 +1,7 @@
 # 各場景運行、碰撞與活動範圍設計規範
 
+2026-11-18 1Y-15補充：空中飛行已另批核准並依[bounded-flight](../.kiro/specs/bounded-flight/)實作驗證。有限單一允許盒扣禁入盒、直立膠囊、flight專用固定步進與明確2m內合法著陸；能力／交付以該spec validation為準。下文「飛行另批確認」屬前批時點；水域／太空及任意網格／全姿態仍不在本批。
+
 版本 v0.1，2026-11-10。使用者已確認設計方向並核准第一批共用 World Query／Range Policy 與城市相容適配；分批規格與實際能力見 [.kiro/specs/world-query-range-policy](../.kiro/specs/world-query-range-policy/)。第二批地表／洞穴已於1Y-14核准，實際能力與驗證見[ground-volume-world-query](../.kiro/specs/ground-volume-world-query/)。有限盒直立膠囊及高度場支撐不等同任意網格物理；飛行／水域／太空仍另批確認。
 
 ## 1. 範圍與基線

@@ -149,7 +149,7 @@ test('camera mode transitions clear partial wheel exits and preserve running per
   const subject = { x: 0, y: 0, z: 0, height: 1.8, eyeHeight: 1.6, eyeForward: .17, heading: 0 };
   let clears = 0;
   const modes = new CameraModeManager(rig, run, () => subject, () => true, camera, () => clears++);
-  for (const view of ['overview', 'street', 'overhead', 'front', 'character-overhead', 'low-angle', 'first-person']) {
+  for (const view of ['overview', 'street', 'overhead', 'front', 'character-overhead', 'low-angle']) {
     run.setEnabled(true, 0);
     modes.select(view);
     assert.equal(modes.inputMode, 'standard');
@@ -157,6 +157,16 @@ test('camera mode transitions clear partial wheel exits and preserve running per
     assert.equal(run.running, true);
     assert.equal(modes.groundTapEnabled, true);
   }
+  modes.select('first-person');
+  assert.equal(modes.inputMode, 'running-orbit');
+  assert.equal(modes.groundTapEnabled, false);
+  assert.equal(modes.wheelEnabled, false);
+  run.move(100, 10, 1000, false, 0, 'first-person');
+  const heading = run.heading;
+  assert.ok(heading < 0);
+  run.move(100, 10, 1000, true, 10, 'first-person');
+  assert.equal(run.heading, heading);
+  assert.ok(run.yaw < 0);
   for (const view of ['third-person', 'fisheye']) {
     modes.select(view);
     assert.equal(modes.inputMode, 'running-orbit');
@@ -171,6 +181,16 @@ test('camera mode transitions clear partial wheel exits and preserve running per
     modes.resetGestures();
     assert.equal(modes.wheel(60), undefined);
     modes.select(modes.wheel(60));
+    assert.equal(rig.view, view);
+    assert.equal(run.running, true);
+
+    modes.wheel(-10000);
+    modes.select(modes.wheel(-1));
+    run.setEnabled(true, 0);
+    assert.equal(modes.inputMode, 'running-orbit');
+    assert.equal(run.running, true);
+    assert.equal(modes.wheelEnabled, true);
+    modes.select(modes.wheel(120));
     assert.equal(rig.view, view);
     assert.equal(run.running, true);
   }
@@ -210,4 +230,61 @@ test('input reset drops stale pointer displacement and resynchronizes Ctrl', t =
   assert.equal(moves[2][2], true);
   input.dispose(); pointer(3000);
   assert.equal(moves.length, 3);
+});
+
+test('stationary hover looks in first and third person while clicks and drags pass through', async t => {
+  const { CameraModeManager } = await import('../src/camera/CameraModeManager.ts');
+  const camera = new PerspectiveCamera();
+  const orbit = { target: new Vector3(), enabled: true, enableDamping: true, update() {} };
+  const rig = new CameraController(camera, orbit, new FollowCamera(), new FirstPersonCamera());
+  const run = new AutoRunControls();
+  const subject = { x: 0, y: 0, z: 0, height: 1.8, eyeHeight: 1.6, eyeForward: .17, heading: 0 };
+  let stationary = true;
+  const modes = new CameraModeManager(rig, run, () => subject, () => true, camera, () => input.reset(), () => stationary);
+  const canvas = new EventTarget();
+  canvas.ownerDocument = new EventTarget();
+  canvas.ownerDocument.activeElement = canvas;
+  const originalWindow = globalThis.window;
+  globalThis.window = new EventTarget();
+  const input = new CameraInputManager(canvas, {
+    mode: () => modes.inputMode, clearGesture: () => input.reset(),
+    wheelEnabled: () => modes.wheelEnabled, reverseEnabled: () => run.running,
+    move: (dx, dy, ctrl, time) => run.move(dx, dy, 1000, ctrl || modes.inputMode === 'stationary-look', time, rig.view),
+    wheel() {}, reverse() {}, reset() {}, suspend() {}, toggle() {},
+  });
+  t.after(() => { input.dispose(); globalThis.window = originalWindow; });
+  const pointer = (type, x, buttons = 0) => canvas.dispatchEvent(Object.assign(new Event(type, { cancelable: true }), {
+    pointerType: 'mouse', clientX: x, clientY: x / 2, buttons, button: 0, ctrlKey: false,
+  }));
+  let drags = 0;
+  canvas.addEventListener('pointermove', () => drags++);
+  for (const view of ['first-person', 'third-person']) {
+    run.setEnabled(false, 1);
+    modes.select(view);
+    assert.equal(modes.inputMode, 'stationary-look');
+    assert.equal(modes.groundTapEnabled, true);
+    pointer('pointermove', 10);
+    pointer('pointermove', 20);
+    assert.ok(run.yaw < 0);
+    assert.ok(run.pitch < 0);
+    assert.equal(run.heading, 1);
+    assert.equal(run.running, false);
+    const yaw = run.yaw;
+    assert.equal(pointer('pointerdown', 20, 1), true);
+    pointer('pointermove', 300, 1);
+    pointer('pointermove', 310);
+    assert.equal(run.yaw, yaw);
+    run.setEnabled(true, 1);
+    assert.equal(modes.inputMode, 'running-orbit');
+    run.suspend();
+    assert.equal(modes.inputMode, 'stationary-look');
+    pointer('pointermove', 320);
+    assert.ok(run.yaw < yaw);
+    assert.equal(run.heading, 1);
+    run.stop();
+    stationary = false;
+    assert.equal(modes.inputMode, 'standard');
+    stationary = true;
+  }
+  assert.equal(drags, 2);
 });

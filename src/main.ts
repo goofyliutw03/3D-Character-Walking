@@ -79,7 +79,7 @@ app.innerHTML = `
         <button data-direction="right" aria-label="Move right">→</button>
       </div>
       <div class="action-controls" role="group" aria-label="Character actions">
-        <button id="run" aria-pressed="false">Run</button><button id="jump">Jump</button><button id="stop">Stop</button>
+        <button id="run" aria-pressed="false">Run</button><button id="jump">Jump</button><span id="flight-touch" hidden><button id="flight-up" aria-label="Ascend">↑ Ascend</button><button id="flight-down" aria-label="Descend">↓ Descend</button></span><button id="stop">Stop</button>
         <button id="fire-particle" type="button">Fire particle</button><button id="reset-target" type="button">Reset target</button>
         <button id="mobile-auto-run" class="mobile-camera-action" type="button" aria-pressed="false">自動奔跑</button>
         <button id="mobile-reverse" class="mobile-camera-action" type="button">反向</button>
@@ -134,11 +134,23 @@ const updateCharacterStatus = (state: CharacterStatus): void => {
   document.querySelector('#auto-run-status')!.textContent = state.autoRun ? (state.autoRunPaused ? 'Paused' : 'Running') : 'Off';
   showTourStatus(document, state.tour);
   showEditorState(document, state.motion, state.walkSpeed, state.buildings);
-  const key = `${state.variant}/${state.action}/${state.running}/${state.following}/${state.cameraView}/${state.navigation}/${state.obstructionMode}/${state.groundPenetration}/${state.autoRun}/${state.autoRunPaused}`;
+  const key = `${state.variant}/${state.action}/${state.running}/${state.following}/${state.cameraView}/${state.navigation}/${state.obstructionMode}/${state.groundPenetration}/${state.autoRun}/${state.autoRunPaused}/${state.flight?.mode}/${state.flight?.warning}/${state.flight ? state.motion.speed.toFixed(1) : ""}/${state.flight?.droppedTime.toFixed(2)}`;
   if (key === previousCharacterStatus) return;
   previousCharacterStatus = key;
   const names = { man: 'Man', woman: 'Woman', child: 'Child' };
   const actions = { idle: 'Idle', walk: 'Walk', run: 'Run', jump: 'Jump' };
+  document.querySelector<HTMLElement>('#flight-touch')!.hidden = state.flight?.mode !== 'flight';
+  document.querySelector<HTMLButtonElement>('#jump')!.disabled = state.flight?.mode === 'flight';
+  document.querySelector('#run')!.textContent = state.flight?.mode === 'flight' ? 'Boost' : 'Run';
+  for (const id of ['mobile-auto-run','auto-run','auto-run-resume','touch-auto-run']) {
+    const button = document.getElementById(id) as HTMLButtonElement | null;
+    if (button) button.disabled = !!state.flight;
+  }
+  if (state.flight) {
+    document.querySelector('#flight-status')!.textContent = `${state.flight.mode === 'flight' ? 'Flying · Jump animation fallback' : 'Landed · ground movement'} · ${state.motion.speed.toFixed(1)}m/s${state.flight.warning ? ' · Boundary warning: ' + state.flight.warning : ''} · discarded ${state.flight.droppedTime.toFixed(2)}s`;
+    document.querySelector<HTMLButtonElement>('#flight-takeoff')!.disabled = state.flight.mode === 'flight';
+    document.querySelector<HTMLButtonElement>('#flight-land')!.disabled = state.flight.mode !== 'flight';
+  }
   document.querySelector('#character-status')!.textContent = `${names[state.variant]} · ${actions[state.action]}`;
   document.querySelector('#run')!.setAttribute('aria-pressed', String(state.running));
   const navigationMessages = {
@@ -146,7 +158,8 @@ const updateCharacterStatus = (state: CharacterStatus): void => {
     arrived: 'Destination reached.', blocked: 'Cannot reach that spot. Tap clear ground.',
   };
   const navigationStatus = document.querySelector('#navigation-status')!;
-  if (navigationStatus.textContent !== navigationMessages[state.navigation]) navigationStatus.textContent = navigationMessages[state.navigation];
+  const navigationMessage = state.flight ? 'Flight area: E / Space ↑ · Q ↓ · Shift boost · explicit Land within 2m. Ground navigation and auto run unavailable.' : navigationMessages[state.navigation];
+  if (navigationStatus.textContent !== navigationMessage) navigationStatus.textContent = navigationMessage;
   document.querySelector<HTMLInputElement>('#follow')!.checked = state.following;
   document.querySelector<HTMLInputElement>('#follow')!.disabled = state.firstPerson;
   document.querySelector<HTMLSelectElement>('#obstruction-mode')!.value = state.obstructionMode;
@@ -161,7 +174,9 @@ const updateCharacterStatus = (state: CharacterStatus): void => {
     : state.following ? 'Following your character. Turn off to pause this view.' : 'Tracking paused. Drag to orbit, scroll to zoom.';
   const staticView = ['overview', 'street', 'overhead'].includes(state.cameraView);
   const touch = window.matchMedia('(pointer: coarse)').matches;
-  document.querySelector('#interaction-guide')!.innerHTML = touch
+  document.querySelector('#interaction-guide')!.innerHTML = state.flight?.mode === 'flight'
+    ? '<span><b>E / Space ↑ · Q ↓</b> ascend / descend</span><span><b>Shift</b> boost</span><span><b>Stop</b> brake</span>'
+    : touch
     ? state.firstPerson
       ? '<span>單指看四周 · 捏合退出</span>'
       : state.autoRun && (state.cameraView === 'third-person' || state.cameraView === 'fisheye')
@@ -208,7 +223,7 @@ try {
   let environmentRequest = 0;
   let environmentOperation = Promise.resolve();
   const changeEnvironment = async (): Promise<void> => {
-    const id = environment.value === 'terrain' ? 'terrain' : environment.value === 'cave' ? 'cave' : 'city';
+    const id = environment.value === 'flight' ? 'flight' : environment.value === 'terrain' ? 'terrain' : environment.value === 'cave' ? 'cave' : 'city';
     const request = ++environmentRequest;
     environmentStatus.textContent = 'Preparing environment…';
     const ready = await viewer!.selectEnvironment(id);
@@ -217,7 +232,10 @@ try {
     const city = viewer!.cityFeatures;
     environment.value = active;
     viewport.dataset.environment = active;
-    environmentStatus.textContent = ready ? (city ? 'City street ready.' : active === 'terrain' ? 'Terrain ready.' : 'Cave ready.') : 'Could not switch. Current environment kept.';
+    environmentStatus.textContent = ready ? (city ? 'City street ready.' : active === 'flight' ? 'Flight ready.' : active === 'terrain' ? 'Terrain ready.' : 'Cave ready.') : 'Could not switch. Current environment kept.';
+    document.querySelector<HTMLElement>('#flight-controls')!.hidden = active !== 'flight';
+    document.querySelector<HTMLElement>('#flight-controls')!.inert = active !== 'flight';
+    document.querySelector('#flight-result')!.textContent = '';
     const terrain = viewer!.getTerrainSettings();
     document.querySelector<HTMLElement>('#terrain-controls')!.hidden = !terrain;
     document.querySelector<HTMLElement>('#terrain-controls')!.inert = !terrain;
@@ -237,10 +255,10 @@ try {
     syncHeadlamp();
     syncEnvironmentLights();
     syncLampControls();
-    document.querySelector('.project-name')!.innerHTML = city ? 'City street <span>/</span> Untitled scene' : active === 'terrain' ? 'Natural terrain <span>/</span> Validation area' : 'Underground <span>/</span> Validation area';
-    document.querySelector('.scene-title .eyebrow')!.textContent = city ? 'THE NEIGHBORHOOD' : active === 'terrain' ? 'THE HILLS' : 'UNDERGROUND';
-    document.querySelector('.scene-title h2')!.textContent = city ? 'Maple Avenue' : active === 'terrain' ? 'Wind Meadow' : 'Rock Chamber';
-    document.querySelector('.scene-title p')!.textContent = city ? 'A quiet street. An open canvas.' : active === 'terrain' ? 'Rolling ground. Shared heights. Moving grass.' : 'A walkable chamber with solid walls.';
+    document.querySelector('.project-name')!.innerHTML = city ? 'City street <span>/</span> Untitled scene' : active === 'flight' ? 'Bounded flight <span>/</span> Validation area' : active === 'terrain' ? 'Natural terrain <span>/</span> Validation area' : 'Underground <span>/</span> Validation area';
+    document.querySelector('.scene-title .eyebrow')!.textContent = city ? 'THE NEIGHBORHOOD' : active === 'flight' ? 'THE AIRSPACE' : active === 'terrain' ? 'THE HILLS' : 'UNDERGROUND';
+    document.querySelector('.scene-title h2')!.textContent = city ? 'Maple Avenue' : active === 'flight' ? 'Sky Range' : active === 'terrain' ? 'Wind Meadow' : 'Rock Chamber';
+    document.querySelector('.scene-title p')!.textContent = city ? 'A quiet street. An open canvas.' : active === 'flight' ? 'Finite airspace. Clear landings. Procedural clouds.' : active === 'terrain' ? 'Rolling ground. Shared heights. Moving grass.' : 'A walkable chamber with solid walls.';
     panelProfiles?.changed();
   };
   environment.addEventListener('change', () => { environmentOperation = changeEnvironment(); }, { signal: uiEvents.signal });
@@ -388,6 +406,14 @@ try {
   document.querySelector('#mobile-reverse')!.addEventListener('click', () => viewer?.reverseAutoRun(), { signal: uiEvents.signal });
   document.querySelector('#mobile-look-reset')!.addEventListener('click', () => viewer?.resetCameraLook(), { signal: uiEvents.signal });
   document.querySelector('#jump')!.addEventListener('click', () => viewer?.jump(), { signal: uiEvents.signal });
+  viewer.bindDirection(document.querySelector<HTMLButtonElement>('#flight-up')!, 'up');
+  viewer.bindDirection(document.querySelector<HTMLButtonElement>('#flight-down')!, 'down');
+  for (const [id, mode] of [['flight-takeoff','flight'],['flight-land','ground']] as const) {
+    document.getElementById(id)!.addEventListener('click', () => {
+      const accepted = viewer?.setFlightMode(mode);
+      document.querySelector('#flight-result')!.textContent = accepted ? (mode === 'flight' ? 'Takeoff ready.' : 'Landing complete.') : 'Landing rejected. Descend within 2m of a clear, walkable surface.';
+    }, { signal: uiEvents.signal });
+  }
   document.querySelector('#stop')!.addEventListener('click', () => viewer?.stop(), { signal: uiEvents.signal });
   document.querySelector<HTMLInputElement>('#follow')!.addEventListener('change', event => viewer?.setFollowing((event.target as HTMLInputElement).checked), { signal: uiEvents.signal });
   document.querySelector<HTMLSelectElement>('#obstruction-mode')!.addEventListener('change', event => viewer?.setObstructionMode((event.target as HTMLSelectElement).value as ObstructionMode), { signal: uiEvents.signal });

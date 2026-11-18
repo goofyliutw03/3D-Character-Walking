@@ -9,7 +9,7 @@ export function validViewerSettings(value: unknown): value is ViewerSettings {
   if (!value || typeof value !== 'object') return false;
   const s = value as ViewerSettings;
   try {
-    if (!['city','cave','terrain'].includes(s.environment) || !['man','woman','child'].includes(s.variant) ||
+    if (!['city','cave','terrain','flight'].includes(s.environment) || !['man','woman','child'].includes(s.variant) ||
       !['overview','street','overhead','first-person','third-person','front','character-overhead','low-angle','fisheye'].includes(s.camera) ||
       !['zoom','transparent','wireframe','xray'].includes(s.obstruction) ||
       !bool(s.following,s.groundPenetration,s.waterLens,s.shadows) || !range(s.walkSpeed,.5,4) ||
@@ -21,10 +21,10 @@ export function validViewerSettings(value: unknown): value is ViewerSettings {
       !bool(w.enabled,w.paused) || !['low','standard'].includes(w.quality) || !range(w.waveStrength,0,2) || !range(w.flowSpeed,0,3) ||
       !bool(s.lampDetection.enabled) || !range(s.lampDetection.radius,1,30) || !Array.isArray(s.lamps) || s.lamps.length>6 || !s.lamps.every(n=>Number.isInteger(n)&&range(n,1,6))) return false;
     if (!s.scenes || typeof s.scenes !== 'object' || !s.scenes[s.environment] || Object.entries(s.scenes).some(([id,scene]) => {
-      if (!['city','cave','terrain'].includes(id) || !scene || !['day','evening','night'].includes(scene.time) || !validSolar(scene.solar) || !Array.isArray(scene.lights)) return true;
+      if (!['city','cave','terrain','flight'].includes(id) || !scene || !['day','evening','night'].includes(scene.time) || !validSolar(scene.solar) || !Array.isArray(scene.lights)) return true;
       if (id === 'terrain') return scene.headlamp !== null || scene.lights.length !== 0 || !scene.terrain ||
         !['standard','low'].includes(scene.terrain.quality) || typeof scene.terrain.wind !== 'boolean';
-      if (id === 'city') return scene.lights.length !== 0 || scene.headlamp !== null;
+      if (id === 'city' || id === 'flight') return scene.lights.length !== 0 || scene.headlamp !== null;
       return !scene.headlamp || !validHeadlamp(scene.headlamp) || scene.lights.length !== 32 || new Set(scene.lights.map(l=>l.id)).size!==32 || scene.lights.some(l =>
         !/^(sun|ambient|torch-(?:[1-9]|10)|crystal-(?:[1-9]|1[0-9]|20))$/.test(l.id) ||
         !bool(l.settings.enabled,l.settings.effects) || !color(l.settings.color) || !range(l.settings.intensity,0,['sun','ambient'].includes(l.id)?2:3));

@@ -6,7 +6,7 @@ import type { EnvironmentLight } from './EnvironmentLights';
 import type { Headlamp } from './Headlamp';
 import { sceneControlPolicy, type SceneControlPolicy } from './SceneControlPolicy.ts';
 
-export type EnvironmentId = 'city' | 'cave' | 'terrain';
+export type EnvironmentId = 'city' | 'cave' | 'terrain' | 'flight';
 export interface TerrainSettings { quality: 'standard' | 'low'; wind: boolean }
 export interface Environment {
   readonly id: EnvironmentId;
@@ -75,7 +75,15 @@ export class SceneSwitch {
     this.root.add(next.scene);
     this.current = next;
     this.syncAppearance();
-    bind(next);
+    try { bind(next); }
+    catch {
+      next.scene.removeFromParent();
+      this.root.add(previous.scene);
+      this.current = previous;
+      this.syncAppearance();
+      try { bind(previous); } finally { next.dispose(); }
+      return false;
+    }
     previous.dispose();
     return true;
   }

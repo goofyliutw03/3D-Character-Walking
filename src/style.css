@@ -886,3 +886,4 @@ main[data-panel-collapsed=true] #panel-toggle { justify-content:center; padding:
 #profile-status { overflow-wrap: anywhere; margin: 8px 0; }
 .profile-help { font-size: 10px; }
 #mouse-lock-status { display: block; font-size: 11px; overflow-wrap: anywhere; }
+#flight-touch:not([hidden]) { display: contents; }

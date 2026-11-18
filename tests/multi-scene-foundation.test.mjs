@@ -50,6 +50,12 @@ test('scene switch retains the active root on failure, supersession and cancella
   assert.equal(cave.disposals, 1);
 });
 
+test('scene bind failure restores previous scene before disposing rejected scene', async()=>{
+  const city=environment('city'),flight=environment('flight'),scenes=new SceneSwitch(city),bindings=[];
+  assert.equal(await scenes.select('flight',async()=>flight,next=>{bindings.push(next.id);if(next.id==='flight')throw Error('bind failed');}),false);
+  assert.equal(scenes.active,city);assert.equal(city.scene.parent,scenes.root);assert.equal(city.disposals,0);
+  assert.equal(flight.disposals,1);assert.deepEqual(bindings,['flight','city']);
+});
 test('cave walking and jump share the visible column footprint', () => {
   const cave = createCave();
   const movement = new CharacterController(cave.walkableWorld);

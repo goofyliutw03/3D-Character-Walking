@@ -21,10 +21,15 @@ release 依序執行全部既有 tests、TypeScript／Vite production build、�
 
 先成功執行 `./scripts/project.ps1 release`，再從原始專案用 PowerShell 7 執行 `./scripts/viewer-desktop.ps1 install`。安裝會啟動通知區圖示並建立目前使用者的 Startup 捷徑。若圖示被 Windows 收合，可從工作列通知區的隱藏圖示清單找到。
 
-- 通知區選單的 **Open Release website** 會開啟 `http://127.0.0.1:4174/`。**Restart Release server** 重新啟動該啟動器管理的網站。**Exit** 停止網站並關閉圖示，下次登入時會再啟動。
+- 通知區選單的 **Browsing** 會開啟 `http://127.0.0.1:4174/`。**Restart** 重新啟動該啟動器管理的網站。**Exit** 停止網站並關閉圖示，下次登入時會再啟動。
+- 系統匣服務 v1.1.0 使用藍底白色人物圖示。滑鼠提示及選單首列顯示服務版本與 Release 入口 SHA256 前 12 碼；**Version details** 顯示完整 SHA256、入口修改時間（UTC）與網址。啟動／Restart 時提示目前版本，每 5 秒檢查入口內容，變更後提示重新整理瀏覽器。Windows 通知設定可能隱藏氣球提示，仍可由選單查版本。
+- 入口指紋用於辨識目前 Release 的 index.html，不等於全檔版本或 Git commit。既有 Release 缺少建置來源紀錄時，來源版本明示 unknown；只修改固定名稱資產、未更新入口，不會觸發版本變更提示。
+- `./scripts/viewer-desktop.ps1 version` 可唯讀查詢腳本版本與目前 Release 指紋；`./scripts/viewer-desktop.ps1 stop` 請求新版常駐程序正常退出並清理自有服務，不移除自啟。執行中版本另記於忽略的 `.local/viewer-tray/status.json`；這是本機診斷紀錄，不代表圖示／選單已人工驗收。
 - 通知區網站與手動 `preview-release` 共用 4174，擇一使用。如果其他程序已占用連接埠，通知區會回報啟動失敗。排除占用後選 **Restart Release server**。
 - 在 `D:\Work_Mine\Testing\3D Character Walk Viewer\Debug` 雙擊 **Start Debug**，再開啟 `http://127.0.0.1:5173/`。原始碼在原 checkout 編輯，Debug 即時更新。**Build Debug** 將產物輸出到 Debug 的 `dist`，Vite 快取位於 Debug 的 `cache`。也可從原始專案執行 `./scripts/viewer-desktop.ps1 debug` 或 `./scripts/viewer-desktop.ps1 debug-build`。
 - 如需取消登入自啟，先選 **Exit**，再執行 `./scripts/viewer-desktop.ps1 uninstall`。Debug 捷徑與既有 Release 產物會保留。若搬移專案、Node 或 PowerShell，從新位置重建捷徑。
+
+2026-11-12 使用者指定保留目前 Release、只替換現有系統匣；本次不執行會重建 Viewer 的 release。替換結果、證據及人工待驗見 [本次驗證](tray-upgrade-validation.md)。這是本機 viewer-desktop／4174 路線，與 origin/main 的 release-tray／4175 路線不同，不混用兩組腳本或宣稱 main 的 task 5 已完成。
 
 - 預檢完整來源與目的檔案路徑，拒絕來源或目標祖先的 junction／symlink（reparse point）、路徑越界及檔案／目錄衝突。目標不存在時才建立必要目錄。
 - 以 SHA256 比對，內容相同則略過，保留 mtime。變更檔先複製至目標同目錄隨機暫存檔、校驗 hash，再以 File.Move 的 overwrite 更新單檔；index.html 最後更新。輸出 Added／Updated／Skipped／CompletedAt。

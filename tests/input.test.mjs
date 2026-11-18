@@ -11,6 +11,17 @@ const setup = () => {
 class Button extends EventTarget {
   setPointerCapture() {}
 }
+test('flight input: held ascend/descend, touch cancel and blur clear vertical state',()=>{
+  const {win,input}=setup();input.setFlightControls(true);
+  win.dispatchEvent(event('keydown',{code:'KeyE'}));assert.equal(input.sample().vertical,1);
+  win.dispatchEvent(event('keyup',{code:'KeyE'}));
+  const down=new Button();input.bindDirection(down,'down');
+  down.dispatchEvent(event('pointerdown',{pointerId:3,button:0}));assert.equal(input.sample().vertical,-1);
+  down.dispatchEvent(event('pointercancel',{pointerId:3}));assert.equal(input.sample().vertical,0);
+  win.dispatchEvent(event('keydown',{code:'Space'}));assert.equal(input.sample().vertical,1);assert.equal(input.sample().vertical,1);
+  win.dispatchEvent(new Event('blur'));assert.equal(input.sample().vertical,0);
+  input.setFlightControls(false);assert.equal(input.sample().vertical,undefined);input.dispose();
+});
 test('mobile 4.1–4.2: manual and lifecycle notifications cancel a navigation consumer', () => {
   const win = new EventTarget(), doc = Object.assign(new EventTarget(), { hidden: false });
   let active = true;

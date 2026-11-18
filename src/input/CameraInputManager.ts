@@ -25,7 +25,7 @@ export class CameraInputManager {
   private canvas: HTMLElement | undefined;
   requestLock(): void { this.request(); }
   releaseLock(): void { this.unlock(); }
-  private previous: { x: number; y: number; ctrl: boolean } | undefined;
+  private previous: { x: number; y: number; ctrl: boolean; mode: CameraInputMode } | undefined;
   private resetTouch = (): void => {};
   private localReset = false;
   reset(): void { this.previous = undefined; if (!this.localReset) this.resetTouch(); }
@@ -72,6 +72,10 @@ export class CameraInputManager {
       actions.move(event.movementX, event.movementY, event.ctrlKey, event.timeStamp);
     }, options);
     const focused = (): boolean => canvas.ownerDocument.activeElement === canvas && !canvas.ownerDocument.hidden;
+    const ownsGestures = (): boolean => {
+      const mode = actions.mode();
+      return mode === 'running-orbit' || mode === 'inspection';
+    };
     const fingers = new Map<number, { x: number; y: number }>();
     let blocked = false;
     let intent: 'orbit' | 'zoom' | undefined;
@@ -112,7 +116,7 @@ export class CameraInputManager {
       else if (intent === 'orbit') actions.move(dx, dy, true, time);
     };
     canvas.addEventListener('pointerdown', event => {
-      if (event.pointerType !== 'touch' || (actions.mode() === 'standard' && !actions.wheelEnabled())) return;
+      if (event.pointerType !== 'touch' || (!ownsGestures() && !actions.wheelEnabled())) return;
       if (!owned && fingers.size === 1) {
         // Retire the single-finger Orbit/Tap sequence before taking multi-touch ownership.
         cancelling = true;
@@ -120,7 +124,7 @@ export class CameraInputManager {
         cancelling = false;
         owned = true;
       }
-      if (actions.mode() !== 'standard') owned = true;
+      if (ownsGestures()) owned = true;
       fingers.set(event.pointerId, { x: event.clientX, y: event.clientY });
       if (!owned) return;
       event.preventDefault(); event.stopImmediatePropagation();
@@ -140,7 +144,7 @@ export class CameraInputManager {
       fingers.set(event.pointerId, { x: event.clientX, y: event.clientY });
       if (blocked) return;
       if (fingers.size === 1) {
-        if (actions.mode() !== 'standard') actions.move(event.clientX - old.x, event.clientY - old.y, false, event.timeStamp);
+        if (ownsGestures()) actions.move(event.clientX - old.x, event.clientY - old.y, false, event.timeStamp);
       } else {
         moved.add(event.pointerId);
         if (moved.size >= 2) flushPair(event.timeStamp);
@@ -167,10 +171,14 @@ export class CameraInputManager {
     canvas.addEventListener('pointermove', event => {
       if (event.pointerType !== 'mouse') return;
       if (this.locked) { event.stopImmediatePropagation(); return; }
-      if (!focused() || actions.mode() === 'standard') { this.previous = undefined; return; }
+      const mode = actions.mode();
+      if (!focused() || mode === 'standard' || (mode === 'stationary-look' && event.buttons)) {
+        this.previous = undefined;
+        return;
+      }
       event.stopImmediatePropagation();
-      const current = { x: event.clientX, y: event.clientY, ctrl: event.ctrlKey };
-      if (this.previous && this.previous.ctrl === current.ctrl) {
+      const current = { x: event.clientX, y: event.clientY, ctrl: event.ctrlKey, mode };
+      if (this.previous && this.previous.ctrl === current.ctrl && this.previous.mode === mode) {
         actions.move(current.x - this.previous.x, current.y - this.previous.y, current.ctrl, event.timeStamp);
       }
       this.previous = current;
@@ -179,7 +187,11 @@ export class CameraInputManager {
     canvas.addEventListener('pointercancel', () => actions.clearGesture(), options);
     canvas.addEventListener('pointerdown', event => {
       if (event.pointerType === 'mouse' && event.button === 0 && eligible()) this.requestLock();
-      if (event.pointerType !== 'mouse' || (actions.mode() === 'standard' && !(event.button === 1 && actions.reverseEnabled()))) return;
+      if (event.pointerType !== 'mouse') return;
+      if (!ownsGestures() && !(event.button === 1 && actions.reverseEnabled())) {
+        this.previous = undefined;
+        return;
+      }
       canvas.focus({ preventScroll: true });
       event.preventDefault();
       event.stopImmediatePropagation();

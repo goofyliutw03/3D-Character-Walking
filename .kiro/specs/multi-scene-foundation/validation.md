@@ -36,3 +36,6 @@
 測試程式與原始數據／截圖保留於忽略的 .local/headlamp-smoke.mjs、.local/headlamp-validation/。這是本機自動化驗證，真實 GPU／手機、所有瀏覽器及長時間效能尚未驗收。頭燈直接照明採現有 SpotLight，未增加光源陰影貼圖。
 
 本階段增量索引已完成，見本次收尾狀態。Token 用量無法取得精確值，缺少實作階段起始用量基準。
+
+## 2026-11-18 1Y-15 上游Context恢復補修
+本spec擁有的GPU／場景生命週期在飛行整合發現舊幾何dispose回呼於恢復後釋放失效buffer／VAO。ContextResources在lost時清GPU registrations、獨立shadow depth與離屏目標，保留CPU及角色位置；restore驗證後恢復。tests/context-resources兩項有RED→GREEN，完整224tests／build及兩runtime Context／四場景往返PASS，GL error0。最小重現trace與完整證據見[bounded-flight validation](../bounded-flight/validation.md)。非任意GPU／手機實機驗收，無新引擎、依賴、委派或commit。

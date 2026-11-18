@@ -6,7 +6,7 @@ import { createTerrain } from '../src/scene/TerrainScene.ts';
 import { GroundPicker } from '../src/navigation/GroundPicker.ts';
 import { projectAnchor } from '../src/camera/AnchorProjection.ts';
 import { CharacterController } from '../src/character/CharacterController.ts';
-import { isWalkable } from '../src/navigation/DestinationNavigation.ts';
+import { DestinationNavigation, isWalkable } from '../src/navigation/DestinationNavigation.ts';
 import { SceneSwitch } from '../src/scene/SceneSwitch.ts';
 
 test('terrain switch: stale resources release, failure retains world, repeated entry uses the same root',async()=>{
@@ -111,4 +111,34 @@ test('terrain 1: quantized triangles, raycasts and CPU ground agree throughout t
       assert.ok(Math.abs(s.y-field.heightAt(s.x,s.z))<.001);
     }
   } finally { terrain.dispose(); }
+});
+
+test('terrain: a picked destination across terrain triangles is reachable from spawn', () => {
+  const terrain = createTerrain();
+  try {
+    const world = terrain.walkableWorld;
+    const character = new CharacterController(world);
+    assert.ok(character.relocate({ ...terrain.spawn, y: 0 }, true));
+
+    const camera = new PerspectiveCamera(70, 1, .1, 100);
+    const destination = new Vector3(8, world.groundHeight(8, 8), 8);
+    camera.position.set(8, 10, 12);
+    camera.lookAt(destination);
+    camera.updateMatrixWorld(true);
+    const picker = new GroundPicker(terrain.environment.children);
+    const target = picker.pick({ x: 250, y: 250 }, camera, 500, 500, false, world);
+    assert.ok(target);
+
+    const navigation = new DestinationNavigation(world);
+    assert.ok(navigation.select(character.snapshot, target));
+    for (let frame = 0; frame < 300 && navigation.status === 'running'; frame++) {
+      const intent = navigation.sample(character.snapshot, 1 / 60);
+      character.update(1 / 60, intent, 4);
+    }
+    assert.equal(navigation.status, 'arrived');
+    const { x, y, z } = character.snapshot;
+    assert.ok(Math.hypot(x - destination.x, y - destination.y, z - destination.z) <= .08);
+  } finally {
+    terrain.dispose();
+  }
 });

@@ -49,6 +49,9 @@ export class GroundWorldQuery implements WorldQuery {
     return r.ok ? ok(!r.value.allowed) : r;
   }
   sweep(p: Point3, d: Point3, c: Capsule): QueryResult<QueryHit | null> {
+    return this.sweepVolume(p, d, c, true);
+  }
+  private sweepVolume(p: Point3, d: Point3, c: Capsule, includeTerrain: boolean): QueryResult<QueryHit | null> {
     if (!finitePoint(p) || !finitePoint(d) || !validCapsule(c) ||
       !finitePoint({ x:p.x+d.x,y:p.y+d.y,z:p.z+d.z })) return invalid;
     const start = this.overlap(p,c);
@@ -72,7 +75,7 @@ export class GroundWorldQuery implements WorldQuery {
       }
       select(contact);
     }
-    const terrainHit = this.data.terrain?.raycast(p,d);
+    const terrainHit = includeTerrain ? this.data.terrain?.raycast(p,d) : null;
     if (terrainHit && d.x*terrainHit.normal.x+d.y*terrainHit.normal.y+d.z*terrainHit.normal.z < -epsilon) select(terrainHit);
     return ok(hit);
   }
@@ -130,7 +133,9 @@ export class GroundWorldQuery implements WorldQuery {
       if((surface.value.normal?.y ?? 1)<minimumGroundNormal || Math.abs(next.y-previous.y)>maxStepHeight+epsilon) return ok(false);
       const horizontal={x:next.x-previous.x,y:0,z:next.z-previous.z};
       if(this.data.terrain) {
-        const sweep=this.sweep(previous,{...horizontal,y:next.y-previous.y},capsule);
+        // The samples follow the terrain. A straight sweep between them can cut
+        // through the supporting surface at a triangle edge.
+        const sweep=this.sweepVolume(previous,{...horizontal,y:next.y-previous.y},capsule,false);
         if(!sweep.ok) return sweep;
         if(sweep.value && sweep.value.fraction<1-epsilon) return ok(false);
         previous=next; continue;

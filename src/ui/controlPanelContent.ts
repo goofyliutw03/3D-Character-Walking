@@ -22,7 +22,7 @@ export function controlPanelContent(obstructionHint: string): string {
         <button id="touch-reverse" type="button">反向 180°</button>
         <button id="touch-look-reset" type="button">鏡頭歸位</button>
         <p class="hint">手機自動奔跑：單指左右拖曳轉向，上下調整視角。雙指同向拖曳環繞觀察，張開拉近、捏合拉遠。拉近到底後繼續張開可進入第一人稱並暫停；單指拖曳觀看，捏合退出並恢復原跑停狀態。以 Auto run 開關及 Stop 控制奔跑。</p>
-        <p class="hint">Focus the scene and press Y to toggle auto run. Third person / fisheye: move mouse to steer, hold Ctrl to orbit. Vertical motion tilts the view. Middle click reverses, F1 resets the view. Zoom fully in, then scroll again to inspect in first person. Scroll out to return. Stop ends auto run.</p>` },
+        <p class="hint">Focus the scene and press Y to start, resume, or stop auto run. In first and third person, move the mouse to look around while stationary. While auto running in first person, third person, or fisheye, move the mouse to steer and tilt the view. Hold Ctrl to look around while keeping your heading. Middle click reverses and F1 resets the view. Zoom fully in from third person or fisheye, then scroll in again to inspect in first person. Press Y to run from there or scroll out to return.</p>` },
       { id: 'character-editor', label: 'Position & manual speed', open: false, content: characterEditorContent },
       { id: 'character-assets', label: 'Asset & action status', open: false, content: `<p class="hint" id="character-asset-hint">Loading a local rigged character. Procedural preview is available.</p>
         <a class="asset-credits" href="/assets/characters/ATTRIBUTION.md" target="_blank" rel="noopener">Character sources & modifications ↗</a>
@@ -85,7 +85,13 @@ export function controlPanelContent(obstructionHint: string): string {
     ] },
     { id: 'scene', label: 'Scene display', open: false, children: [
       { id: 'environment', label: 'Environment', open: true, content: `<label class="select-label" for="environment">Active environment</label>
-        <select id="environment"><option value="city">City street</option><option value="cave">Rock chamber</option><option value="terrain">Natural terrain</option></select>
+        <select id="environment"><option value="city">City street</option><option value="cave">Rock chamber</option><option value="terrain">Natural terrain</option><option value="flight">Bounded flight</option></select>
+        <fieldset id="flight-controls" hidden><legend>Flight mode</legend>
+          <button id="flight-takeoff" type="button">Take off</button><button id="flight-land" type="button">Land below · 2m</button>
+          <p class="hint">WASD / arrows: world directions. E / Space: ascend. Q: descend. Shift / Run: boost (24m/s); cruise 8m/s. Release to slow; Stop brakes. Upright posture uses the existing Jump animation fallback.</p>
+          <p id="flight-status" class="hint" role="status">Flight ready.</p>
+          <p id="flight-result" class="hint" role="status"></p>
+        </fieldset>
         <fieldset id="terrain-controls" hidden><legend>Terrain vegetation</legend>
           <label for="terrain-quality">Vegetation quality</label><select id="terrain-quality"><option value="standard">Standard · 384 grass clumps</option><option value="low">Low · 96 grass clumps</option></select>
           <label><input id="terrain-wind" type="checkbox" checked> Grass wind</label>

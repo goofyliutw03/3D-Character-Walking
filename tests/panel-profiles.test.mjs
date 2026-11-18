@@ -45,6 +45,14 @@ test('terrain profiles roundtrip with bounded settings while original city profi
   assert.equal(validViewerSettings(bad),false);
  }
 });
+test('flight profiles validate and roundtrip without migrating existing v1 city data',()=>{
+ const s=citySettings();s.environment='flight';s.scenes.flight=structuredClone(s.scenes.city);
+ assert.equal(validViewerSettings(s),true);
+ const h=new ProfileHistory();h.save('flight',s,1);
+ assert.ok(parseProfiles(JSON.stringify(h.data),validViewerSettings));
+ const bad=structuredClone(s);bad.scenes.flight.lights=[{id:'illegal'}];assert.equal(validViewerSettings(bad),false);
+ assert.equal(validViewerSettings(citySettings()),true);
+});
 test('OPFS refusal writes fallback and newer fallback wins on reload',async()=>{
  let primary=null,secondary=null;const factories=[async()=>({name:'OPFS test',read:async()=>primary,write:async()=>{throw Error('denied')}}),async()=>({name:'IndexedDB test',read:async()=>secondary,write:async t=>{secondary=t;}})];
  const store=new ProfileStorage(factories);await store.read();await store.write('{"temp":{"createdAt":2},"profiles":[]}');assert.match(store.mode,/IndexedDB/);

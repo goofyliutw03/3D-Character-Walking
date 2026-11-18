@@ -16,6 +16,8 @@ import { SceneRenderer, type RenderStats } from './SceneRenderer';
 import type { NeedleRuntime } from './NeedleRuntime';
 import { Character } from '../character/Character';
 import { CharacterController } from '../character/CharacterController';
+import { FlightController } from '../character/FlightController';
+import { resetShadowResources, releaseSceneGpuResources } from './ContextResources';
 import type { CharacterVariant, MotionSnapshot } from '../character/motion';
 import { characterCapsules } from '../character/motion';
 import { InputManager, type MoveDirection } from '../input/InputManager';
@@ -43,7 +45,7 @@ import { TrafficView } from '../simulation/TrafficView.ts';
 import { CityBuildings, type CityAssetState } from '../scene/CityBuildings.ts';
 
 export type CameraPreset = CameraView;
-export interface CharacterStatus { groundPenetration: boolean; autoRun: boolean; autoRunPaused: boolean; variant: CharacterVariant; action: MotionSnapshot['action']; running: boolean; following: boolean; firstPerson: boolean; cameraView: CameraView; navigation: NavigationStatus; tour: TourSnapshot; obstructionMode: ObstructionMode; motion: Readonly<MotionSnapshot>; walkSpeed: number; buildings: CityAssetState }
+export interface CharacterStatus { flight: { mode: 'ground' | 'flight'; warning: string | null; droppedTime: number } | null; groundPenetration: boolean; autoRun: boolean; autoRunPaused: boolean; variant: CharacterVariant; action: MotionSnapshot['action']; running: boolean; following: boolean; firstPerson: boolean; cameraView: CameraView; navigation: NavigationStatus; tour: TourSnapshot; obstructionMode: ObstructionMode; motion: Readonly<MotionSnapshot>; walkSpeed: number; buildings: CityAssetState }
 
 export class ViewerApp {
   private sceneSettings: Partial<Record<EnvironmentId, SceneSettings>> = {};
@@ -60,7 +62,7 @@ export class ViewerApp {
   private readonly view: SceneRenderer;
   private readonly controls: OrbitControls;
   private readonly character: Character;
-  private movement: CharacterController;
+  private movement: CharacterController | FlightController;
   private readonly input: InputManager;
   private navigation: DestinationNavigation;
   private groundPicker: GroundPicker;
@@ -125,7 +127,8 @@ export class ViewerApp {
     this.movement = new CharacterController(this.city.walkableWorld);
     this.navigation = new DestinationNavigation(this.city.walkableWorld);
     this.tour = new PathTour(this.city.walkableWorld);
-    this.input = new InputManager(window, document, () => { this.navigation.cancel(); this.tour.cancel(); this.tap?.cancel(); });
+    this.input = new InputManager(window, document, () => { this.navigation.cancel(); this.tour.cancel(); this.tap?.cancel(); },
+      () => { if (this.movement instanceof FlightController) this.movement.stop(); });
     this.motion = this.movement.update(0, this.input.sample());
     this.city.updateLampShadowPosition(this.motion);
     this.character.update(this.motion, 0);
@@ -171,7 +174,7 @@ export class ViewerApp {
     const canvas = this.view.renderer.domElement;
     this.cameraModes = new CameraModeManager(this.cameras, this.autoRun,
       () => this.getCameraSubject(), () => this.reducedMotion.matches, this.camera,
-      () => this.cameraInput?.reset());
+      () => this.cameraInput?.reset(), () => this.motion.action === 'idle');
     this.cameraModes.configureScene(this.scenes.controls);
     this.cameraInput = new CameraInputManager(canvas, {
       lockEnabled: () => this.autoRun.enabled && !this.autoRun.paused && this.cameraModes.inputMode !== 'standard',
@@ -180,8 +183,10 @@ export class ViewerApp {
       wheelEnabled: () => this.cameraModes.wheelEnabled,
       reverseEnabled: () => this.autoRun.running,
       move: (dx, dy, ctrl, time) => {
-        this.autoRun.move(dx, dy, canvas.clientWidth, ctrl, time, this.cameras.view, this.cameraInput.locked);
-        if (ctrl && this.cameraModes.inputMode === 'standard') this.cameraModes.follow();
+        const mode = this.cameraModes.inputMode;
+        this.autoRun.move(dx, dy, canvas.clientWidth, ctrl || mode === 'stationary-look',
+          time, this.cameras.view, this.cameraInput.locked);
+        if (mode === 'stationary-look' || (ctrl && mode === 'standard')) this.cameraModes.follow();
       },
       wheel: delta => {
         const result = this.cameraModes.wheel(delta);
@@ -197,7 +202,8 @@ export class ViewerApp {
         this.cameraModes.resetLook();
       },
       suspend: () => { this.cameraModes.resetGestures(); this.autoRun.suspend(); this.characterReport?.(this.getCharacterStatus()); },
-      toggle: () => this.setAutoRun(!this.autoRun.enabled),
+      toggle: () => this.setAutoRun(this.autoRun.inspecting || !this.autoRun.enabled ||
+        this.cameraModes.inputMode === 'stationary-look'),
     });
     this.mouseOrbit = new MouseOrbitGesture(canvas,
       () => { this.tap.cancelCandidate(); this.cameras.beginCharacterOrbit(); },
@@ -226,6 +232,9 @@ export class ViewerApp {
     canvas.addEventListener('pointerdown', () => canvas.focus({ preventScroll: true }), { signal: this.events.signal });
     canvas.addEventListener('webglcontextlost', event => {
       event.preventDefault(); this.contextLost = true; this.scenes.cancel();
+      this.view.releaseContextResources();
+      resetShadowResources([this.scenes.root, this.city.scene]);
+      releaseSceneGpuResources([this.scenes.root, this.city.scene]);
       this.stop(); this.destinationMarker.hidden = true;
       this.autoRun.clear();
       this.particles.clear(); this.particleReport?.(this.particles.snapshot);
@@ -235,8 +244,12 @@ export class ViewerApp {
       this.inspector.hide();
       this.report('Graphics connection lost. Waiting for recovery…');
     }, { signal: this.events.signal });
-    canvas.addEventListener('webglcontextrestored', () => { this.contextLost = false; this.lastTime = 0; this.report('WebGL2 · connection restored'); }, { signal: this.events.signal });
-    document.addEventListener('visibilitychange', () => { this.lastTime = 0; }, { signal: this.events.signal });
+    canvas.addEventListener('webglcontextrestored', () => {
+      this.view.restoreContext();
+      const valid = this.scenes.active.walkableWorld.query?.overlap(this.motion, this.movement.shape);
+      if (valid && (!valid.ok || valid.value)) { this.report('Recovery position invalid. Reload to recover.'); return; }
+      this.contextLost = false; this.lastTime = 0; this.report('WebGL2 · connection restored'); }, { signal: this.events.signal });
+    document.addEventListener('visibilitychange', () => { this.lastTime = 0; if (document.hidden) this.stop(); }, { signal: this.events.signal });
     if (new URLSearchParams(location.search).get('engine') === 'legacy') {
       this.view.renderer.setAnimationLoop(time => this.update(time));
     } else {
@@ -272,6 +285,7 @@ export class ViewerApp {
   private update(time: number): void {
     if (this.disposed || this.contextLost) return;
     const waterDelta = this.lastTime && !document.hidden ? Math.min(Math.max((time - this.lastTime) / 1000, 0), 0.05) : 0;
+    const frameDelta = this.lastTime && !document.hidden ? Math.max(0, (time - this.lastTime) / 1000) : 0;
     const delta = Math.min((time - this.lastTime) / 1000 || 1 / 60, 0.05);
     this.lastTime = time;
     const active = this.scenes.active;
@@ -287,7 +301,7 @@ export class ViewerApp {
       : this.autoRun.active ? { x: 0, z: 0, run: false, jump: false }
       : this.tour.snapshot.status === 'running' ? this.tour.sample(this.motion, delta)
       : this.navigation.status === 'running' ? this.navigation.sample(this.motion, delta) : manual;
-    this.motion = this.movement.update(delta, intent, automated ? (intent.run ? 4 : 1.8) : undefined);
+    this.motion = this.movement.update(this.movement instanceof FlightController ? frameDelta : delta, intent, automated ? (intent.run ? 4 : 1.8) : undefined);
     if (active.cityFeatures) this.city.updateLampShadowPosition(this.motion);
     this.character.update(this.motion, delta);
     this.assets.current?.update(this.motion, delta);
@@ -304,7 +318,8 @@ export class ViewerApp {
     this.desiredCamera.updateProjectionMatrix();
     Object.assign(this.cameras.controlOffsets, {
       active: this.autoRun.enabled || this.autoRun.zoom !== 1 || this.autoRun.yaw !== 0 || this.autoRun.pitch !== 0,
-      eye: this.autoRun.inspecting, yaw: this.autoRun.yaw, pitch: this.autoRun.pitch, zoom: this.autoRun.zoom,
+      eye: this.cameras.view === 'first-person' && this.cameraModes.inputMode !== 'standard',
+      yaw: this.autoRun.yaw, pitch: this.autoRun.pitch, zoom: this.autoRun.zoom,
     });
     this.cameras.update(this.getCameraSubject(), delta, immediate);
     this.updateObstruction(delta, immediate);
@@ -367,18 +382,27 @@ export class ViewerApp {
   get cityFeatures(): boolean { return this.scenes.active.cityFeatures; }
 
   async selectEnvironment(id: EnvironmentId): Promise<boolean> {
-    if (this.disposed || this.contextLost) return false;
+    if (this.disposed || this.contextLost || !['city','terrain','cave','flight'].includes(id)) return false;
     this.sceneSettings[this.environmentId] = this.captureSceneSettings();
-    return this.scenes.select(id, async () => id === 'city'
+    return this.scenes.select(id, async () => {
+      const next = id === 'city'
       ? this.cityEnvironment
+      : id === 'flight' ? (await import('../scene/FlightScene')).createFlight()
       : id === 'terrain' ? (await import('../scene/TerrainScene')).createTerrain()
-      : (await import('../scene/CaveScene')).createCave(), next => {
+      : (await import('../scene/CaveScene')).createCave();
+      try {
+        const candidate = next.id === 'flight' ? new FlightController(next.walkableWorld, characterCapsules[this.variant]) : new CharacterController(next.walkableWorld, characterCapsules[this.variant]);
+        if (!candidate.relocate({ ...next.spawn, y: 0 })) throw Error('Invalid scene spawn');
+      } catch (error) { next.dispose(); throw error; }
+      return next;
+    }, next => {
       this.stop();
       this.sceneDefaults[next.id] ??= this.captureSceneSettings();
       const saved = this.sceneSettings[next.id];
       if (saved) this.applySceneSettings(saved);
       const speed = this.movement.walkSpeed;
-      this.movement = new CharacterController(next.walkableWorld, characterCapsules[this.variant]);
+      this.movement = next.id === 'flight' ? new FlightController(next.walkableWorld, characterCapsules[this.variant]) : new CharacterController(next.walkableWorld, characterCapsules[this.variant]);
+      this.input.setFlightControls(next.id === 'flight');
       this.movement.setWalkSpeed(speed);
       this.movement.relocate({ ...next.spawn, y: 0 });
       this.motion = this.movement.snapshot;
@@ -583,7 +607,7 @@ export class ViewerApp {
   }
   pauseTour(): void { this.tour.pause(); }
   resumeTour(): boolean {
-    return !this.disposed && !this.contextLost && !document.hidden && this.tour.resume(this.motion);
+    return !this.disposed && !this.contextLost && !document.hidden && this.cityFeatures && this.tour.resume(this.motion);
   }
   setAutoRun(enabled: boolean): void {
     if (this.disposed || this.contextLost || document.hidden || (enabled && !this.cameraModes.autoRunEnabled)) return;
@@ -593,6 +617,7 @@ export class ViewerApp {
     this.mouseOrbit.cancel();
     this.tap.cancel();
     this.cameraModes.resetGestures();
+    if (enabled && this.cameraModes.inputMode === 'stationary-look') this.autoRun.resetLook();
     this.autoRun.setEnabled(enabled, this.motion.heading);
     this.characterReport?.(this.getCharacterStatus());
     if (this.cameraModes.followingLocked) this.cameraModes.follow();
@@ -616,9 +641,15 @@ export class ViewerApp {
     this.cameraModes.resetGestures(); this.autoRun.stop(); this.mouseOrbit.cancel(); this.cameras.endCharacterOrbit(true); this.input.stop();
     this.characterReport?.(this.getCharacterStatus());
   }
+  setFlightMode(mode: 'flight' | 'ground'): boolean {
+    if (this.disposed || this.contextLost || document.hidden || !(this.movement instanceof FlightController)) return false;
+    const accepted = mode === 'flight' ? this.movement.takeOff() : this.movement.land();
+    if (accepted) { this.input.stop(); this.motion = this.movement.snapshot; this.characterReport?.(this.getCharacterStatus()); }
+    return accepted;
+  }
   bindDirection(button: HTMLButtonElement, direction: MoveDirection): void { this.input.bindDirection(button, direction); }
   getCharacterStatus(): CharacterStatus {
-    return { groundPenetration: this.groundPenetration, autoRun: this.autoRun.enabled, autoRunPaused: this.autoRun.enabled && !this.autoRun.running, variant: this.variant, action: this.motion.action, running: this.autoRun.running || this.input.running || this.navigation.status === 'running' || (this.tour.snapshot.status === 'running' && this.tour.snapshot.speed > 1.8), following: this.cameras.following, firstPerson: this.cameras.view === 'first-person', cameraView: this.cameras.view, navigation: this.navigation.status, tour: this.tour.snapshot, obstructionMode: this.obstruction.mode, motion: { ...this.motion }, walkSpeed: this.movement.walkSpeed, buildings: this.buildings.state };
+    return { flight: this.movement instanceof FlightController ? { mode: this.movement.mode, warning: this.movement.warning?.id ?? null, droppedTime: this.movement.droppedTime } : null, groundPenetration: this.groundPenetration, autoRun: this.autoRun.enabled, autoRunPaused: this.autoRun.enabled && !this.autoRun.running, variant: this.variant, action: this.motion.action, running: this.autoRun.running || this.input.running || this.navigation.status === 'running' || (this.tour.snapshot.status === 'running' && this.tour.snapshot.speed > 1.8), following: this.cameras.following, firstPerson: this.cameras.view === 'first-person', cameraView: this.cameras.view, navigation: this.navigation.status, tour: this.tour.snapshot, obstructionMode: this.obstruction.mode, motion: { ...this.motion }, walkSpeed: this.movement.walkSpeed, buildings: this.buildings.state };
   }
   setShadows(enabled: boolean): void {
     this.shadows = enabled;

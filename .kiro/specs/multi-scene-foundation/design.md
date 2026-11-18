@@ -1,5 +1,10 @@
 # Needle 架構下的多場景設計
 
+## 2026-11-18 Context恢復補修（1Y-15整合發現）
+本上游擁有場景／GPU生命週期。飛行故障注入發現context恢復後離開曾渲染場景，舊WebGLGeometries的dispose listener會刪除已失效buffer／VAO；後一個texture呼叫讀到pending1282，不能據此誤認bindTexture自身故障。只重建shadow／離屏目標不足。
+在context-lost事件、GL呼叫仍無效時，ContextResources去重釋放目前根與保留城市的geometry／material／texture GPU註冊、skinning bone texture及custom depth materials，保留CPU attributes／pixels／scene membership；同時清除shadow map及獨立depth texture、SceneRenderer離屏pass。恢復後重設主render target／resize，CPU位置overlap驗證成功才續tick。無renderer新建、資產重新下載或ground策略更動。Needle composer與legacy沿原入口。
+測試tests/context-resources驗證去重、depth獨立釋放與CPU資料保留；正式Context注入與四場景往返由bounded-flight validation記錄。此為既有恢復契約的必要補修，非新的場景範圍授權。
+
 ## 1Y-3 頭燈追加設計紀錄
 
 2026-11-07 補錄已核准方案的實作設計。Environment 選用 Headlamp 能力，洞穴擁有其資源。光源掛在洞穴 scene 下，與環境遮擋子樹分離；Viewer 在角色位置更新後同步頭燈位置及朝向，城市提供空能力。SpotLight 半角使用 FOV／2，距離 2–18m、FOV 12–85°、強度 0–240cd、柔化 0–1。HeadlampSettings 共用驗證與面板範圍，非法更新整批拒絕。

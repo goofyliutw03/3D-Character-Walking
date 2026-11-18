@@ -18,11 +18,12 @@ export class AutoRunControls {
   yaw = 0;
   pitch = 0;
   zoom = 1;
-  private entry: { view: ExternalView; resume: boolean } | undefined;
+  private entry: { view: ExternalView; resume: boolean; inspecting: boolean } | undefined;
   private exitScroll = 0;
   private gesture: { time: number; ctrl: boolean; pixels: number } | undefined;
-  get running(): boolean { return this.enabled && !this.paused && !this.entry; }
-  get inspecting(): boolean { return this.entry !== undefined; }
+  get running(): boolean { return this.enabled && !this.paused && !this.inspecting; }
+  get inspecting(): boolean { return this.entry?.inspecting ?? false; }
+  get enteredByZoom(): boolean { return this.entry !== undefined; }
   get active(): boolean { return this.enabled || this.inspecting; }
   resetGestures(): void { this.gesture = undefined; this.exitScroll = 0; }
   clear(): void {
@@ -35,7 +36,10 @@ export class AutoRunControls {
     this.enabled = enabled;
     this.paused = false;
     this.heading = heading;
-    if (this.entry) this.entry.resume = enabled;
+    if (this.entry) {
+      this.entry.resume = enabled;
+      if (enabled) this.entry.inspecting = false;
+    }
     this.gesture = undefined;
   }
   stop(): void {
@@ -73,7 +77,7 @@ export class AutoRunControls {
     this.gesture ??= { time, ctrl, pixels: 0 };
     this.gesture.time = time;
     this.pitch = clamp(this.pitch - dy * vertical, -70 * radians, 60 * radians);
-    if (this.inspecting) this.yaw = clamp(this.yaw, -80 * radians, 80 * radians);
+    if (this.inspecting || view === 'first-person') this.yaw = clamp(this.yaw, -80 * radians, 80 * radians);
   }
   wheel(delta: number, view: string): 'enter' | ExternalView | undefined {
     if (!Number.isFinite(delta) || delta === 0) return;
@@ -88,7 +92,7 @@ export class AutoRunControls {
     }
     if (view !== 'third-person' && view !== 'fisheye') return;
     if (delta < 0 && this.zoom <= .25) {
-      this.entry = { view, resume: this.running };
+      this.entry = { view, resume: this.running, inspecting: true };
       this.exitScroll = 0;
       this.reset();
       return 'enter';

@@ -7,11 +7,11 @@ export function parseProfiles<T>(text: string, valid: (value: unknown) => value 
   const data = value as ProfileData<unknown>;
   const block = (b: ProfileBlock<unknown>): boolean => !!b && typeof b.name === 'string' && b.name.length <= 100 && Number.isSafeInteger(b.createdAt) && b.createdAt >= 0 && valid(b.settings);
   if (data.version !== 1 || !Array.isArray(data.profiles) || data.profiles.length > 10 ||
-      !data.profiles.every(b => block(b) && /^(city|cave|terrain)\d{2}$/.test(b.name)) ||
+      !data.profiles.every(b => block(b) && /^(city|cave|terrain|flight)\d{2}$/.test(b.name)) ||
       new Set(data.profiles.map(b => b.name)).size !== data.profiles.length ||
       (data.temp !== null && (!block(data.temp) || data.temp.name !== 'temp')) ||
       !data.next || typeof data.next !== 'object' || Array.isArray(data.next) ||
-      Object.entries(data.next).some(([key, n]) => !['city', 'cave', 'terrain'].includes(key) || !Number.isInteger(n) || n < 0 || n > 99)) throw Error('Unsupported or damaged profile JSON');
+      Object.entries(data.next).some(([key, n]) => !['city', 'cave', 'terrain', 'flight'].includes(key) || !Number.isInteger(n) || n < 0 || n > 99)) throw Error('Unsupported or damaged profile JSON');
   return clone(data) as ProfileData<T>;
 }
 
@@ -36,7 +36,7 @@ export class ProfileHistory<T> {
     this.selected = name; this.baseline = name === 'temp' ? undefined : JSON.stringify(settings);
     return settings;
   }
-  save(scene: 'city' | 'cave' | 'terrain', settings: T, now = Date.now()): string {
+  save(scene: 'city' | 'cave' | 'terrain' | 'flight', settings: T, now = Date.now()): string {
     const sequence = this.data.next[scene] ?? 0;
     const name = scene + String(sequence).padStart(2, '0');
     this.data.next[scene] = (sequence + 1) % 100;
