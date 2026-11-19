@@ -1,5 +1,7 @@
 # 3D Character Walk Viewer
 
+團隊接手請先讀 [專案現況](docs/project-status.md)，其中整理六個交付里程碑、後續實作、剩餘驗收與取得方式。
+
 Environment → **Natural terrain / Wind Meadow**：32×32m 靜態丘陵、五棵樹與風動草。Terrain vegetation 可選 Standard（384叢）／Low（96叢）及風動開關；品質不改通行高度，減少動態效果凍結風動。沿用走跑跳、點地、相機與Profiles（terrain00起），地表／陰影／選點使用同源高度。規格及實際驗證見 [natural-terrain-validation](.kiro/specs/natural-terrain-validation/validation.md)。完整三維碰撞／活動範圍遮罩仍為待確認規劃。
 
 新開發者：[硬體預檢、完整安裝 CLI Prompt 與 Claude Code／Codex 初始化指引](docs/onboarding.md)。先執行 `./scripts/onboarding.ps1`（預設只報告）。

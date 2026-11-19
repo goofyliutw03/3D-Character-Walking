@@ -4,6 +4,8 @@
 
 # cc-sdd 規劃對應與待辦
 
+截至 2026-11-19 的進度、LATER-01～03、RENDER-01 及剩餘驗收見 [專案現況](../../docs/project-status.md)。下方保留各工作階段的歷史紀錄。
+
 2026-11-10 [1Y-13] 使用者已確認獨立場景規範，核准第一批 [world-query-range-policy](../specs/world-query-range-policy/) 契約／城市planar相容適配。原 [natural-terrain-validation](../specs/natural-terrain-validation/) 交付保留；本批未實作洞頂／多層及完整三維膠囊，飛行／水域／太空未啟動。共用檔必須依序進行，不可平行；驗證及限制見spec。
 
 2026-11-08 [1Y-8] auto-run-camera-controls手機適配完成，單／雙指、靜止第一人稱進出、觸控按鈕與提示。158tests及Needle／legacy行動尺寸實際touch事件驗證通過，證據與真機限制見該spec validation；共用檔依序，未commit／push。

@@ -1,7 +1,7 @@
 {
   "feature_name": "auto-run-camera-controls",
   "language": "zh-TW",
-  "phase": "tasks-generated",
+  "phase": "implementation-complete",
   "approvals": {
     "requirements": {
       "generated": true,

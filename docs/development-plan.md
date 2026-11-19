@@ -1,5 +1,7 @@
 # Development plan
 
+截至 2026-11-19 的實作及驗收狀態見 [專案現況](project-status.md)。下方保留各階段的計畫與歷史決策。
+
 2026-11-18 [1Y-15] 接續使用者確認1Y-14，執行 [bounded-flight](../.kiro/specs/bounded-flight/)：正常Environment入口、有界飛行／禁入／警戒、三維加減速與升降、連續膠囊掃掠及明確合法著陸、程序天空／網格雲、Profiles v1相容。固定步進僅flight；共用Context恢復缺口回修multi-scene-foundation。依序inline審閱、無委派／commit／push。驗證與交付狀態見該spec validation；水域／太空待本批結束確認，既有真機／效能驗收保留。
 
 2026-11-10 [1Y-14] 使用者確認1Y-13並核准第二批 [ground-volume-world-query](../.kiro/specs/ground-volume-world-query/)：地表同源支撐、洞穴有限三維盒／直立膠囊、洞頂／多層與角色淨空，依序inline審閱與逐項驗證。飛行／水域／太空與任意mesh剛體仍在後續；不概括關閉M6／真機待驗。共用檔必須依序進行，不可平行。

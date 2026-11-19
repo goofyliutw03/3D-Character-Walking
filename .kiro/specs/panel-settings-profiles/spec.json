@@ -1,7 +1,7 @@
 {
   "feature_name": "panel-settings-profiles",
   "language": "zh-TW",
-  "phase": "tasks-generated",
+  "phase": "implementation-complete",
   "approvals": {
     "requirements": {
       "generated": true,
