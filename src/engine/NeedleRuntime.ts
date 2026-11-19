@@ -1,5 +1,5 @@
 import { Behaviour, Context, GameObject } from '@needle-tools/engine';
-import { Scene, type Camera, type WebGLRenderer } from 'three';
+import type { Camera, WebGLRenderer } from 'three';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { Pass } from 'three/addons/postprocessing/Pass.js';
 
@@ -20,6 +20,17 @@ class ViewerFrame extends Behaviour {
   update(): void { this.tick(this.timestamp); }
 }
 
+class ViewerNeedleContext extends Context {
+  override clear(): void {
+    super.clear();
+    // The bundled Context replaces its scene before the EventSystem initializes.
+    // Bridge the component API on that scene without extending Three.js globally.
+    const scene = this.scene;
+    scene.getComponent ??= type => GameObject.getComponent(scene, type);
+    scene.addComponent ??= (component, init) => GameObject.addComponent(scene, component, init);
+  }
+}
+
 /** Runs viewer simulation and custom render passes through the Needle context. */
 export class NeedleRuntime {
   private readonly context: Context;
@@ -29,21 +40,21 @@ export class NeedleRuntime {
   private drawFrame?: () => void;
 
   constructor(private readonly renderer: WebGLRenderer, tick: (timestamp: number) => void) {
-    this.context = new Context({ renderer, domElement: renderer.domElement, runInBackground: true });
+    this.context = new ViewerNeedleContext({ renderer, domElement: renderer.domElement, runInBackground: true });
     this.frame = new ViewerFrame(tick);
   }
 
-  async start(scene: Scene, camera: Camera): Promise<void> {
+  async start(camera: Camera): Promise<void> {
     const ready = await this.context.create({ files: [], abortSignal: this.lifetime.signal });
     if (this.lifetime.signal.aborted) return;
     if (!ready) throw new Error('Needle context creation did not complete');
-    this.context.scene = scene;
     this.context.mainCamera = camera;
     this.composer = new EffectComposer(this.renderer);
     this.composer.addPass(new ViewerEffectsPass(() => this.drawFrame?.()));
     this.context.composer = this.composer;
     this.frame.context = this.context;
-    GameObject.addComponent(scene, this.frame);
+    // The custom render pass draws the independently owned viewer scene.
+    GameObject.addComponent(this.context.scene, this.frame);
     this.renderer.setAnimationLoop(timestamp => {
       this.frame.timestamp = timestamp;
       this.context.update(timestamp);
@@ -65,8 +76,6 @@ export class NeedleRuntime {
     this.frame.destroy();
     this.context.composer = null;
     this.composer?.dispose();
-    // The viewer disposes the shared city and camera resources.
-    this.context.scene = new Scene();
     const canvas = this.renderer.domElement;
     const parent = canvas.parentNode;
     const next = canvas.nextSibling;

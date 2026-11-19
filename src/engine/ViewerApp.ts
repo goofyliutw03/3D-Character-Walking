@@ -264,7 +264,7 @@ export class ViewerApp {
       const { NeedleRuntime } = await import('./NeedleRuntime');
       if (this.disposed) return;
       this.needle = new NeedleRuntime(this.view.renderer, time => this.update(time));
-      await this.needle.start(this.scenes.root, this.camera);
+      await this.needle.start(this.camera);
       if (!this.disposed) {
         this.needleReady = true;
         this.report('Needle Engine · WebGL2 ready');

@@ -1,12 +1,41 @@
 # 剩餘驗收盤點（1Q-1，2026-10-31）
 
+## SCENE-04 交接版實體 GPU 複驗（2026-11-19）
+
+### COMPAT-02 遮擋與濕鏡像素複驗
+
+Chrome 157.0.8103.79 與 Edge 157.0.4341.60，實際 WebGL 路徑均為 GTX 1060／ANGLE D3D11。用當前程式編譯隔離測試頁，對固定牆面及乾、濕幀做 GPU 像素讀回。兩個瀏覽器皆 17/17 通過，主控台與 WebGL 錯誤皆為 0。
+
+- X-ray 共 15 項。固定右半遮擋時，一般視角的右半改變 9,752 像素，魚眼右半改變 864 像素，兩者左半皆為 0。魚眼解除遮擋時差異為 0。三款骨架角色的 Idle／Walk／Run／Jump 也有深度測試。
+- 濕鏡共 2 項。以相同場景比較乾、濕魚眼影格，640×480 與 420×600 各有 180,960 與 138,536 個圓內像素變化，圓外變化皆為 0。兩個尺寸均讀到霧量約 0.896 與 8 顆水滴。
+
+這些結果補足 COMPAT-02 本機雙瀏覽器的像素證據。測試頁以可重現的固定場景控制遮擋與噴霧。完整 Release UI 的操作證據見下方，COMPAT-03～04 仍待外部環境，SCENE-04 維持 PARTIAL。原始 JSON 與測試程式位於忽略目錄 `.local/compat-02-evidence/`、`.local/xray-validation/` 與 `.local/compat-02-wet.html`。
+
+### Needle 啟動修正與複驗
+
+以 `7bd9b70` 加上兩處 Needle 接線修改建立隔離建置。Needle 的 `Context.create()` 會透過 `clear()` 建立新 Scene，初始化 EventSystem 時直接呼叫該 Scene 的元件方法。打包後的 Scene 缺少這些方法。修正讓 Needle 保有自己的場景，在每次重建後以 `GameObject` 轉接元件的查找與新增，Viewer 的原場景仍由自訂 render pass 繪製及管理。回退只需還原兩處引擎接線。
+
+Chrome 與 Edge 預設路徑皆到達 `Needle Engine · WebGL2 ready`。兩組及 Chrome legacy 對照各完成 14 個取樣，主控台錯誤與 WebGL 錯誤皆為 0。這補足 COMPAT-01 的本機雙瀏覽器啟動複驗。COMPAT-02 的後續像素複驗見上節。原始紀錄與截圖在 `.local/needle-fix-evidence/`。
+
+### 修正前證據
+
+範圍為 COMPAT-01～02。本機驗證固定 `bed39b1`，既有 Release `http://127.0.0.1:4174/` 入口與該版建置相符。使用隔離的 Chrome 157.0.8103.79 及 Edge 157.0.4341.60 headless 設定檔。兩者在 Windows 10 x64／NVIDIA 驅動 582.78 上，主頁與 `water.html` 的實際 WebGL renderer 均為 ANGLE／GeForce GTX 1060 6GB／Direct3D11，`EXT_color_buffer_float` 可用。
+
+| 編號 | 結果 | 證據與剩餘條件 |
+|---|---|---|
+| COMPAT-01 | PARTIAL | 兩個瀏覽器的主頁及水景入口都就緒並持續繪製，男／女／小孩 GLB 均載入並進入 Walk 狀態。預設 Needle 啟動在兩者各出現一次 lifecycle `TypeError: n.scene.getComponent is not a function`，堆疊由 `startNeedle` 進入 Needle runtime。Chrome 以 `?engine=legacy` 跑同一流程時未記錄該例外。待修正並重驗預設路徑。 |
+| COMPAT-02 | PARTIAL | 兩個瀏覽器均操作一般鏡頭、魚眼、X-ray、組合模式、街道水景品質／濕鏡開關、夜間陰影、resize 與回復。水景入口近處可見水滴，切至遠景後未見殘留，低品質關閉濕鏡仍繼續繪製。兩組各 14 個取樣的 WebGL error 均為 0，所檢視畫面未見黑屏。X-ray 取樣時主角在開闊路面，實際遮擋輪廓對齊與濕鏡啟用時的魚眼黑邊仍待驗。 |
+| COMPAT-03／04 | 待驗 | 本次兩個瀏覽器共用同一張實體 GPU，且支援所測擴充。仍需另一種 GPU／驅動及原生缺少擴充的環境。 |
+
+重現方式：用此版本的 Release，以新瀏覽器設定檔開啟主頁，等待 WebGL2 ready 並查看啟動主控台。逐一切換三角色、以 W 進入 Walk、切換第三人稱／魚眼與遮擋模式。切 Night 並勾選 Cast shadows 與路燈 1、2，縮放 viewport 後切回 Day。再開 `water.html`，依序切噴濺、遠景、低品質並關閉鏡頭濕潤。對照路徑使用 `/?engine=legacy`。本機原始紀錄與截圖在忽略目錄 `.local/scene-04-compat/`，操作腳本為 `.local/scene-04-compat.mjs`。本輪不涉及產品修正或正式效能測量。
+
 ## 最新使用者裁定（2026-10-31）
 本節優先於下方歷史盤點及各舊validation中的待驗文字；僅更新狀態，不回填未執行的工具測試或裝置細節。
 
 | 項目 | 狀態／標籤 | 依據與後續 |
 |---|---|---|
 | 手機完整操作驗收 | Done／SCENE-05操作 | 使用者明確回報「手機完整操作驗收 = Done」，以使用者驗收完成記錄；不額外要求機型或版本資訊 |
-| 跨GPU／瀏覽器相容性 | PARTIAL／SCENE-04 | RTX2050 4GB／Chrome156.0.8078.74舊版操作USER_REPORTED_PASS；新路燈陰影、其餘矩陣及原生half-float fallback仍待驗 |
+| 跨GPU／瀏覽器相容性 | PARTIAL／SCENE-04 | 2026-11-19 已補 GTX 1060 上的 Chrome／Edge 啟動及像素複驗，Needle 啟動例外已修正。COMPAT-03～04 仍待外部環境。 |
 | 雙摺／三摺螢幕專項 | 取消／SCENE-05-FOLD | 使用者決定由Browser負責相容問題，取消專項驗收範圍；不是測試通過證據，亦不關閉跨GPU／瀏覽器相容性待辦 |
 | IME輸入法 | Done／M5、M6人工驗收 | 基本組字操作已有使用者通過回報；補充的blur、160字邊界與inspector組字三組操作亦回覆「三項皆正常」。依使用者人工驗收結案，非工具直接實測；詳見1Q-2最終裁定 |
 | 效能門檻與實測 | PARTIAL／ACCEPT-01 | 1Q-4固定最新Release執行本機工程樣本；方法、結果與限制見[效能紀錄](performance-acceptance.md)。正式門檻與跨裝置效能仍待確認，不宣稱正式驗收通過 |
