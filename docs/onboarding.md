@@ -3,6 +3,100 @@
 2026-10-31。Windows-first；單一安裝指引，Codex 的 AGENTS.md 與 Claude Code 的 CLAUDE.md 均指向這裡。
 在 checkout 根目錄啟動 Agent。初始化規則要求 Agent 先顯示偵測結果及建議，這不是 OS 彈窗、啟動 hook，也不能保證所有版本／啟動方式都讀取規則。未讀取時貼上下列 prompt。一般功能工作不必重跑。
 
+## 新電腦逐步下載與安裝（Windows 10／11 x64、NVIDIA 獨顯）
+
+以下流程使用 `codex/v02-particle-system` 分支。先開啟 PowerShell；每個步驟成功後才進下一步。下載目錄可自行選擇，範例使用 `$HOME\source`。私人 repository 必須先取得存取權，Git 提示驗證時由使用者完成。
+
+### 步驟 1：準備 Git
+
+先執行 `git --version`。若找不到 Git，執行下列安裝命令，完成後重新開啟 PowerShell。
+
+```powershell
+winget show --id Git.Git --exact --source winget
+winget install --id Git.Git --exact --source winget
+```
+
+若找不到 winget，請從 Git 官方網站 https://git-scm.com/downloads/win 安裝 Git，再重新開啟 PowerShell。安裝器要求的授權或管理員提示由使用者確認。
+
+### 步驟 2：下載指定分支
+
+```powershell
+$ErrorActionPreference = 'Stop'
+New-Item -ItemType Directory -Force -Path "$HOME\source" | Out-Null
+Set-Location "$HOME\source"
+git clone --branch codex/v02-particle-system --single-branch https://github.com/goofyliutw03/3D-Character-Walking.git
+if ($LASTEXITCODE -ne 0) { throw 'Git clone 失敗，請確認網路與 repository 存取權。' }
+Set-Location .\3D-Character-Walking
+git branch --show-current
+```
+
+如果目的地已有同名目錄，先使用其他下載目錄，或確認它就是此 repository 後再依既有 checkout 的更新流程處理。
+
+### 步驟 3：先偵測硬體與工具
+
+```powershell
+.\scripts\onboarding.ps1 -Json
+.\scripts\onboarding.ps1 -InstallViewer -DryRun
+```
+
+檢查報告中的 OS、CPU、RAM、可用磁碟、GPU／VRAM 與工具版本。NVIDIA VRAM 優先由 `nvidia-smi` 提供，無法偵測則顯示 unknown。現有 CLI 提供自動偵測、資源分級與建議，尚未提供自動效能調校或互動式安裝選單。對方電腦的效能須在該機器實測。
+
+### 步驟 4：補齊必要工具
+
+依預檢報告只執行缺少項目。Node.js 版本須符合根目錄 `package.json` 的 engines。
+
+```powershell
+winget show --id Microsoft.PowerShell --exact --source winget
+winget install --id Microsoft.PowerShell --exact --source winget
+winget show --id OpenJS.NodeJS.LTS --exact --source winget
+winget install --id OpenJS.NodeJS.LTS --exact --source winget
+```
+
+完成後開啟 **PowerShell 7**，切回下載的 repository 根目錄。若腳本被組織政策阻擋，交由管理員按組織規則處理。
+
+### 步驟 5：安裝精確版本的 pnpm 與專案依賴
+
+```powershell
+$ErrorActionPreference = 'Stop'
+node --version
+$viewerPackage = Get-Content .\package.json -Raw | ConvertFrom-Json
+npm.cmd install --global $viewerPackage.packageManager
+if ($LASTEXITCODE -ne 0) { throw 'pnpm 安裝失敗。' }
+.\scripts\onboarding.ps1 -InstallViewer
+```
+
+全域 pnpm 安裝是本步驟的明確選用操作，會影響同機其他使用全域 pnpm 的專案。依賴安裝使用既有 lockfile。
+
+### 步驟 6：驗證與啟動
+
+```powershell
+.\scripts\project.ps1 test
+.\scripts\project.ps1 build
+.\scripts\project.ps1 dev
+```
+
+逐條執行，測試與建置成功後才啟動 dev。開啟終端機列出的 localhost 網址，檢查場景、角色、相機與畫面流暢度，使用 Ctrl+C 停止開發服務。新機的開發流程到此即可，`release` 使用原工作站固定目的地。
+
+### 可貼給對方 Codex CLI／Claude Code 的安裝 prompt
+
+先完成步驟 1、2，再從 repository 根目錄啟動已安裝的 Agent，貼上以下內容。
+
+```text
+請依 docs/onboarding.md 初始化此 repo 的開發環境，目標 Windows 10／11 x64、NVIDIA 獨顯。
+先讀 AGENTS.md、README.md、package.json、pnpm-lock.yaml 與 onboarding 指引。
+先執行 .\scripts\onboarding.ps1 -Json，顯示硬體、工具版本、unknown 項目與資源分級。
+我授權安裝缺少的 Viewer 必要工具、packageManager 指定版本的 pnpm 與專案依賴。
+先列出具體安裝計畫，再依文件執行已授權項目；需要管理員、套件授權或帳號驗證時交給我處理。
+只安裝缺少或明確不符合需求的工具，保留既有修改，依 frozen-lockfile 安裝。
+每步檢查成功才繼續，失敗立即停止並回報命令、錯誤與處理建議。
+完成後依序執行 project.ps1 test、build，提供 dev 啟動命令及瀏覽器驗證清單。
+依實測硬體提供效能建議；任何自動優化必須說明具體參數、作用範圍與回復方式，取得我的選用後才套用。
+RAG、模型下載、服務啟動、Blender、驅動及系統／防火牆設定須另外讓我選擇。
+不得宣稱已測得其他電腦的硬體或效能，不 commit/push，不執行原工作站專用 release。
+```
+
+若對方尚未安裝 Agent，可直接照上述 PowerShell 步驟完成 Viewer 安裝。選用 GPU RAG 的流程見下方第 3 節，依該機 GPU 支援狀態另外確認。
+
 ## 可直接貼給 Claude Code／Codex CLI 的完整 prompt
 
 ```text
