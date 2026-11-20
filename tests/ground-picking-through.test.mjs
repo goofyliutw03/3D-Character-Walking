@@ -141,6 +141,14 @@ test('ground picking 5.1–5.3: penetration toggles immediately, default is on a
     }
   }
   assert.ok(picker.pick(point, camera, 500, 500, false, world));
+  const fallback = new Group();
+  fallback.add(roof);
+  const fallbackPicker = new GroundPicker([floor, fallback]);
+  fallback.visible = false;
+  assert.ok(fallbackPicker.pick(point, camera, 500, 500, false, world, [], false));
+  fallback.visible = true;
+  roof.material.visible = false;
+  assert.ok(fallbackPicker.pick(point, camera, 500, 500, false, world, [], false));
 });
 
 test('ground picking 5: actual fallback, three animated GLBs and Target intercept their visible geometry', async () => {

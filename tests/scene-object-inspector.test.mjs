@@ -21,6 +21,25 @@ test('inspector stable IDs follow object lifetime, hierarchy and removals withou
   mesh.geometry.dispose();mesh.material.dispose();index.dispose();assert.equal(index.rows.length,0);
 });
 
+test('inspector profile keys distinguish repeated branches across scene rebuilds', () => {
+  const build = () => {
+    const root = new Scene();
+    for (let i = 0; i < 2; i++) {
+      const cloud = new Group(), child = new Group();
+      cloud.name = 'Cloud'; child.name = 'Label';
+      cloud.add(child); root.add(cloud);
+    }
+    return root;
+  };
+  const index = new SceneObjectIndex();
+  index.sync(build());
+  const keys = index.rows.map(row => row.profileKey);
+  assert.equal(new Set(keys).size, keys.length);
+  assert.equal(keys[2], 'Scene/Cloud/Label');
+  index.sync(build());
+  assert.deepEqual(index.rows.map(row => row.profileKey), keys);
+});
+
 test('inspector regex and range intersect, retain ancestors and keep checkbox independent',()=>{
   const root=new Scene(), parent=new Group(), a=new Group(), b=new Group();
   parent.name='Park';a.name='Oak';b.name='Pine'; root.add(parent);parent.add(a,b);

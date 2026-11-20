@@ -18,13 +18,13 @@ export class CharacterController {
     this.walkingSpeed = speed;
     return true;
   }
-  relocate(position: { x: number; y: number; z: number }, snap = true): boolean {
+  relocate(position: { x: number; y: number; z: number }, snap = true, heading = this.state.heading): boolean {
     const { x, y, z } = position;
     const surface = this.query.surfaceSample(position);
-    if (!finitePoint(position) || !surface.ok) return false;
+    if (!finitePoint(position) || !Number.isFinite(heading) || !surface.ok) return false;
     const ground = surface.value.height;
     if ((!snap && (y < ground || y > ground + 10)) || !this.canPlace({ x, y: snap ? ground : y, z })) return false;
-    Object.assign(this.state, { x, y: snap ? ground : y, z, speed: 0, grounded: snap || y === ground,
+    Object.assign(this.state, { x, y: snap ? ground : y, z, heading, speed: 0, grounded: snap || y === ground,
       action: snap || y === ground ? 'idle' : 'jump' });
     this.velocityY = 0;
     this.jumpHeld = false;

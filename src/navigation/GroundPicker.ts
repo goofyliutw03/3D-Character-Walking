@@ -70,7 +70,11 @@ export class GroundPicker {
     if (!penetrateEnvironment) {
       // Restore the original first-environment-hit rule when penetration is disabled.
       for (const object of this.objects) object.updateWorldMatrix(true, true);
-      const hit = this.caster.intersectObjects([...this.objects], true)[0];
+      const hit = this.caster.intersectObjects([...this.objects], true).find(({ object, point, face }) => {
+        if (!(object instanceof Mesh) || !visible(object) || !materialVisible(object, face?.materialIndex)) return false;
+        const depth = -point.clone().applyMatrix4(camera.matrixWorldInverse).z;
+        return depth > camera.near && depth < camera.far;
+      });
       if (!hit?.face || hit.object.userData.walkable !== true) return null;
       accept(hit.point, hit.face.normal.clone().applyNormalMatrix(this.normalMatrix.getNormalMatrix(hit.object.matrixWorld)));
     }

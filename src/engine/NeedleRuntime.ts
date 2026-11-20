@@ -45,7 +45,14 @@ export class NeedleRuntime {
   }
 
   async start(camera: Camera): Promise<void> {
-    const ready = await this.context.create({ files: [], abortSignal: this.lifetime.signal });
+    const canvas = this.renderer.domElement;
+    const hadTransparent = canvas.hasAttribute('transparent');
+    // The viewer owns scene lighting. Skip Needle's fallback camera environment,
+    // which would render Needle's private Three.js meshes on the viewer renderer.
+    canvas.setAttribute('transparent', '');
+    const ready = await this.context.create({ files: [], abortSignal: this.lifetime.signal }).finally(() => {
+      if (!hadTransparent) canvas.removeAttribute('transparent');
+    });
     if (this.lifetime.signal.aborted) return;
     if (!ready) throw new Error('Needle context creation did not complete');
     this.context.mainCamera = camera;

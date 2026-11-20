@@ -1,6 +1,6 @@
 # 專案現況與團隊接手
 
-盤點日期：2026-11-19。程式基準為 `codex/v02-particle-system` 的 `9ab7abb`。開發範圍由開發計畫與 roadmap 定義，實作與驗證證據見各 spec 的 tasks 與 validation，人工裁定以剩餘驗收表為準。
+盤點日期：2026-11-20。最新進度為 `codex/v02-particle-system` 交接版的獨立審查修正。範圍與驗證見[團隊交接清單](team-handoff.md)，相容性以[剩餘驗收](remaining-acceptance.md)最上方複驗紀錄為準。
 
 ## 六個交付里程碑
 

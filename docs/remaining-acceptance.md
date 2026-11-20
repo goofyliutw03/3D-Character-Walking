@@ -1,5 +1,15 @@
 # 剩餘驗收盤點（1Q-1，2026-10-31）
 
+## SCENE-04 GTX 1650 複驗與審查修正（2026-11-20）
+
+修正版以 `efe5533` 為基準。Windows x64 build 26100，Chrome 157.0.8103.80／Edge 157.0.4341.60，實際 WebGL2 renderer 為 ANGLE／GTX 1650／D3D11，驅動 560.94。兩個入口原生支援 `EXT_color_buffer_float`。
+
+- COMPAT-01：預設 Needle 在雙瀏覽器 dev 各 19 個取樣通過，WebGL 錯誤為 0。正式 preview 另完成雙瀏覽器 Needle 啟動與 `water.html` 濕鏡／BFCache 恢復。
+- COMPAT-02／03：此次補另一張實體 GPU 上的瀏覽器啟動、四場景、三角色動畫、Profiles、飛行、夜間、魚眼／X-ray、resize 與水景的操作證據；GTX 1650 的固定遮擋輪廓與魚眼圓外濕鏡像素讀回仍待補。
+- COMPAT-04：環境原生支援擴充，UnsignedByte fallback 未觸發。SCENE-04 維持 PARTIAL；未量測正式效能、手機 LAN 或讀屏。
+
+[完整交接與工作清單](team-handoff.md#2026-11-20-交接進度與獨立審查)
+
 ## SCENE-04 交接版實體 GPU 複驗（2026-11-19）
 
 ### COMPAT-02 遮擋與濕鏡像素複驗

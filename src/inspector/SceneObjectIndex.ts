@@ -6,6 +6,7 @@ export interface ObjectRow {
   readonly parentId: number | null;
   readonly name: string;
   readonly path: string;
+  readonly profileKey: string;
   readonly checked: boolean;
   readonly matched: boolean;
 }
@@ -66,17 +67,26 @@ export class SceneObjectIndex {
   }
   sync(root: Object3D): boolean {
     const rows: ObjectRow[] = [];
-    const visit = (object: Object3D, parentId: number | null, parentPath: string): void => {
+    const visit = (object: Object3D, parentId: number | null, parentPath: string, parentKey: string, occurrence: number): void => {
       let identity = this.identities.get(object);
       if (!identity) { identity = { id: this.nextId++, checked: true }; this.identities.set(object, identity); }
       const name = object.name.trim() || object.type;
       const path = parentPath ? `${parentPath}/${name}` : name;
-      const row = { object, ...identity, name, path, parentId, matched: false };
+      // Keep existing keys for ordinary paths and distinguish repeated siblings.
+      const segment = occurrence || /[/%]/.test(name) ? encodeURIComponent(name) + '%' + occurrence : name;
+      const profileKey = parentKey ? parentKey + '/' + segment : segment;
+      const row = { object, ...identity, name, path, profileKey, parentId, matched: false };
       row.matched = this.matches(row); rows.push(row);
-      for (const child of object.children) visit(child, identity.id, path);
+      const siblings = new Map<string, number>();
+      for (const child of object.children) {
+        const childName = child.name.trim() || child.type;
+        const index = siblings.get(childName) ?? 0;
+        siblings.set(childName, index + 1);
+        visit(child, identity.id, path, profileKey, index);
+      }
     };
-    visit(root, null, '');
-    const signature = JSON.stringify(rows.map(({ id, parentId, name, path, checked, matched }) => [id, parentId, name, path, checked, matched]));
+    visit(root, null, '', '', 0);
+    const signature = JSON.stringify(rows.map(({ id, parentId, name, path, profileKey, checked, matched }) => [id, parentId, name, path, profileKey, checked, matched]));
     const changed = signature !== this.signature;
     this.signature = signature; this.active = rows;
     return changed;
