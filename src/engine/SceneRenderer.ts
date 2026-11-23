@@ -1,4 +1,4 @@
-import { ACESFilmicToneMapping, Group, Mesh, MeshStandardMaterial, PCFShadowMap, PerspectiveCamera, Scene, WebGLRenderer, type Object3D } from 'three';
+import { ACESFilmicToneMapping, Group, HalfFloatType, Mesh, MeshStandardMaterial, PCFShadowMap, PerspectiveCamera, Scene, WebGLRenderer, WebGLRenderTarget, type Object3D } from 'three';
 import { FisheyePass } from './FisheyePass';
 import { CharacterXrayPass } from './CharacterXrayPass';
 import { EnvironmentScan } from './EnvironmentScan';
@@ -12,6 +12,7 @@ export class SceneRenderer {
   private readonly observer: ResizeObserver;
   private fisheye: FisheyePass | undefined;
   private xray: CharacterXrayPass | undefined;
+  private halfFloatTargets: boolean | undefined;
   private width = 1;
   private height = 1;
   constructor(private readonly container: HTMLElement, private readonly camera: PerspectiveCamera) {
@@ -55,7 +56,7 @@ export class SceneRenderer {
   }
   render(scene: Scene, fisheye: boolean | number = false, xray?: { subject: Object3D; environment: Object3D; staticBlockers: boolean }): void {
     this.renderer.info.reset();
-    if (xray && !this.xray) this.xray = new CharacterXrayPass(this.renderer.extensions.has('EXT_color_buffer_float'));
+    if (xray && !this.xray) this.xray = new CharacterXrayPass(this.supportsHalfFloatTargets());
     if (!xray && this.xray) { this.xray.dispose(); this.xray = undefined; }
     const capture = (camera: PerspectiveCamera): void => {
       if (xray) this.xray!.render(this.renderer, scene, camera, xray.subject, xray.environment, xray.staticBlockers);
@@ -63,11 +64,32 @@ export class SceneRenderer {
     };
     if (!fisheye) { this.fisheye?.finishBlend(); capture(this.camera); this.waterLens.render(this.renderer); return; }
     if (!this.fisheye) {
-      this.fisheye = new FisheyePass(this.renderer.extensions.has('EXT_color_buffer_float'));
+      this.fisheye = new FisheyePass(this.supportsHalfFloatTargets());
       this.fisheye.resize(this.width, this.height, this.renderer.getPixelRatio());
     }
     this.fisheye.render(this.renderer, scene, this.camera, capture, Number(fisheye));
     this.waterLens.render(this.renderer, Number(fisheye) >= .5);
+  }
+  private supportsHalfFloatTargets(): boolean {
+    if (this.halfFloatTargets !== undefined) return this.halfFloatTargets;
+    const renderer = this.renderer;
+    const gl = renderer.getContext();
+    if (gl.isContextLost()) return false;
+    if (!renderer.extensions.has('EXT_color_buffer_float')) return this.halfFloatTargets = false;
+
+    // Probe the same color and depth attachment format used by the effects.
+    const previous = renderer.getRenderTarget();
+    const face = renderer.getActiveCubeFace();
+    const level = renderer.getActiveMipmapLevel();
+    const probe = new WebGLRenderTarget(2, 2, { type: HalfFloatType });
+    try {
+      renderer.setRenderTarget(probe);
+      this.halfFloatTargets = gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE;
+    } finally {
+      renderer.setRenderTarget(previous, face, level);
+      probe.dispose();
+    }
+    return this.halfFloatTargets;
   }
   setShadows(enabled: boolean): void { this.renderer.shadowMap.enabled = enabled; }
   releaseContextResources(): void {
@@ -77,6 +99,7 @@ export class SceneRenderer {
     this.waterLens.clear();
   }
   restoreContext(): void {
+    this.halfFloatTargets = undefined;
     this.renderer.setRenderTarget(null);
     this.resize();
   }
