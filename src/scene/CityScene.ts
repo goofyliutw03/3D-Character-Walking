@@ -42,6 +42,7 @@ export class CityScene {
   private preset: TimeOfDay = 'day';
   private time: TimeOfDay = 'day';
   get timeOfDay(): TimeOfDay { return this.time; }
+  get lightingPreset(): TimeOfDay { return this.preset; }
   constructor() {
     this.scene.background = new Color('#e3e9df');
     this.scene.fog = new Fog('#e3e9df', 75, 160);

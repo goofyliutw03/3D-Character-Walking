@@ -1,6 +1,6 @@
 # v02 development reference
 
-目前 3D 知識與架構總入口（2026-11-08）：[3D 基礎知識與專案架構指南](3d-knowledge-architecture.md)。
+3D 知識庫更新於 2026-11-22。從 [3D 基礎知識與專案架構指南](3d-knowledge-architecture.md) 進入，或直接查閱[六個環境的運動、效果與設定](3d-environments-and-effects.md)。
 包含原 [2A-1]～[2A-8] 主題索引、名詞中英對照、逐幀流程、目前程式位置與驗證限制；
 下列 tag 為歷史快照，不能代表工作樹中的 Needle、多場景及新輸入功能已包含在該 tag。
 

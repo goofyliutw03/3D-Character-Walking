@@ -97,6 +97,8 @@ RAG、模型下載、服務啟動、Blender、驅動及系統／防火牆設定�
 
 若對方尚未安裝 Agent，可直接照上述 PowerShell 步驟完成 Viewer 安裝。選用 GPU RAG 的流程見下方第 3 節，依該機 GPU 支援狀態另外確認。
 
+若需要用 Codex 操作 Blender 場景，另見 [Windows Blender MCP 安裝指引](#4-選用-blender-mcpwindows)。
+
 ## 可直接貼給 Claude Code／Codex CLI 的完整 prompt
 
 ```text
@@ -178,6 +180,81 @@ RAG 先閱讀 [local-rag.md](local-rag.md)、[gpu-optimization.md](gpu-optimizat
 原 `install-rag.ps1` 不帶新選項時保留舊有啟動／拉模型行為；onboarding 一律傳 `-SkipStartAndModels`。第三方原生 Ollama 安裝器本身可能啟動其應用／服務，選 GPU 安裝時需確認；本 wrapper 不呼叫 rag start/pull。模型未下載時 health 不會通過，不能冒稱 RAG ready。索引遵守 ignore 與 secrets 排除，不重建既有索引。
 
 `.codex/config.toml` 是原機絕對路徑參考，需人工依 checkout 改寫本機設定；不自動覆寫。`.vscode/settings.json` 的 ESP-IDF 不相關。新機不執行硬編碼目的地的 `release`；原工作站維護依 [release.md](release.md)。
+
+## 4. 選用 Blender MCP（Windows）
+
+需要用 Codex 讀取或操作 Blender 場景時才執行本節。Viewer 可獨立安裝與執行。先自行安裝相容版本的 Blender，並確認 Codex CLI 可用。專案的 `onboarding.ps1` 不偵測或安裝 Blender MCP。
+
+### 安裝 uv 與 MCP 工具
+
+先執行 `uv --version` 和 `uvx --version`。若缺少 uv，先查閱套件資訊再安裝。完成後重開 PowerShell 並重新檢查版本。以下命令逐步執行，每步成功後再繼續。
+
+```powershell
+winget show --id astral-sh.uv --exact --source winget
+winget install --id astral-sh.uv --exact --source winget
+```
+
+```powershell
+uv tool install mcp-for-blender
+```
+
+若遇到 `UnknownIssuer`，可改用 Windows 信任的憑證存放區重試，TLS 驗證仍會啟用。
+
+```powershell
+uv --system-certs tool install mcp-for-blender
+```
+
+### 安裝 Blender 外掛並設定 Codex
+
+從 uv 查詢執行檔的絕對路徑，讓 Codex 可直接啟動工具。先確認 `addon-paths` 列出的目錄涵蓋要使用的 Blender 版本。若需指定外掛目錄，可用 `install-addon --help` 查詢 `--addons-dir`。
+
+```powershell
+$blenderMcpBin = uv tool dir --bin
+if ($LASTEXITCODE -ne 0 -or -not $blenderMcpBin) { throw '無法取得 uv 工具執行目錄。' }
+$blenderMcpExe = Join-Path $blenderMcpBin 'mcp-for-blender.exe'
+if (-not (Test-Path -LiteralPath $blenderMcpExe -PathType Leaf)) { throw '找不到 Blender MCP 執行檔。' }
+& $blenderMcpExe addon-paths
+if ($LASTEXITCODE -ne 0) { throw '無法查詢 Blender 外掛目錄。' }
+```
+
+確認目錄後，在同一個 PowerShell 視窗執行。若列出多個版本或使用自訂目錄，請在 `install-addon` 後加上 `--addons-dir` 和目標版本的完整外掛目錄路徑，並以引號包住路徑。
+
+```powershell
+& $blenderMcpExe install-addon
+if ($LASTEXITCODE -ne 0) { throw 'Blender MCP 外掛安裝失敗。' }
+```
+
+先用 `codex mcp list` 檢查既有設定。若已有 `blender`，用 `codex mcp get blender` 在本機確認是否可沿用。若需替換，先備份該項設定並確認變更範圍。只有明確選用新增 Codex 使用者層設定且名稱可用時，才在同一個 PowerShell 視窗執行。
+
+```powershell
+codex mcp add blender --env DISABLE_TELEMETRY=true -- $blenderMcpExe
+if ($LASTEXITCODE -ne 0) { throw '新增 Codex Blender MCP 設定失敗。' }
+codex mcp get blender
+if ($LASTEXITCODE -ne 0) { throw '無法讀取 Codex Blender MCP 設定。' }
+```
+
+### 啟用、驗證與回復
+
+1. 儲存作品並重開 Blender。在 **Edit → Preferences → Add-ons** 啟用 **MCP for Blender**。若原本已啟用，可停用後再啟用以載入新版。
+2. 在 3D 視窗按 `N` 開啟側欄，切到 **MCP for Blender**，按 **Start MCP Server**。使用 localhost，保留既有防火牆設定。MCP 可執行 Blender Python，修改場景前先儲存作品。
+3. 完全退出並重開 Codex。`codex mcp get blender` 可確認啟用狀態、stdio、執行檔路徑與遙測變數。再貼上下列提示，確認 Codex 能列出目前場景的物件。
+
+   ```text
+   使用 Blender MCP，讀取目前場景並列出物件，先不要修改。
+   ```
+
+若要撤銷本節新增的連線，可執行 `codex mcp remove blender`，再關閉 Blender 的 MCP Server 並停用外掛。若先前替換過設定，使用備份還原該項設定。基本場景操作無需付費生成服務或外部資產 API。
+
+原工作站於 2026-11-19 以 Blender 5.2.2 LTS 和 `mcp-for-blender` 2.3.1 驗證，成功讀取預設場景的 Cube、Light、Camera。上游也提供 `uvx mcp-for-blender setup`，可先用 `--dry-run` 查看變更範圍。[MCP for Blender 上游指引](https://github.com/ahujasid/mcp-for-blender)
+
+### 可貼給 Codex CLI 的選用安裝 prompt
+
+```text
+請先依 docs/onboarding.md 執行唯讀預檢並顯示結果，再依第 4 節安裝 Windows Blender MCP。
+我已自行安裝 Blender，授權安裝缺少的 uv、mcp-for-blender 工具、指定 Blender 版本的外掛，並新增我的 Codex 使用者層 blender MCP 設定。
+先檢查既有工具、外掛目錄和同名 MCP 設定。若需要覆寫既有設定，請先回報。每步確認成功再繼續。
+請提供 Blender 啟用及重開 Codex 的步驟。等我開啟本機 MCP Server 後，唯讀驗證能否列出目前場景的物件。
+```
 
 ## 驗證、失敗與回復
 

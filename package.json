@@ -5,7 +5,7 @@
   "packageManager": "pnpm@11.25.0",
   "type": "module",
   "scripts": {
-    "test": "node --experimental-transform-types --test --test-isolation=none tests/*.test.mjs",
+    "test": "node scripts/run-tests.mjs",
     "dev": "vite --host 127.0.0.1",
     "typecheck": "tsc --noEmit",
     "build": "tsc --noEmit && vite build",

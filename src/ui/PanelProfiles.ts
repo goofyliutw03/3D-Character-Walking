@@ -31,7 +31,7 @@ export class PanelProfiles {
   private queue: Promise<void> = Promise.resolve();
   private last = '';
   constructor(private readonly root: HTMLElement, private readonly viewer: ViewerApp,
-    private readonly panel: ControlPanel, private readonly sync: () => Promise<void>,
+    private readonly panel: ControlPanel, private readonly sync: (settings: ViewerSettings) => void,
     private readonly settled: () => Promise<void> = () => Promise.resolve()) {
     this.select = root.querySelector<HTMLSelectElement>('#panel-profile')!;
     this.status = root.querySelector<HTMLElement>('#profile-status')!;
@@ -44,12 +44,11 @@ export class PanelProfiles {
       .filter(el => el.id !== 'auto-run' && el.id !== 'panel-profile');
   }
   private details(): HTMLDetailsElement[] { return [...this.root.querySelectorAll<HTMLDetailsElement>('details[id]')]; }
-  private key(el: HTMLDetailsElement): string { return el.id || 'object:' + el.dataset.profileKey; }
   private capture(): PanelSettings {
     const fields: PanelSettings['fields'] = {};
     for (const el of this.fields()) fields[el.id] = el instanceof HTMLInputElement && el.type === 'checkbox' ? el.checked : el.value;
     return { runtime: this.viewer.getPanelSettings(), fields,
-      layout: { ...this.panel.getSettings(), open: Object.fromEntries(this.details().map(el=>[this.key(el),el.open])) } };
+      layout: { ...this.panel.getSettings(), open: Object.fromEntries(this.details().map(el=>[el.id,el.open])) } };
   }
   private valid = (value: unknown): value is PanelSettings => {
     if (!value || typeof value !== 'object') return false;
@@ -75,13 +74,15 @@ export class PanelProfiles {
   }
   private async apply(settings: PanelSettings, reset = false): Promise<void> {
     await this.viewer.applyPanelSettings(settings.runtime, reset);
-    await this.sync();
+    this.sync(settings.runtime);
     for (const el of this.fields()) {
-      const value=settings.fields[el.id];
+      // Applied settings are synchronized from the viewer; these fields also hold unapplied edits.
+      if (!/^(particle-|position-|tour-|object-(pattern$|ranges$))/.test(el.id)) continue;
+      const value=settings.fields[el.id] ?? this.defaults.fields[el.id];
       if (typeof value==='boolean' && el instanceof HTMLInputElement && el.type==='checkbox') el.checked=value;
       else if (typeof value==='string') el.value=value;
     }
-    for (const el of this.details()) if (typeof settings.layout.open[this.key(el)]==='boolean') el.open=settings.layout.open[this.key(el)]!;
+    for (const el of this.details()) el.open=settings.layout.open[el.id] ?? this.defaults.layout.open[el.id] ?? false;
     this.panel.applySettings(settings.layout);
     this.last=JSON.stringify(this.capture());
   }
@@ -112,6 +113,7 @@ export class PanelProfiles {
     },120);
   }
   async initialize(): Promise<void> {
+    this.root.inert = true;
     try {
       const text=await this.storage.read();
       if (text!==null) {
@@ -125,7 +127,7 @@ export class PanelProfiles {
       }
       this.report('Ready');
     } catch(error) { this.report('Not restored · '+(error instanceof Error?error.message:'Storage error')); }
-    this.last=JSON.stringify(this.capture()); this.busy=false; this.disable(false); this.render();
+    this.last=JSON.stringify(this.capture()); this.root.inert=false; this.busy=false; this.disable(false); this.render();
     const options={signal:this.events.signal};
     const save = this.buttons[0]!, reset=this.buttons[1]!;
     save.addEventListener('click',()=>this.enqueue(async()=>{
@@ -146,6 +148,7 @@ export class PanelProfiles {
         let failure: unknown;
         try { await this.persist(); } catch(error) { failure=error; }
         await this.apply(settings);
+        this.history.loaded(name, this.capture());
         if (failure) throw failure;
       });
     },options);
@@ -157,6 +160,13 @@ export class PanelProfiles {
       },options);
     }
     this.root.addEventListener('toggle',()=>this.changed(),{...options,capture:true});
+    const viewport = document.querySelector('.viewport');
+    for (const type of ['wheel', 'pointermove'] as const) {
+      viewport?.addEventListener(type, event => {
+        if (event instanceof PointerEvent && event.buttons === 0 && !document.pointerLockElement) return;
+        this.changed();
+      }, {...options, capture: true, passive: true});
+    }
   }
   dispose(): void { if(this.timer!==undefined)clearTimeout(this.timer); this.events.abort(); }
 }

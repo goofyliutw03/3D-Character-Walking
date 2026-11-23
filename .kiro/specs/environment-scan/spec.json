@@ -1,0 +1,12 @@
+{
+  "feature_name": "environment-scan",
+  "language": "zh-TW",
+  "phase": "implementation-complete",
+  "approvals": {
+    "requirements": { "generated": true, "approved": true },
+    "design": { "generated": true, "approved": true },
+    "tasks": { "generated": true, "approved": true }
+  },
+  "ready_for_implementation": true,
+  "approval_note": "依使用者授權 inline 審閱通過。檢查世界座標、位移順序、渲染 pass、連按及清理。"
+}

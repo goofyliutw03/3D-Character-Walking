@@ -40,7 +40,8 @@ export function controlPanelContent(obstructionHint: string): string {
         <p id="expression-status" class="expression-status" role="status" aria-live="polite" aria-atomic="true">Mood: None. No speech.</p>` }
     ] },
     { id: 'particles', label: 'Particle interaction', open: false, children: [
-      { id: 'actors', label: 'Caster & Target', open: true, content: `<p class="hint">You control Caster. Target stands independently. Fire toward its current position; shots do not follow it.</p>
+      { id: 'actors', label: 'Caster & Target', open: true, content: `<label for="projectile-aim">Projectile direction</label>
+        <select id="projectile-aim"><option value="target">Toward Target</option><option value="camera">Along camera view</option></select>
         <p id="target-status" role="status" aria-live="polite">Target · Loading · procedural preview</p>
         <button id="retry-target" type="button" hidden>Retry target</button>
         ` },
@@ -85,7 +86,18 @@ export function controlPanelContent(obstructionHint: string): string {
     ] },
     { id: 'scene', label: 'Scene display', open: false, children: [
       { id: 'environment', label: 'Environment', open: true, content: `<label class="select-label" for="environment">Active environment</label>
-        <select id="environment"><option value="city">City street</option><option value="cave">Rock chamber</option><option value="terrain">Natural terrain</option><option value="flight">Bounded flight</option></select>
+        <select id="environment"><option value="city">City street</option><option value="cave">Rock chamber</option><option value="terrain">Natural terrain</option><option value="flight">Bounded flight</option><option value="room">莊園豪宅</option><option value="swim">Tidal Pool</option></select>
+        <fieldset id="swim-controls" hidden><legend>Swimming</legend>
+          <label for="swim-pose">游泳姿態</label>
+          <select id="swim-pose"><option value="breaststroke">蛙式</option><option value="dive">一般潛水</option><option value="jellyfish">水母漂浮</option></select>
+          <label for="swim-outfit">水域服裝</label>
+          <select id="swim-outfit"><option value="swimwear">運動泳裝</option><option value="scuba">潛水裝</option></select>
+          <p id="swim-status" class="hint" role="status"></p>
+          <p class="hint">第三人稱與魚眼：Y 啟停自動游泳，滑鼠俯仰控制深度，I／O 螺旋下潛或上升。水面朝金色平台游動可上岸。</p>
+          <button id="swim-exit" type="button">Climb onto the platform</button>
+          <p id="swim-climb-hint" class="hint"></p>
+          <p id="swim-result" class="hint" role="status"></p>
+        </fieldset>
         <fieldset id="flight-controls" hidden><legend>Flight mode</legend>
           <button id="flight-takeoff" type="button">Take off</button><button id="flight-land" type="button">Land below · 2m</button>
           <p class="hint">WASD / arrows: world directions. E / Space: ascend. Q: descend. Shift / Run: boost (24m/s); cruise 8m/s. Release to slow; Stop brakes. Upright posture uses the existing Jump animation fallback.</p>
@@ -97,6 +109,7 @@ export function controlPanelContent(obstructionHint: string): string {
           <label><input id="terrain-wind" type="checkbox" checked> Grass wind</label>
           <p class="hint">Static hills share movement, picking and shadow heights. Quality changes vegetation only; reduced motion freezes wind.</p>
         </fieldset>
+        <button id="scan-environment" type="button">Scan environment</button>
         <p id="environment-status" class="hint" role="status">City street ready.</p>` },
       { id: 'city-buildings', label: 'City buildings', open: true, content: `<p id="building-status" class="hint" role="status" aria-live="polite">Loading original Blender buildings…</p><button id="retry-buildings" type="button" hidden>Retry buildings</button><a class="asset-credits" href="/assets/city/ATTRIBUTION.md" target="_blank" rel="noopener">Original buildings & hybrid scene credits ↗</a>` },
       { id: 'traffic-simulation', label: 'City traffic', open: false, content: `
@@ -125,11 +138,11 @@ export function controlPanelContent(obstructionHint: string): string {
         })).join('')}</fieldset>
         <p id="lamp-shadow-help" class="hint">Night + Cast shadows only. Checked lights are candidates. Auto off: all cast simultaneously. Auto on: candidates within the full 3D radius cast. Clear all for no lamp shadows. Default: Light 2. More lights increase GPU cost. Selection stays when disabled.</p>` },
       { id: 'water-feature', label: 'Water feature', open: true, content: `
-        <p class="hint">A small cascade at the far end of the street. Walk around the stone basin.</p>
+        <p id="water-feature-hint" class="hint">A small cascade at the far end of the street. Walk around the stone basin.</p>
         <label class="toggle-row" for="water-enabled"><span>Dynamic water</span><input id="water-enabled" type="checkbox" checked></label>
         <label class="toggle-row" for="water-paused"><span>Pause water animation</span><input id="water-paused" type="checkbox"></label>
         <label class="toggle-row" for="water-lens"><span>Camera mist & droplets</span><input id="water-lens" type="checkbox" checked></label>
-        <p class="hint">Move the camera close to the cascade to catch a little spray. Droplets drain away when you leave.</p>
+        <p id="water-lens-hint" class="hint">Move the camera close to the cascade to catch a little spray. Droplets drain away when you leave.</p>
         <label class="select-label" for="water-quality">Water quality</label>
         <select id="water-quality"><option value="standard">Standard</option><option value="low">Low</option></select>
         <label class="select-label" for="water-wave">Wave strength · <output id="water-wave-value" for="water-wave">1.0</output></label>

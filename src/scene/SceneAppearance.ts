@@ -5,13 +5,12 @@ interface Override { original: Material | Material[]; clones: Material[]; mode: 
 
 export class SceneAppearance {
   private readonly overrides = new Map<Mesh, Override>();
-  constructor(private readonly environment: Group) {}
+  constructor(private readonly environment: Group, private readonly prepareMaterial?: (material: Material) => void) {}
 
   apply(mode: AppearanceMode, blockers: ReadonlySet<Object3D> = new Set()): void {
     const affected = new Set<Mesh>();
     if (mode !== 'normal') {
-      for (const root of this.environment.children) {
-        if (mode === 'transparent' && !blockers.has(root)) continue;
+      for (const root of mode === 'transparent' ? blockers : this.environment.children) {
         root.traverse(object => { if (object instanceof Mesh && object.userData.preserveLightMaterial !== true) affected.add(object); });
       }
     }
@@ -26,6 +25,7 @@ export class SceneAppearance {
         if (mode === 'transparent') {
           clone.opacity = 0.25; clone.transparent = true; clone.depthWrite = false;
         } else if ('wireframe' in clone) clone.wireframe = true;
+        this.prepareMaterial?.(clone);
         return clone;
       });
       mesh.material = Array.isArray(original) ? clones : clones[0]!;

@@ -56,6 +56,17 @@ test('heightfield normal and finite ray share quantized triangles',()=>{
 export {p,box,value,data,body};
 
 import { CharacterController } from '../src/character/CharacterController.ts';
+
+test('character starts at a declared spawn in a compact ground volume', () => {
+  const d = data([box]);
+  d.bounds = { ...d.bounds, minX: -3, maxX: 3, minZ: -2.5, maxZ: 2.5 };
+  d.surfaces = [{ ...d.bounds, id: 'room', height: 0 }];
+  const world = asWorld(d);
+  assert.throws(() => new CharacterController(world), /spawn is unavailable/);
+  assert.throws(() => new CharacterController(world, body, { x: 0, z: 0 }), /spawn is unavailable/);
+  const { x, y, z, grounded } = new CharacterController(world, body, { x: 0, z: 1.72 }).snapshot;
+  assert.deepEqual({ x, y, z, grounded }, { x: 0, y: 0, z: 1.72, grounded: true });
+});
 const idle={x:0,z:0,run:false,jump:false};
 const asWorld=d=>({bounds:d.bounds,obstacles:[],groundHeight:()=>0,query:new GroundWorldQuery(d)});
 test('controller: low roof jump sweeps upward, then lands without freezing',()=>{
@@ -208,4 +219,15 @@ test('controller: 45 degree ground slope accepted and 46 degree slope rejected',
     const c=new CharacterController(asWorld(d));for(let i=0;i<30;i++)c.update(1/60,{...idle,x:1});
     assert.equal(c.snapshot.x>.5,degrees===45);assert.ok(Math.abs(c.snapshot.y-c.snapshot.x*Math.tan(angle))<1e-6);
   }
+});
+
+test('navigation crosses coplanar seams and sweeps thin obstacles between endpoints', () => {
+  const d = data();
+  const [floor] = d.surfaces;
+  d.surfaces = [{ ...floor, maxX: 0 }, { ...floor, id: 'second-slab', minX: 0 }];
+  const a = p(-2, 0, 0), b = p(2, 0, 0);
+  const query = new GroundWorldQuery(d);
+  assert.equal(value(query.groundSegment(a, b, body)), true);
+  d.solids.push({ ...box, minX: .04, maxX: .05 });
+  assert.equal(value(query.groundSegment(a, b, body)), false);
 });

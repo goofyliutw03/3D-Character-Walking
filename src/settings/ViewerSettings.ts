@@ -1,5 +1,6 @@
 import type { CameraPreset } from '../engine/ViewerApp';
 import type { CharacterVariant } from '../character/motion';
+import type { SwimAppearance } from '../character/SwimAppearance.ts';
 import type { ObstructionMode } from '../camera/CameraObstruction';
 import type { LookSensitivity } from '../input/AutoRunControls';
 import type { TrafficSettings } from '../simulation/TrafficSimulation';
@@ -11,6 +12,14 @@ import type { TimeOfDay } from '../scene/CityScene';
 import type { LightSettings } from '../scene/EnvironmentLights';
 import type { HeadlampSettings } from '../scene/HeadlampSettings';
 import type { EnvironmentId, TerrainSettings } from '../scene/SceneSwitch';
+export type ProjectileAim = 'target' | 'camera';
+export interface CameraPose {
+  position: [number, number, number];
+  target: [number, number, number];
+  yaw: number;
+  pitch: number;
+  zoom: number;
+}
 export interface SceneSettings {
   time: TimeOfDay;
   solar: SolarSettings;
@@ -24,6 +33,7 @@ export interface ViewerSettings {
   scenes: Partial<Record<EnvironmentId, SceneSettings>>;
   variant: CharacterVariant;
   camera: CameraPreset;
+  cameraPose?: CameraPose;
   following: boolean;
   obstruction: ObstructionMode;
   groundPenetration: boolean;
@@ -32,7 +42,9 @@ export interface ViewerSettings {
   expression: ExpressionState;
   traffic: TrafficSettings;
   particles: ParticleSettings;
+  projectileAim?: ProjectileAim;
   water: WaterSettings;
+  swimAppearance?: SwimAppearance;
   waterLens: boolean;
   shadows: boolean;
   lamps: number[];

@@ -85,14 +85,14 @@ export class SceneObjectInspector {
       const checkbox = event.target as HTMLInputElement;
       if (!checkbox.dataset.objectCheckbox) return;
       const row = this.index.rows.find(row => row.id === Number(checkbox.dataset.objectCheckbox));
-      if (row) { if (checkbox.checked) this.uncheckedPaths.delete(row.path); else this.uncheckedPaths.add(row.path); }
+      if (row) { if (checkbox.checked) this.uncheckedPaths.delete(row.profileKey); else this.uncheckedPaths.add(row.profileKey); }
       this.index.setChecked(Number(checkbox.dataset.objectCheckbox), checkbox.checked); this.hide();
     }, { signal });
     this.tree.addEventListener('toggle', event => {
       const details = event.target as HTMLDetailsElement;
       const id = Number(details.dataset.objectId), node = this.nodes.get(id);
       if (node?.details === details && node.expectedOpen !== details.open) {
-        const path = this.index.rows.find(row => row.id === id)?.path;
+        const path = this.index.rows.find(row => row.id === id)?.profileKey;
         if (path) this.expandedPaths[path] = details.open;
         (this.filtered ? this.filteredExpanded : this.expanded).set(id, details.open); node.expectedOpen = details.open;
       }
@@ -111,7 +111,7 @@ export class SceneObjectInspector {
     this.uncheckedPaths = new Set(settings.uncheckedPaths);
     this.expandedPaths = { ...settings.expandedPaths };
     for (const row of this.index.rows) {
-      const checked = !this.uncheckedPaths.has(row.path);
+      const checked = !this.uncheckedPaths.has(row.profileKey);
       if (row.checked !== checked) this.index.setChecked(row.id, checked);
     }
     this.applyFilters(); this.hide();
@@ -128,7 +128,7 @@ export class SceneObjectInspector {
   }
   sync(): void {
     if (!this.disposed && this.index.sync(this.scene)) {
-      for (const row of this.index.rows) if (this.uncheckedPaths.has(row.path) && row.checked) this.index.setChecked(row.id, false);
+      for (const row of this.index.rows) if (this.uncheckedPaths.has(row.profileKey) && row.checked) this.index.setChecked(row.id, false);
       this.renderTree();
     }
   }
@@ -155,9 +155,9 @@ export class SceneObjectInspector {
       node.checkbox.setAttribute('aria-label', `Number label ${row.id}: ${row.name}`);
       node.text.textContent = `#${row.id} ${row.name}${row.matched ? '' : ' · ancestor only'}`;
       node.summary.title = `${row.object.type} · ${row.path}`;
-      node.details.dataset.profileKey = row.path;
+      node.details.dataset.profileKey = row.profileKey;
       node.details.dataset.matched = String(row.matched);
-      node.expectedOpen = this.expandedPaths[row.path] ?? (this.filtered ? (this.filteredExpanded.get(row.id) ?? true) : (this.expanded.get(row.id) ?? row.parentId === null));
+      node.expectedOpen = this.expandedPaths[row.profileKey] ?? (this.filtered ? (this.filteredExpanded.get(row.id) ?? true) : (this.expanded.get(row.id) ?? row.parentId === null));
       if (node.details.open !== node.expectedOpen) node.details.open = node.expectedOpen;
     }
     // Reorder only when needed, so active keyboard focus survives routine synchronization.

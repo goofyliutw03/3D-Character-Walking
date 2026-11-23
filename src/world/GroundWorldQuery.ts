@@ -22,12 +22,32 @@ const within = (p: Point3, b: Footprint): boolean => p.x >= b.minX - epsilon && 
   p.z >= b.minZ - epsilon && p.z <= b.maxZ + epsilon;
 const validFootprint = (b: Footprint): boolean => [b.minX,b.maxX,b.minZ,b.maxZ].every(Number.isFinite) && b.minX < b.maxX && b.minZ < b.maxZ;
 
+function surfaceSpan(start: Point3, end: Point3, surface: GroundSurface): [number, number] | undefined {
+  let enter = 0, exit = 1;
+  for (const [origin, delta, min, max] of [
+    [start.x, end.x - start.x, surface.minX, surface.maxX],
+    [start.z, end.z - start.z, surface.minZ, surface.maxZ],
+  ] as const) {
+    if (delta === 0) {
+      if (origin < min - epsilon || origin > max + epsilon) return undefined;
+      continue;
+    }
+    const a = (min - epsilon - origin) / delta, b = (max + epsilon - origin) / delta;
+    enter = Math.max(enter, Math.min(a, b));
+    exit = Math.min(exit, Math.max(a, b));
+    if (enter > exit) return undefined;
+  }
+  return [enter, exit];
+}
+
 /** Feet follow declared support surfaces; finite solid contact uses an upright capsule, not an expanded box. */
 export class GroundWorldQuery implements WorldQuery {
   readonly capabilities = Object.freeze({ geometry: 'ground-volume' as const, motion: ['ground'] as const, horizontalRaycast: true as const });
   private readonly range: RangePolicy;
+  private validatedForSegment = false;
   constructor(private readonly data: GroundData) { this.range = new RangePolicy({ bounds: data.bounds, obstacles: [] }); }
   private ready(): boolean {
+    if (this.validatedForSegment) return true;
     const b = this.data.bounds;
     return validFootprint(b) && Number.isFinite(b.minY) && Number.isFinite(b.maxY) && b.minY < b.maxY &&
       this.data.solids.every(validBox) && this.data.surfaces.every(s => validFootprint(s) && !!s.id && Number.isFinite(s.height));
@@ -121,6 +141,27 @@ export class GroundWorldQuery implements WorldQuery {
     if (!finitePoint(start) || !finitePoint(end) || !validCapsule(capsule)) return invalid;
     const steps = Math.max(1,Math.ceil(Math.hypot(end.x-start.x,end.z-start.z)/.1));
     if (steps > 10000) return invalid;
+    if (!this.ready()) return unavailable;
+    if (!this.data.terrain && start.y === end.y && this.hasFlatSupport(start, end)) {
+      const hit = this.sweep(start, { x: end.x - start.x, y: 0, z: end.z - start.z }, capsule);
+      return hit.ok ? ok(!hit.value || hit.value.fraction === 1) : hit;
+    }
+    if (!this.data.terrain) {
+      // All checks below stay inside the segment's capsule envelope, even during a step.
+      const margin = capsule.radius + epsilon;
+      const minX = Math.min(start.x, end.x) - margin, maxX = Math.max(start.x, end.x) + margin;
+      const minZ = Math.min(start.z, end.z) - margin, maxZ = Math.max(start.z, end.z) + margin;
+      const intersects = (b: Footprint): boolean => b.minX <= maxX && b.maxX >= minX && b.minZ <= maxZ && b.maxZ >= minZ;
+      const solids = this.data.solids.filter(intersects);
+      const surfaces = this.data.surfaces.filter(intersects);
+      const local = new GroundWorldQuery({ bounds: this.data.bounds, solids, surfaces });
+      local.validatedForSegment = true;
+      return local.sampleGroundSegment(start, end, capsule, steps);
+    }
+    return this.sampleGroundSegment(start, end, capsule, steps);
+  }
+
+  private sampleGroundSegment(start: Point3, end: Point3, capsule: Capsule, steps: number): QueryResult<boolean> {
     let previous={...start};
     const initial=this.overlap(previous,capsule);
     if(!initial.ok) return initial;
@@ -143,6 +184,7 @@ export class GroundWorldQuery implements WorldQuery {
       let elevated={...previous};
       const direct=this.sweep(previous,horizontal,capsule);
       if(!direct.ok) return direct;
+      if(direct.value && direct.value.fraction<1-epsilon && !direct.value.stepSurface) return ok(false);
       if(direct.value || next.y>previous.y+epsilon){
         const up=this.sweep(previous,{x:0,y:maxStepHeight,z:0},capsule);
         if(!up.ok) return up;
@@ -164,5 +206,25 @@ export class GroundWorldQuery implements WorldQuery {
       previous=destination;
     }
     return ok(Math.abs(previous.y-end.y)<1e-5);
+  }
+
+  /** Prove continuous level support before replacing sampled movement with one sweep. */
+  private hasFlatSupport(start: Point3, end: Point3): boolean {
+    const spans: [number, number][] = [];
+    for (const surface of this.data.surfaces) {
+      if (surface.height < start.y || surface.height > start.y + maxStepHeight + epsilon) continue;
+      const span = surfaceSpan(start, end, surface);
+      if (!span) continue;
+      if (surface.height > start.y) return false;
+      spans.push(span);
+    }
+    spans.sort(([a], [b]) => a - b);
+    let covered = 0;
+    for (const [enter, exit] of spans) {
+      if (enter > covered) break;
+      covered = Math.max(covered, exit);
+      if (covered === 1) return true;
+    }
+    return false;
   }
 }

@@ -18,13 +18,13 @@ export class CharacterController {
     this.walkingSpeed = speed;
     return true;
   }
-  relocate(position: { x: number; y: number; z: number }, snap = true): boolean {
+  relocate(position: { x: number; y: number; z: number }, snap = true, heading = this.state.heading): boolean {
     const { x, y, z } = position;
     const surface = this.query.surfaceSample(position);
-    if (!finitePoint(position) || !surface.ok) return false;
+    if (!finitePoint(position) || !Number.isFinite(heading) || !surface.ok) return false;
     const ground = surface.value.height;
     if ((!snap && (y < ground || y > ground + 10)) || !this.canPlace({ x, y: snap ? ground : y, z })) return false;
-    Object.assign(this.state, { x, y: snap ? ground : y, z, speed: 0, grounded: snap || y === ground,
+    Object.assign(this.state, { x, y: snap ? ground : y, z, heading, speed: 0, grounded: snap || y === ground,
       action: snap || y === ground ? 'idle' : 'jump' });
     this.velocityY = 0;
     this.jumpHeld = false;
@@ -37,11 +37,11 @@ export class CharacterController {
     if (!this.canPlace(this.state)) { this.capsule = previous; return false; }
     return true;
   }
-  constructor(world: WalkableWorld, private capsule: Capsule = defaultCapsule) {
+  constructor(world: WalkableWorld, private capsule: Capsule = defaultCapsule, spawn = { x: 0, z: 5 }) {
     this.query = worldQuery(world);
-    const surface = this.query.surfaceSample({ x: 0, y: 0, z: 5 });
-    if (!surface.ok || !this.canPlace({ x: 0, y: surface.value.height, z: 5 })) throw new Error('Character spawn is unavailable');
-    this.state = { x: 0, y: surface.value.height, z: 5, heading: Math.PI, speed: 0, grounded: true, action: 'idle' };
+    const surface = this.query.surfaceSample({ ...spawn, y: 0 });
+    if (!surface.ok || !this.canPlace({ ...spawn, y: surface.value.height })) throw new Error('Character spawn is unavailable');
+    this.state = { ...spawn, y: surface.value.height, heading: Math.PI, speed: 0, grounded: true, action: 'idle' };
   }
   update(delta: number, intent: MovementIntent, speedOverride?: number): Readonly<MotionSnapshot> {
     const dt = Math.min(Math.max(Number.isFinite(delta) ? delta : 0, 0), 0.05);

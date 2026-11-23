@@ -1,4 +1,4 @@
-import { defaultCapsule, type WorldQuery } from '../world/WorldQuery.ts';
+import { defaultCapsule, type Point3, type WorldQuery } from '../world/WorldQuery.ts';
 
 export type CharacterAction = 'idle' | 'walk' | 'run' | 'jump';
 export type CharacterVariant = 'man' | 'woman' | 'child';
@@ -14,9 +14,17 @@ export interface MotionSnapshot {
   speed: number; grounded: boolean; action: CharacterAction;
 }
 export interface WalkableBounds { minX: number; maxX: number; minZ: number; maxZ: number }
+export interface NavigationPortal {
+  readonly lower: Readonly<Point3>;
+  readonly upper: Readonly<Point3>;
+  contains(position: Readonly<Point3>): boolean;
+}
 export interface WalkableWorld {
   readonly query?: WorldQuery;
   readonly bounds: WalkableBounds;
   readonly obstacles: readonly WalkableBounds[];
+  readonly navigationWaypoints?: readonly Readonly<Point3>[];
+  /** Static layered geometry. Replace the navigation controller when the geometry changes. */
+  readonly navigationPortals?: readonly NavigationPortal[];
   groundHeight(x: number, z: number): number;
 }

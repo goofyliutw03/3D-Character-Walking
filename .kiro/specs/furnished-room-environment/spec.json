@@ -1,0 +1,14 @@
+{
+  "feature_name": "furnished-room-environment",
+  "created_at": "2026-11-19",
+  "updated_at": "2026-11-19",
+  "language": "zh-TW",
+  "phase": "implementation-complete",
+  "approvals": {
+    "requirements": { "generated": true, "approved": true },
+    "design": { "generated": true, "approved": true },
+    "tasks": { "generated": true, "approved": true }
+  },
+  "ready_for_implementation": true,
+  "approval_note": "依使用者接續授權自動 inline 審閱。已核對三項需求與任務對應、SceneSwitch 失敗復原、舊設定檔相容性及資產回復範圍。"
+}

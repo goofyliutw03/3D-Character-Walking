@@ -12,6 +12,8 @@ interface Actions {
   reset(): void;
   suspend(): void;
   toggle(): void;
+  depthEnabled?(): boolean;
+  depth?(direction: -1 | 1): void;
 }
 
 export class CameraInputManager {
@@ -210,7 +212,14 @@ export class CameraInputManager {
     canvas.addEventListener('keydown', event => {
       if (canvas.ownerDocument.activeElement !== canvas) return;
       if (event.code === 'Escape') { this.releaseLock(); actions.suspend(); return; }
-      if (event.code === 'KeyY' && !event.ctrlKey && !event.shiftKey && !event.altKey && !event.metaKey && !event.isComposing) {
+      const unmodified = !event.ctrlKey && !event.shiftKey && !event.altKey && !event.metaKey && !event.isComposing;
+      if (unmodified && (event.code === 'KeyI' || event.code === 'KeyO') && actions.depthEnabled?.()) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        if (!event.repeat) actions.depth?.(event.code === 'KeyI' ? -1 : 1);
+        return;
+      }
+      if (event.code === 'KeyY' && unmodified) {
         event.preventDefault();
         event.stopImmediatePropagation();
         if (!event.repeat) actions.toggle();
@@ -227,7 +236,7 @@ export class CameraInputManager {
     }, options);
     canvas.addEventListener('blur', () => {
       actions.clearGesture();
-      if (this.locked || this.lockPending) { this.releaseLock(); actions.suspend(); }
+      if (this.locked || this.lockPending || actions.depthEnabled?.()) { this.releaseLock(); actions.suspend(); }
     }, options);
     window.addEventListener('blur', event => {
       if (event.target !== window) return;

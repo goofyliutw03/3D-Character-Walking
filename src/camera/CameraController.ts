@@ -1,7 +1,9 @@
+import type { StaticSceneFraming } from '../scene/SceneControlPolicy';
 import { PerspectiveCamera, Quaternion, Vector3 } from 'three';
 import type { MotionSnapshot } from '../character/motion';
 import type { FollowCamera } from './FollowCamera';
 import type { FirstPersonCamera } from './FirstPersonCamera';
+import type { CameraPose } from '../settings/ViewerSettings';
 
 export type CameraView = 'overview' | 'street' | 'overhead' | 'first-person' | 'third-person' | 'front' | 'character-overhead' | 'low-angle' | 'fisheye';
 export interface CameraSubject extends Readonly<MotionSnapshot> { height: number; eyeHeight: number; eyeForward: number }
@@ -30,6 +32,7 @@ export class CameraController {
   private lens = 0;
   get fisheyeAmount(): number { return this.lens; }
   private indoor = false;
+  private staticFraming?: StaticSceneFraming;
   private selected: CameraView = 'overview';
   private tracking = false;
   private obstructionAvoidance = true;
@@ -50,7 +53,18 @@ export class CameraController {
   get transitioning(): boolean { return this.transition !== undefined; }
   constructor(private readonly camera: PerspectiveCamera, private readonly orbit: Orbit, private readonly obstruction: Pick<FollowCamera, 'constrain'>, private readonly first: FirstPersonCamera) {}
 
-  setIndoor(indoor: boolean): void { this.indoor = indoor; }
+  restorePose(pose: CameraPose): void {
+    // Character-relative cameras continue deriving their position from the live subject.
+    if (this.selected === 'first-person' || (!isStatic(this.selected) && this.tracking)) return;
+    const position = new Vector3(...pose.position);
+    const target = new Vector3(...pose.target);
+    if (position.distanceToSquared(target) > 1e-8) this.apply({ position, target });
+  }
+
+  setIndoor(indoor: boolean, framing?: StaticSceneFraming): void {
+    this.indoor = indoor;
+    this.staticFraming = framing;
+  }
 
   setObstructionAvoidance(enabled: boolean): void { this.obstructionAvoidance = enabled; }
 
@@ -194,7 +208,7 @@ export class CameraController {
   }
   private frame(view: Exclude<CameraView, 'first-person'>, subject: CameraSubject): Frame {
     if (isStatic(view)) {
-      const { position, target } = (this.indoor ? indoorPresets : staticPresets)[view];
+      const { position, target } = (this.staticFraming ?? (this.indoor ? indoorPresets : staticPresets))[view];
       return { position: new Vector3(...position), target: new Vector3(...target) };
     }
     const target = new Vector3(subject.x, subject.y + subject.height * 0.65, subject.z);

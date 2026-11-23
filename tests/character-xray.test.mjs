@@ -64,6 +64,39 @@ function fakeRenderer(render) {
     setClearColor:(c,a)=>{color.set(c);if(a!==undefined)alpha=a;},render};
 }
 
+test('xray: fixed view reuses blocker depth while redrawing moving actor depth', () => {
+  const scene = new Scene(), environment = new Group(), subject = new Group(), camera = new PerspectiveCamera();
+  scene.add(environment, subject);
+  const frames = [];
+  const renderer = fakeRenderer(() => frames.push(renderer.getRenderTarget()));
+  const pass = new CharacterXrayPass();
+  const render = (fixed = true, blockers = environment) => {
+    frames.length = 0;
+    camera.updateMatrixWorld();
+    pass.render(renderer, scene, camera, subject, blockers, fixed);
+    return [...frames];
+  };
+  try {
+    const [base, blockers, actor, output] = render();
+    assert.equal(frames.length, 4);
+    subject.position.y += 3.6;
+    assert.deepEqual(render(), [base, actor, output]);
+    camera.position.z += 1;
+    assert.deepEqual(render(), [base, blockers, actor, output]);
+    camera.zoom = 2;
+    camera.updateProjectionMatrix();
+    assert.equal(render().length, 4);
+    renderer.getDrawingBufferSize = size => size.set(800, 600);
+    assert.equal(render().length, 4);
+    assert.equal(render(true, new Group()).length, 4);
+    assert.equal(render(false).length, 4);
+    assert.equal(render().length, 4);
+    assert.equal(render().length, 3);
+  } finally {
+    pass.dispose();
+  }
+});
+
 test('xray: mode transition restores original transparent flags before mask filtering and preserves projection', () => {
   const environment=new Group(),wall=new Mesh(new BoxGeometry(8,8,.2),new MeshBasicMaterial());wall.position.set(0,1,2);environment.add(wall);
   const obstruction=new CameraObstruction(environment),desired=new PerspectiveCamera(43,1.6,.1,200),rendered=new PerspectiveCamera();

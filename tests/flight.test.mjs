@@ -67,7 +67,12 @@ test('flight strategy: explicit legal landing/takeoff, clearance and atomic fail
   const c=new FlightController(world());
   c.relocate(p(0,3,5),false);const old=c.snapshot;
   assert.equal(c.land(),false);assert.deepEqual(c.snapshot,old);
-  c.relocate(p(0,1,5),false);assert.equal(c.land(),true);
+  c.relocate(p(0,1,5),false);
+  c.update(1/30,{...neutral,z:1});
+  const heading=c.snapshot.heading;
+  assert.notEqual(heading,Math.PI);
+  assert.equal(c.land(),true);
+  assert.equal(c.snapshot.heading,heading);
   assert.equal(c.mode,'ground');assert.equal(c.snapshot.y,0);assert.equal(c.snapshot.grounded,true);
   c.update(1/60,{...neutral,z:1}); assert.equal(c.snapshot.action,'walk');
   assert.equal(c.takeOff(),true);assert.equal(c.mode,'flight');

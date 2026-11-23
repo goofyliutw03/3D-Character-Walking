@@ -1,11 +1,13 @@
-import { ACESFilmicToneMapping, PCFShadowMap, PerspectiveCamera, Scene, WebGLRenderer, type Object3D } from 'three';
+import { ACESFilmicToneMapping, Group, Mesh, MeshStandardMaterial, PCFShadowMap, PerspectiveCamera, Scene, WebGLRenderer, type Object3D } from 'three';
 import { FisheyePass } from './FisheyePass';
 import { CharacterXrayPass } from './CharacterXrayPass';
+import { EnvironmentScan } from './EnvironmentScan';
 import { WetLensEffect } from '../water/index.ts';
 export interface RenderStats { drawCalls: number; triangles: number; geometries: number; textures: number }
 
 export class SceneRenderer {
   readonly waterLens = new WetLensEffect();
+  readonly environmentScan = new EnvironmentScan();
   readonly renderer: WebGLRenderer;
   private readonly observer: ResizeObserver;
   private fisheye: FisheyePass | undefined;
@@ -37,12 +39,26 @@ export class SceneRenderer {
     this.renderer.setSize(width, height);
     this.fisheye?.resize(width, height, this.renderer.getPixelRatio());
   }
-  render(scene: Scene, fisheye: boolean | number = false, xray?: { subject: Object3D; environment: Object3D }): void {
+  async prepareEnvironmentShaders(environment: Object3D, scene: Scene): Promise<void> {
+    if (!this.renderer.extensions.has('KHR_parallel_shader_compile') || this.renderer.getContext().isContextLost()) return;
+    try {
+      // Three.js gathers lights from both roots. The detached meshes reuse the
+      // environment materials while the render scene supplies the lights once.
+      const meshes = new Group();
+      environment.traverseVisible(object => {
+        if (object instanceof Mesh && object.material instanceof MeshStandardMaterial) meshes.add(object.clone(false));
+      });
+      await this.renderer.compileAsync(meshes, this.camera, scene);
+    } catch (error) {
+      console.warn('Environment shader preparation failed', error);
+    }
+  }
+  render(scene: Scene, fisheye: boolean | number = false, xray?: { subject: Object3D; environment: Object3D; staticBlockers: boolean }): void {
     this.renderer.info.reset();
     if (xray && !this.xray) this.xray = new CharacterXrayPass(this.renderer.extensions.has('EXT_color_buffer_float'));
     if (!xray && this.xray) { this.xray.dispose(); this.xray = undefined; }
     const capture = (camera: PerspectiveCamera): void => {
-      if (xray) this.xray!.render(this.renderer, scene, camera, xray.subject, xray.environment);
+      if (xray) this.xray!.render(this.renderer, scene, camera, xray.subject, xray.environment, xray.staticBlockers);
       else this.renderer.render(scene, camera);
     };
     if (!fisheye) { this.fisheye?.finishBlend(); capture(this.camera); this.waterLens.render(this.renderer); return; }
@@ -55,6 +71,7 @@ export class SceneRenderer {
   }
   setShadows(enabled: boolean): void { this.renderer.shadowMap.enabled = enabled; }
   releaseContextResources(): void {
+    this.environmentScan.clear();
     this.fisheye?.dispose(); this.fisheye = undefined;
     this.xray?.dispose(); this.xray = undefined;
     this.waterLens.clear();
@@ -68,6 +85,7 @@ export class SceneRenderer {
     return { drawCalls: render.calls, triangles: render.triangles, geometries: memory.geometries, textures: memory.textures };
   }
   dispose(): void {
+    this.environmentScan.dispose();
     this.observer.disconnect();
     this.renderer.setAnimationLoop(null);
     this.fisheye?.dispose();

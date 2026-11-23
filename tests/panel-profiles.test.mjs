@@ -45,6 +45,23 @@ test('terrain profiles roundtrip with bounded settings while original city profi
   assert.equal(validViewerSettings(bad),false);
  }
 });
+
+test('camera position, orbit target, look offsets and projectile direction roundtrip in v1 profiles', () => {
+  const settings = citySettings();
+  settings.cameraPose = { position: [7, 4, 9], target: [1, 2, 3], yaw: -.4, pitch: .2, zoom: 1.5 };
+  settings.projectileAim = 'camera';
+  const history = new ProfileHistory();
+  history.change(settings);
+  history.save('city', settings);
+  const restored = parseProfiles(JSON.stringify(history.data), validViewerSettings);
+  assert.deepEqual(restored.temp.settings, settings);
+  assert.deepEqual(restored.profiles[0].settings, settings);
+  assert.equal(validViewerSettings(citySettings()), true);
+  for (const patch of [{ position: [1, 2] }, { target: [1, 2, Infinity] }, { zoom: 0 }]) {
+    assert.equal(validViewerSettings({ ...settings, cameraPose: { ...settings.cameraPose, ...patch } }), false);
+  }
+  assert.equal(validViewerSettings({ ...settings, projectileAim: 'invalid' }), false);
+});
 test('flight profiles validate and roundtrip without migrating existing v1 city data',()=>{
  const s=citySettings();s.environment='flight';s.scenes.flight=structuredClone(s.scenes.city);
  assert.equal(validViewerSettings(s),true);
@@ -58,4 +75,21 @@ test('OPFS refusal writes fallback and newer fallback wins on reload',async()=>{
  const store=new ProfileStorage(factories);await store.read();await store.write('{"temp":{"createdAt":2},"profiles":[]}');assert.match(store.mode,/IndexedDB/);
  primary='{"temp":{"createdAt":1},"profiles":[]}';const reloaded=new ProfileStorage(factories);assert.equal(await reloaded.read(),secondary);
  primary='{broken';const damaged=new ProfileStorage(factories);assert.equal(await damaged.read(),'{broken');
+});
+
+test('swim appearance round-trips in v1 profiles and rejects unsupported combinations', () => {
+ const original = citySettings();
+ const settings = citySettings();
+ settings.environment = 'swim';
+ settings.scenes.swim = structuredClone(settings.scenes.city);
+ settings.swimAppearance = { pose: 'jellyfish', outfit: 'scuba' };
+ const history = new ProfileHistory();
+ history.save('city', original);
+ history.save('swim', settings);
+ const restored = parseProfiles(JSON.stringify(history.data), validViewerSettings);
+ assert.deepEqual(restored.profiles[1].settings.swimAppearance, settings.swimAppearance);
+ assert.equal(restored.profiles[0].settings.swimAppearance, undefined);
+ for (const invalid of [null, { pose: 'crawl', outfit: 'scuba' }, { pose: 'dive', outfit: 'streetwear' }]) {
+   assert.equal(validViewerSettings({ ...settings, swimAppearance: invalid }), false);
+ }
 });

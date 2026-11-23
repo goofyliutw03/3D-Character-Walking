@@ -1,5 +1,32 @@
 # 剩餘驗收盤點（1Q-1，2026-10-31）
 
+## M5／M6 鍵盤與載入可存取性補驗（2026-11-22，1Z-4）
+
+使用者依 M5／M6 手動驗收步驟整體回報「Narrator 正常」，另在隔離本機入口驗證引擎 HTTP 503，逐項確認失敗提示自動播報、Tab 聚焦時念出 Reload page，回報「兩項都正常」。M5／M6 Narrator 驗收結案，記為 USER_REPORTED_PASS。正常流程為整體回報，故障流程為逐項回報；瀏覽器版本未提供。
+
+- 審閱 M5 需求 5.2、初始化需求 3.2、共用 `reportAsset`、`presentLoading`、`LoadingPanel` 與表情事件。發現 live region 在載入期間被標為忙碌，輔助技術可延後中間階段公告。移除播報區的 `aria-busy`，場景工作區仍依載入狀態標示忙碌。保留階段文字去重與進度數值獨立更新，調整對應回歸測試。
+- Chrome headless／SwiftShader、隔離 profile，從 loopback 讀正式 Release。為取樣放慢 engine 模組及 GLB 回應，另注入 engine HTTP 503 驗證復原訊息。15 項瀏覽器鍵盤與可存取性檢查通過，涵蓋初始具名不定進度、可讀下載值、骨架角色 Ready、失敗警示與 Reload page 名稱，以及 Enter、Tab、方向鍵、Mood、對話提交及 Clear 後回焦點。原始結果位於 `.local/m5-m6-ax-20261122/results.json`。
+- 初輪工具問題依序為 sandbox 內 Chrome 除錯端點無法啟動、下載取樣競態及 CDP 的 Enter 缺少字元事件。以核准的 loopback 執行、分段下載及完整鍵盤事件重驗通過。Inline 複查核對播報區位於忙碌場景區之外、狀態更新去重及焦點行為，該範圍無未解發現。
+- 工具驗證限於 Chrome 可存取性與鍵盤；Narrator 實際播報採用上方使用者驗收結果。
+
+## SCENE-04 Release 降級路徑補驗（2026-11-22）
+
+GTX 1060／ANGLE D3D11 的 Chrome headless 透過隔離設定檔讀取正式 Release。頁面啟動前將 `EXT_color_buffer_float` 查詢結果覆寫為空，另保留原始查詢結果。十四個取樣均確認原生支援、注入結果為空、繪製計數大於零、WebGL error 為 0，且全程未記錄頁面或主控台錯誤。取樣涵蓋三種角色動畫、魚眼、X-ray、組合模式、夜景、縮放視窗及水景近遠切換。原始 JSON 與截圖位於忽略目錄 `.local/scene-04-fallback-review/`。
+
+程式碼審閱核對 SceneRenderer 依此擴充查詢選擇 UnsignedByte render target。此輪涵蓋降級分支與繪製回歸，COMPAT-04 仍待原生缺少擴充的實機驗證，SCENE-04 維持 PARTIAL。
+
+同一 Release、GTX 1060 與注入方式在 Edge headless 重複取得 14 個有效取樣。所有取樣皆有繪製且 WebGL error 為 0，無頁面或主控台錯誤。人工檢視 Edge 的 X-ray 與魚眼＋X-ray 截圖，以及 Chrome 的組合畫面，城市與角色均可見，組合模式具完整魚眼圓形畫面。取樣在開闊街道，固定遮擋輪廓與魚眼濕鏡仍依既有專項證據判定。
+
+## SCENE-04 GTX 1650 複驗與審查修正（2026-11-20）
+
+以下為 2026-11-20 來源工作站的驗證，隨交接版 `9c475ed6ee0aaea1b3a4c97c8910982fce2acabf` 匯入。修正版以 `efe5533` 為基準。Windows x64 build 26100，Chrome 157.0.8103.80／Edge 157.0.4341.60，實際 WebGL2 renderer 為 ANGLE／GTX 1650／D3D11，驅動 560.94。兩個入口原生支援 `EXT_color_buffer_float`。
+
+- COMPAT-01：預設 Needle 在雙瀏覽器 dev 各 19 個取樣通過，WebGL 錯誤為 0。正式 preview 另完成雙瀏覽器 Needle 啟動與 `water.html` 濕鏡／BFCache 恢復。
+- COMPAT-02／03：此次補另一張實體 GPU 上的瀏覽器啟動、四場景、三角色動畫、Profiles、飛行、夜間、魚眼／X-ray、resize 與水景的操作證據；GTX 1650 的固定遮擋輪廓與魚眼圓外濕鏡像素讀回仍待補。
+- COMPAT-04：環境原生支援擴充，UnsignedByte fallback 未觸發。SCENE-04 維持 PARTIAL；未量測正式效能、手機 LAN 或讀屏。
+
+[完整交接與工作清單](team-handoff.md#2026-11-20-交接進度與獨立審查)
+
 ## SCENE-04 交接版實體 GPU 複驗（2026-11-19）
 
 ### COMPAT-02 遮擋與濕鏡像素複驗

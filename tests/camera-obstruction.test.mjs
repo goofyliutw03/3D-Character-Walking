@@ -57,6 +57,26 @@ test('obstruction 3.1–3.2: all layered blockers fade as groups, clear on exit,
   } finally { dispose(); }
 });
 
+test('transparent blockers fade only the occluding part of a compound environment model', () => {
+  const { environment, wall, effect, tick, dispose } = setup();
+  const model = new Group();
+  model.userData.independentCameraBlockers = true;
+  const original = wall.material;
+  const neighbor = new Mesh(wall.geometry, original);
+  neighbor.position.set(20, 3, -3);
+  model.add(wall, neighbor);
+  environment.add(model);
+  try {
+    effect.setMode('transparent');
+    tick();
+    assert.equal(wall.material.opacity, .25);
+    assert.equal(neighbor.material, original);
+    tick(false, true, { ...subject, x: -20 });
+    assert.equal(wall.material, original);
+    assert.equal(neighbor.material, original);
+  } finally { dispose(); }
+});
+
 test('obstruction 4.1–4.3: first-person bypass, wireframe, projection and reduced motion restore completely', () => {
   const { wall, desired, rendered, effect, tick, dispose } = setup();
   const original = wall.material;

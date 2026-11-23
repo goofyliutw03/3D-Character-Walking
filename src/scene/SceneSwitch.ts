@@ -6,7 +6,11 @@ import type { EnvironmentLight } from './EnvironmentLights';
 import type { Headlamp } from './Headlamp';
 import { sceneControlPolicy, type SceneControlPolicy } from './SceneControlPolicy.ts';
 
-export type EnvironmentId = 'city' | 'cave' | 'terrain' | 'flight';
+import type { EnvironmentId } from './EnvironmentId.ts';
+import type { SwimExit } from '../character/SwimController.ts';
+import type { WaterVolume } from '../water/WaterVolume.ts';
+import type { Point3 } from '../world/WorldQuery.ts';
+export type { EnvironmentId } from './EnvironmentId.ts';
 export interface TerrainSettings { quality: 'standard' | 'low'; wind: boolean }
 export interface Environment {
   readonly id: EnvironmentId;
@@ -14,12 +18,19 @@ export interface Environment {
   readonly environment: Group;
   readonly walkableWorld: WalkableWorld;
   readonly spawn: { x: number; z: number };
+  readonly targetSpawn?: { x: number; z: number };
   readonly cityFeatures: boolean;
   readonly controls?: SceneControlPolicy;
   readonly ceiling?: number;
   readonly maxPlacementHeight?: number;
+  readonly cameraGroundHeight?: (position: { x: number; y: number; z: number }) => number;
   readonly headlamp?: Headlamp;
   readonly lights?: readonly EnvironmentLight[];
+  readonly swim?: {
+    water: WaterVolume;
+    exit: SwimExit;
+    updateCamera(position: Point3): boolean;
+  };
   readonly terrain?: {
     getSettings(): TerrainSettings;
     configure(patch: Partial<TerrainSettings>): boolean;

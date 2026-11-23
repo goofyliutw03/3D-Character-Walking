@@ -42,7 +42,7 @@ export function bindCharacterEditor(root: ParentNode, api: EditorAPI, signal: Ab
   root.querySelector('#position-apply')!.addEventListener('click', () => {
     const accepted = api.applyPosition({x:field('x').valueAsNumber,y:field('y').valueAsNumber,z:field('z').valueAsNumber},snap.checked);
     result.textContent = accepted ? 'Position applied. Movement and navigation stopped.'
-      : 'Position rejected. Use finite XYZ with full character clearance inside the active scene. Ground placement is limited to 10m above support; flight uses its airspace bounds.';
+      : 'Position rejected. Use finite XYZ with full character clearance inside the active movement area.';
   }, {signal});
   const speed = root.querySelector<HTMLInputElement>('#walk-speed')!;
   speed.addEventListener('input', () => {

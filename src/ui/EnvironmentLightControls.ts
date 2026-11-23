@@ -13,8 +13,9 @@ export function bindEnvironmentLights(host: HTMLElement, app: LightApp, signal: 
   function sync(): void {
     const lights = app.getEnvironmentLights();
     host.hidden = host.inert = lights.length === 0;
+    if (!lights.length && host.childElementCount) return;
+    const expanded = new Set([...host.querySelectorAll('details[open]')].map(group => group.id));
     host.replaceChildren();
-    if (!lights.length) return;
     const heading = document.createElement('h3');
     heading.textContent = 'Enclosed space lights';
     host.append(heading);
@@ -31,6 +32,7 @@ export function bindEnvironmentLights(host: HTMLElement, app: LightApp, signal: 
     for (const kind of ['sun', 'ambient', 'torch', 'crystal'] as const) {
       const group = document.createElement('details');
       group.id = `environment-light-${kind}`;
+      group.open = expanded.has(group.id);
       const summary = document.createElement('summary');
       summary.textContent = { sun: 'Skylight', ambient: 'Ambient', torch: 'Torches', crystal: 'Crystals' }[kind];
       group.append(summary);

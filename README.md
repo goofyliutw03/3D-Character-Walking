@@ -63,7 +63,7 @@ Camera 同時提供 **First person**（角色眼位，垂直 FOV 70°）與 **Th
 
 也可直接使用 `pnpm install --frozen-lockfile`、`pnpm dev`、`pnpm build`。正式建置輸出為 `dist/`；安裝版本以 `pnpm-lock.yaml` 為準。
 
-以下 Stage 1.2 段落是早期完成紀錄；目前工作樹已有骨架 GLB、表情、導航、交通、光照、水景與城市／洞穴整合。完整名詞、原理、架構與限制請讀 [3D 基礎知識與專案架構指南](docs/3d-knowledge-architecture.md)，相關工程與人工驗收仍依各 validation 及 [剩餘驗收盤點](docs/remaining-acceptance.md)。
+以下 Stage 1.2 段落是早期完成紀錄。目前工作樹支援城市、洞穴、自然地表、飛行、莊園及 Tidal Pool。名詞、原理與現況見 [3D 基礎知識與專案架構指南](docs/3d-knowledge-architecture.md)，實機狀態見[剩餘驗收盤點](docs/remaining-acceptance.md)。
 
 Stage 1.2 當時完成城市街景基礎：道路、人行道、建築、樹木、路燈、長椅、Orbit 鏡頭、Overview／Street level／From above 預設、日光／黃昏與陰影切換，並顯示 WebGL2 與 FPS；人物、GLB 與動畫為當時的後續工作。資產位於 `public/assets/`，Blender 原始檔位於 `blender/`。
 

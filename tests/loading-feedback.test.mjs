@@ -23,8 +23,9 @@ test('expressions 4.1–4.3,5.2: loading, actual ready and literal errors have a
   presentLoading(element, state);
   assert.equal(element.textContent, '<b>Failed</b> Try reloading.');
   assert.equal(attributes.role, 'alert');
-  assert.equal(attributes['aria-busy'], 'false');
+  assert.equal(attributes['aria-live'], 'assertive');
   presentLoading(element, { phase: 'loading', message: 'Loading…' });
   assert.equal(attributes.role, 'status');
-  assert.equal(attributes['aria-busy'], 'true');
+  assert.equal(attributes['aria-live'], 'polite');
+  assert.equal(attributes['aria-busy'], undefined);
 });

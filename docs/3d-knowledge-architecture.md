@@ -1,6 +1,6 @@
 # 3D 基礎知識與專案架構指南
 
-核對日期：2026-11-08（Asia/Taipei）。本指南接續「介紹 3D 技術與專案架構」及 [2A-1]～[2A-8] 知識 chats，提供可長期查閱的總索引。以目前工作樹為準，基底 HEAD 為 `2825627`、分支為 `codex/v02-particle-system`；包含尚未提交的 Needle、多場景、相機輸入、點地與建築整合，不能用該 commit 單獨重現全部內容。
+核對日期為 2026-11-22（Asia/Taipei）。本指南接續 [2A-1]～[2A-8] 知識 chats。核對範圍是 `codex/bounded-swim` 工作樹、HEAD `efe5533`，含尚未提交的環境、資產及測試。重現現況需要這些工作樹內容。
 
 閱讀時區分三種證據：**程式存在**表示目前可以找到實作；**工程驗證**表示指定測試或瀏覽器樣本通過；**人工驗收**表示使用者對明確操作範圍的確認。三者不互相取代。需求來源是 [development-plan](development-plan.md)，人工狀態以 [remaining-acceptance](remaining-acceptance.md) 最新裁定為準；本指南不修改授權或待辦。
 
@@ -17,6 +17,7 @@
 | 2A-7 泡泡與手機 | [DOM 與互動介面](#dom-與互動介面) | [expression](../src/expression/)、[input](../src/input/) |
 | 2A-8 架構與發佈 | [整體架構與逐幀流程](#整體架構與逐幀流程)、[驗證與發佈](#驗證與發佈) | [ViewerApp](../src/engine/ViewerApp.ts)、[main](../src/main.ts) |
 | 後續擴充 | [粒子水景與鏡頭效果](#粒子水景與鏡頭效果)、[多場景與編輯工具](#多場景與編輯工具)、[交通模擬](#交通模擬) | lighting、water、simulation、scene |
+| 六環境專題 | [世界查詢與莊園](3d-environments-and-effects.md#世界查詢與多樓層)、[飛行](3d-environments-and-effects.md#有界飛行)、[水池](3d-environments-and-effects.md#潮汐水池)、[掃描](3d-environments-and-effects.md#環境掃描)、[Profiles](3d-environments-and-effects.md#面板設定與鏡頭還原) | world、character、engine、settings |
 
 建議先讀座標、渲染、架構，再依正在觀察的功能深入。閱讀程式可從 `main.ts → ViewerApp → 所屬模組`，不要從 shader 或數學公式開始猜整體行為。
 
@@ -89,22 +90,23 @@ WebGPU 已做本機相容性評估，正式入口仍用 WebGL2。當時新 rende
 | scene/character/simulation | 環境、視覺角色、交通狀態 | 環境提供可走世界及能力契約。 |
 | camera/engine/water | 構圖、投影、遮擋、渲染與後處理 | 畫面上的穿透效果不改變實際碰撞。 |
 
-預設嘗試 Needle；`?engine=legacy` 明確使用原排程，Needle 初始化失敗也可回退。兩者都呼叫同一 `ViewerApp.update`。Needle 建立 Context，把 ViewerFrame Behaviour 掛到根場景，animation loop 呼叫 Context.update；繪圖則由 Context.renderNow 經自訂 composer pass 呼叫原有 SceneRenderer。此設計保留水、魚眼、X-ray 的 GLSL 與多通道順序，並不是把整個產品換成 Needle 專用場景／資產格式。
+預設嘗試 [NeedleRuntime](../src/engine/NeedleRuntime.ts)，`?engine=legacy` 明確使用原排程，Needle 初始化失敗也可回退。兩者共用 `ViewerApp.update`。Needle 的 Context.clear 會換掉內部場景，`efe5533` 在該場景補上元件 API，使 EventSystem 初始化可取得元件，作用域限於該場景。動畫迴圈呼叫 Context.update，內部 ViewerFrame Behaviour 推進應用。Context.renderNow 再經自訂 composer pass 呼叫 SceneRenderer，繪製應用擁有的場景。
 
 ```mermaid
 flowchart TD
   A[animation loop：Needle Context 或 legacy] --> B[環境時間、水景及輸入取樣]
   B --> C[選擇 auto-run / tour / destination / manual 意圖]
-  C --> D[CharacterController：碰撞、重力、MotionSnapshot]
+  C --> D[地面／飛行／游泳控制器：碰撞、MotionSnapshot]
   D --> E[程序角色或骨架 Mixer、Target、交通、粒子]
   E --> F[相機策略、平滑轉場、遮擋及頭燈]
   F --> G[DOM 泡泡、角色標籤、目的地與 Inspector]
-  G --> H[SceneRenderer：普通或 X-ray 擷取]
+  G --> S[更新掃描 uniform]
+  S --> H[SceneRenderer：重設統計、普通或 X-ray 擷取]
   H --> I[可選魚眼重映射]
   I --> J[濕鏡疊加與畫面輸出、統計]
 ```
 
-這是依目前 update 整理的主要先後順序；部分狀態回報在中途發生。delta time（幀間時間）上限約 0.05 秒，避免切回視窗時一次跨越很遠；水／交通時間另對隱藏頁面處理。這種變動步長加上限的更新不等於固定步長、完全決定性的物理引擎。
+這是主要先後順序。一般更新及水景／交通有 0.05 秒上限，後兩者在隱藏頁面使用零增量。飛行與游泳取得可見頁面的幀間時間，再各自限制固定子步數。掃描以幀時間更新材質 uniform，水和掃描都參與場景擷取，X-ray 合成先於魚眼，WetLens 最後疊加。
 
 ## 相機投影與遮擋
 
@@ -137,7 +139,7 @@ PerspectiveCamera（透視相機）讓遠物變小。FOV 是視角、aspect 是�
 
 [InputManager](../src/input/InputManager.ts) 收集鍵盤與方向按鈕；TapGesture 和 MouseOrbitGesture 區別短點、長按、拖曳及多指。相同按鍵／拖曳在 standard、running-orbit、inspection 模式可以有不同用途，因此 [CameraInputManager](../src/input/CameraInputManager.ts) 需先詢問模式政策，再決定控制鏡頭或導航。文字輸入焦點、失焦、取消及切換模式也必須清理狀態。
 
-MovementIntent 是「想往哪裡走、是否跑／跳」；MotionSnapshot 是「控制器確認後的位置、朝向、動作、速度」。[CharacterController](../src/character/CharacterController.ts) 是主角世界運動權威：水平方向套速度與 dt，垂直方向用重力 18 m/s²、跳躍速度與 grounded 狀態處理。碰撞用角色半徑、軸對齊障礙 AABB 與分步／分軸解算，避免直接穿牆。AABB 是各軸最小／最大值包住的盒子；它便宜且保守，但不是任意旋轉模型的精密物理碰撞。
+MovementIntent 表示方向與動作意圖，MotionSnapshot 提供控制器確認後的位置、朝向、動作和速度。[CharacterController](../src/character/CharacterController.ts) 管理地面速度、重力、跳躍與著地，依活動環境的查詢檢查支撐與障礙。飛行和水域有各自控制器。AABB 用各軸上下界描述盒形障礙，城市採 XZ 外包絡，其餘場景的體積方案見[世界查詢](3d-environments-and-effects.md#世界查詢與多樓層)。
 
 [AutoRunControls](../src/input/AutoRunControls.ts) 維護自動奔跑、觀看偏角、縮放與 inspection 狀態；[PathTour](../src/navigation/PathTour.ts) 則管理指定 waypoint 巡迴。兩者不是同一功能。ViewerApp 將輸入來源排序並互斥，手動移動、Stop、點地或切換場景會依既有規則停止／取消相關自動行為，避免兩個控制器同時推動角色。
 
@@ -150,7 +152,7 @@ MovementIntent 是「想往哪裡走、是否跑／跳」；MotionSnapshot 是�
 
 「可點穿牆」只代表選取射線穿過裝飾，不代表人物可以穿牆。GroundPicker 在候選數／三角形數達門檻時預算包圍盒，不等於建立了通用 BVH 或自動 NavMesh。動態骨架 blocker 需更新骨架及包圍體；變更地面幾何或候選集合需重建 picker。
 
-[DestinationNavigation](../src/navigation/DestinationNavigation.ts) 將障礙向外擴張角色半徑，在可見的障礙角點間建立 visibility graph，再用 Dijkstra 找最短路；沿 waypoint 前進，約 0.08m 視為抵達，停滯約 1.5 秒標為 blocked。這套主角導航主要依 XZ 與場景 groundHeight 工作：能選到斜面／多高度的測試，不代表已提供多樓層路網。NPC 使用的 [SurfaceNavMesh](../src/navigation/SurfaceNavMesh.ts) 是另一套凸表面導航；不能再概括說整個專案「未使用 NavMesh」。
+[DestinationNavigation](../src/navigation/DestinationNavigation.ts) 在候選點之間建立經驗證的路段，再搜尋路徑並追蹤 waypoint。城市可利用障礙外擴角點，莊園另有樓層與樓梯通道，路段須通過支撐與角色淨空檢查。NPC 使用的 [SurfaceNavMesh](../src/navigation/SurfaceNavMesh.ts) 是獨立的凸表面導航。
 
 ## 骨架動畫與資產
 
@@ -180,6 +182,8 @@ glTF 是場景／材質／動畫交換格式，GLB 是其二進位封裝。它�
 
 WebGL context loss 是 GPU 繪圖狀態中斷，不只是下載失敗。ViewerApp 對 canvas 事件停止相關操作並處理恢復；既有故障注入只證明特定情境，不能推論所有 driver/device loss 都能無損恢復。WebGPU device loss 若未來採用，需要另行設計 backend 與資源重建。
 
+[主入口](../src/main.ts) 與 [WaterPrototype](../src/water/WaterPrototype.ts) 都在 `pagehide` 檢查 `event.persisted`。進入 BFCache（上一頁／下一頁快取）時保留實例，正常離頁才釋放。
+
 ## DOM 與互動介面
 
 [ExpressionManager](../src/expression/ExpressionManager.ts) 保存情緒與文字，ExpressionOverlay 顯示 emoji／speech bubble。這是頭頂 UI，不是臉部骨骼或 morph target（形變目標）動畫。內容投影流程為 `世界頭頂 anchor → 相機空間 → NDC → 容器像素`，一般透視可寫 `x_px=(ndc_x+1)×width/2`、`y_px=(1-ndc_y)×height/2`；魚眼另用對應映射，第一人稱隱藏角色上方泡泡。
@@ -204,11 +208,11 @@ DOM 疊在 canvas 上，不自動使用 GPU depth buffer，所以牆後泡泡不
 
 [SceneSwitch](../src/scene/SceneSwitch.ts) 保留長存 root，當前環境提供 scene、environment、walkableWorld、spawn、lights/headlamp 與 controls。切換先準備新環境，失敗保留舊環境，版本 token 排除過時結果；採用後重綁移動世界、GroundPicker、遮擋集合與相機政策，清理粒子／濕鏡／標籤並釋放舊環境。`syncAppearance` 讓 root 使用當前場景 background/fog；僅把子 Scene 掛上去不會自動繼承所有根渲染狀態。
 
-目前可選環境為 city、cave。SceneControlPolicy 已能描述 open、semi-open、semi-enclosed、transition、enclosed、underwater 的能力預設，但這些分類不是六個已交付場景；飛行、水域與太空仍是後續規劃。洞穴用室內構圖與相機邊界，戶外和室內不應硬套相同縮放／跟隨規則。
+目前入口為城市 `city`、洞穴 `cave`、自然地表 `terrain`、飛行 `flight`、莊園 `room`、Tidal Pool `swim`。原客廳保留於程式與資產，`room` 現在由 ManorScene 建立。[EnvironmentId](../src/scene/EnvironmentId.ts)、[SceneControlPolicy](../src/scene/SceneControlPolicy.ts) 分別定義入口與個別環境的操作能力。太空仍在規劃。
 
 [SceneObjectInspector](../src/inspector/SceneObjectInspector.ts) 顯示實際場景樹與編號標籤。編號只保證本次頁面生命週期穩定，不是可持久化的資產 ID；checkbox 控制標籤而非物件可見性，regex 與編號範圍取交集。[CharacterEditor](../src/ui/CharacterEditor.ts) 可提交 XYZ、貼地與手動速度，仍由 CharacterController 驗證位置；這是有限的人物編輯器，不是任意拖曳建模／場景存檔工具。
 
-規格文件有已知不同步：multi-scene-foundation 的 tasks 已勾選並有 validation，但 spec.json 仍為 tasks-generated、approvals=false；auto-run-camera-controls 也仍是 tasks-generated。此處只揭露現況，不代替修改核准紀錄。新場景及輸入證據見 [multi-scene validation](../.kiro/specs/multi-scene-foundation/validation.md)、[auto-run validation](../.kiro/specs/auto-run-camera-controls/validation.md)。
+多場景與自動奔跑規格的 phase 現為 `implementation-complete`。多場景的 approvals 仍記錄為 false。實際操作範圍見 [multi-scene validation](../.kiro/specs/multi-scene-foundation/validation.md)、[auto-run validation](../.kiro/specs/auto-run-camera-controls/validation.md)。
 
 ## 交通模擬
 
@@ -238,7 +242,7 @@ SceneRenderer 每幀重設 renderer.info，再累計自訂多 pass 的 calls/tri
 
 release 依序 tests → build → sync，只將 dist 增量發佈至正式 Release：SHA256 相同不重寫，資產先更新、index.html 最後在同目錄替換，不 mirror、不刪陌生檔或舊 hash。固定名稱資產更新不是全版本交易，已開頁面需重新整理。本指南位於 docs，不會因 release 自動變成網站上的教學頁。流程與回退限制見 [release](release.md)。
 
-`preview-release` 使用 localhost:4174；已有服務時不停止原服務。localhost 瀏覽器檢查不是手機 LAN 驗收。現有使用者已確認手機完整操作與 IME 的指定範圍，摺疊專項取消；跨 GPU／瀏覽器仍部分待驗，正式效能門檻與螢幕閱讀器仍有待辦。後續新增輸入與場景功能應查自己的 validation，不能借用舊確認擴張範圍。
+`preview-release` 使用 localhost:4174，沿用既有服務。Narrator 正常流程由使用者整體確認，HTTP 503 情境下的失敗播報及 Reload page 名稱另逐項通過。IME 與早期手機操作亦依使用者回報結案，範圍以原紀錄為準，摺疊專項已取消。GTX 1650 的固定 X-ray 遮擋及魚眼濕鏡像素對照、原生缺少浮點擴充時的 fallback、正式效能門檻及目標手機 LAN 仍待對應環境。Chrome／Edge 的注入式 fallback 已驗指定樣本，屬故障注入證據。[剩餘驗收](remaining-acceptance.md)
 
 ## 舊說明的現況修正
 
@@ -248,15 +252,24 @@ release 依序 tests → build → sync，只將 dist 增量發佈至正式 Rele
 | 路燈只有外觀、不照亮環境 | 現有路燈 PointLight、手動／距離陰影，以及獨立粒子光池。 |
 | 表情尚未接入 | 已有 DOM emoji、speech bubble 與編輯器；不是臉部 morph 動畫。 |
 | 專案沒有 NavMesh、NPC 或巡迴 | 現有 NPC 凸表面 NavMesh、交通與主角 PathTour；主角點地仍是另一套規劃。 |
-| 只能單一城市場景 | 工作樹已有 city/cave 切換；其他空間分類是契約，不能當已完成場景。 |
+| 只能單一城市場景 | 工作樹已有六個可切換環境，詳見[環境專題](3d-environments-and-effects.md)。 |
 | 使用 Needle 就改用 WebGPU | Needle 共用現有 WebGL2 renderer；WebGPU 仍維持評估結論。 |
 
 閱讀歷史設計請保留其日期與授權背景；遇到不一致，先核對本指南連到的程式、development-plan 最新追加紀錄及對應 validation，而不是只更新舊文件日期。
 
-## 本次文件更新驗證（2A-9）
+## 歷史文件更新驗證（2A-9）
 
 2026-11-08：對照原知識 chat、目前程式、roadmap、spec phase/tasks 與相關 validation 完成 inline 文件審閱；只新增本指南及修改 README 的歷史說明、development-reference 入口，保留所有先前未提交差異。74 個現況指南／reference 的本地路徑檢查通過，git diff --check 通過（僅既有換行提示）。本次不修改 spec 狀態或產品程式，未 commit／push，未新增真機或 GPU 畫面驗收。
 
 `./scripts/project.ps1 release` exit 0：166/166 tests PASS，`tsc --noEmit && vite build` PASS；保留既有 chunk >500kB 建議提示。22:29:31 +08 完成 Release，比對 30 檔全部相同（Added 0／Updated 0／Skipped 30），沒有重寫建置產物。文件不在 dist，無需為本次文字更新重跑瀏覽器視覺矩陣。
 
 token 用量：無法取得精確值；本次含來源 chat 唯讀交接與本 chat 文件更新，缺少官方起訖讀數，未以估算或 context 比例代替。
+
+## 2026-11-22 知識庫審閱
+
+| 輪次 | 範圍、發現與修正 | 重驗 |
+| --- | --- | --- |
+| 1 | 核對 checkout、六環境入口、運動與查詢、材質及 Profiles。將舊的場景枚舉、平面導航與規格 phase 敘述更新，新增專題說明相機、運動和外觀的責任。 | 逐項對照入口、模組和相應規格／驗證。 |
+| 2 | 核對 Needle、逐幀順序、BFCache、掃描與水域歷史樣本。修正入口日期及 README 的環境敘述，採用最新讀屏與 IME 裁定，保留固定像素、原生 fallback、手機 LAN 與效能缺口。 | 重查文件連結、標題錨點、既有工作樹狀態及 diff。文件範圍內無未解的可操作發現。 |
+
+本次 Release 於 21:30:51（台北時間）完成，254 項測試、TypeScript 與 Vite 建置通過，40 個產物雜湊一致並略過，沿用既有 chunk 大小提示。本次重跑涵蓋測試、建置及增量同步。瀏覽器、硬體和人工結果引用各原始驗證時點。

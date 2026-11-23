@@ -1,8 +1,9 @@
 import { CameraModeManager } from '../camera/CameraModeManager';
-import type { SceneSettings, ViewerSettings } from '../settings/ViewerSettings';
+import type { ProjectileAim, SceneSettings, ViewerSettings } from '../settings/ViewerSettings';
 import { validViewerSettings } from '../settings/validateViewerSettings';
 import { sceneControlPolicy } from '../scene/SceneControlPolicy';
 import { SceneSwitch, type Environment, type EnvironmentId, type TerrainSettings } from '../scene/SceneSwitch';
+import { isEnvironmentId } from '../scene/EnvironmentId';
 import { PathTour, parseWaypoints, type TourSnapshot } from '../navigation/PathTour';
 import { cameraHeading, solarPosition, type SolarSettings } from '../scene/SolarPosition.ts';
 import type { LightSettings } from '../scene/EnvironmentLights';
@@ -13,10 +14,13 @@ import { ParticleInteraction, type ParticleSettings, type ParticleSnapshot } fro
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CityScene, type TimeOfDay } from '../scene/CityScene';
 import { SceneRenderer, type RenderStats } from './SceneRenderer';
+import { preparePointLightMeshes } from './PointLightShader';
 import type { NeedleRuntime } from './NeedleRuntime';
 import { Character } from '../character/Character';
 import { CharacterController } from '../character/CharacterController';
 import { FlightController } from '../character/FlightController';
+import { SwimController, type SwimDepthDirection } from '../character/SwimController';
+import { defaultSwimAppearance, validSwimAppearance, type SwimAppearance } from '../character/SwimAppearance.ts';
 import { resetShadowResources, releaseSceneGpuResources } from './ContextResources';
 import type { CharacterVariant, MotionSnapshot } from '../character/motion';
 import { characterCapsules } from '../character/motion';
@@ -45,11 +49,13 @@ import { TrafficView } from '../simulation/TrafficView.ts';
 import { CityBuildings, type CityAssetState } from '../scene/CityBuildings.ts';
 
 export type CameraPreset = CameraView;
+export interface SwimStatus { swimming: boolean; climbing: boolean; bottom: boolean; canClimb: boolean; atWaterline: boolean; submerged: boolean; cameraSubmerged: boolean; droppedTime: number; rigged: boolean }
 export interface CharacterStatus { flight: { mode: 'ground' | 'flight'; warning: string | null; droppedTime: number } | null; groundPenetration: boolean; autoRun: boolean; autoRunPaused: boolean; variant: CharacterVariant; action: MotionSnapshot['action']; running: boolean; following: boolean; firstPerson: boolean; cameraView: CameraView; navigation: NavigationStatus; tour: TourSnapshot; obstructionMode: ObstructionMode; motion: Readonly<MotionSnapshot>; walkSpeed: number; buildings: CityAssetState }
 
 export class ViewerApp {
   private sceneSettings: Partial<Record<EnvironmentId, SceneSettings>> = {};
   private sceneDefaults: Partial<Record<EnvironmentId, SceneSettings>> = {};
+  private projectileAim: ProjectileAim = 'target';
   private readonly camera = new PerspectiveCamera(43, 1, 0.1, 200);
   private readonly indoorCameraBounds = new Box3();
   private readonly desiredCamera = this.camera.clone();
@@ -62,7 +68,12 @@ export class ViewerApp {
   private readonly view: SceneRenderer;
   private readonly controls: OrbitControls;
   private readonly character: Character;
-  private movement: CharacterController | FlightController;
+  private movement: CharacterController | FlightController | SwimController;
+  private cameraSubmerged = false;
+  private swimAppearance: SwimAppearance = { ...defaultSwimAppearance };
+  private swimSpiral?: SwimDepthDirection;
+  private swimCameraY?: number;
+  private swimEyeHeight?: number;
   private readonly input: InputManager;
   private navigation: DestinationNavigation;
   private groundPicker: GroundPicker;
@@ -119,7 +130,9 @@ export class ViewerApp {
     this.buildings = new CityBuildings(this.city.environment, this.city.buildingFallbacks, () => {});
     this.traffic = new TrafficSimulation(this.city.walkableWorld);
     this.city.scene.add(this.trafficView.root);
-    this.obstruction = new CameraObstruction(this.city.environment);
+    this.view.environmentScan.watch(this.city.environment);
+    this.view.environmentScan.watch(this.trafficView.actors);
+    this.obstruction = new CameraObstruction(this.city.environment, this.view.environmentScan.prepareMaterial);
     this.follow = new FollowCamera(this.city.environment.children);
     this.desiredCamera.copy(this.camera);
     this.controls = new OrbitControls(this.desiredCamera, this.view.renderer.domElement);
@@ -128,12 +141,17 @@ export class ViewerApp {
     this.navigation = new DestinationNavigation(this.city.walkableWorld);
     this.tour = new PathTour(this.city.walkableWorld);
     this.input = new InputManager(window, document, () => { this.navigation.cancel(); this.tour.cancel(); this.tap?.cancel(); },
-      () => { if (this.movement instanceof FlightController) this.movement.stop(); });
+      () => {
+        this.stopSwimSpiral();
+        if (this.movement instanceof FlightController || this.movement instanceof SwimController) this.movement.stop();
+      });
     this.motion = this.movement.update(0, this.input.sample());
     this.city.updateLampShadowPosition(this.motion);
     this.character.update(this.motion, 0);
+    preparePointLightMeshes(this.character.root);
     this.scenes.root.add(this.character.root);
     this.target = new TargetActor(this.city.walkableWorld, state => targetReport?.(state));
+    this.view.environmentScan.watch(this.target.root);
     this.scenes.root.add(this.target.root,this.particles.root,this.particles.lightRoot,this.casterMarker,this.targetMarker);
     for (const role of ['Caster','Target']) {
       const label = document.createElement('div'); label.className = `actor-label actor-${role.toLowerCase()}`;
@@ -162,8 +180,9 @@ export class ViewerApp {
       onState: state => assetReport?.(state),
       onSwap: model => {
         if (model) {
+          preparePointLightMeshes(model.root);
           model.setShadows(this.shadows);
-          model.update(this.motion, 0);
+          this.updateRiggedCharacter(model, 0);
           model.root.visible = this.cameras.characterVisible;
           this.scenes.root.add(model.root);
         }
@@ -201,9 +220,11 @@ export class ViewerApp {
       reset: () => {
         this.cameraModes.resetLook();
       },
-      suspend: () => { this.cameraModes.resetGestures(); this.autoRun.suspend(); this.characterReport?.(this.getCharacterStatus()); },
+      suspend: () => { this.stopSwimSpiral(); this.cameraModes.resetGestures(); this.autoRun.suspend(); this.characterReport?.(this.getCharacterStatus()); },
       toggle: () => this.setAutoRun(this.autoRun.inspecting || !this.autoRun.enabled ||
         this.cameraModes.inputMode === 'stationary-look'),
+      depthEnabled: () => this.hasExternalSwimControls(),
+      depth: direction => this.setSwimSpiral(direction),
     });
     this.mouseOrbit = new MouseOrbitGesture(canvas,
       () => { this.tap.cancelCandidate(); this.cameras.beginCharacterOrbit(); },
@@ -260,6 +281,7 @@ export class ViewerApp {
     void this.buildings.load();
   }
   private async startNeedle(): Promise<void> {
+    void this.view.prepareEnvironmentShaders(this.city.environment, this.scenes.root);
     try {
       const { NeedleRuntime } = await import('./NeedleRuntime');
       if (this.disposed) return;
@@ -294,17 +316,29 @@ export class ViewerApp {
     this.scenes.syncAppearance();
     this.mouseOrbit.update(delta);
     const manual = this.input.sample();
-    if (!this.autoRun.inspecting && (manual.x || manual.z || manual.jump)) { this.autoRun.stop(); this.navigation.cancel(); this.tour.cancel(); }
+    const swim = this.movement instanceof SwimController ? this.movement : undefined;
+    const manualOverride = (!this.autoRun.inspecting || !!swim) && !!(manual.x || manual.z || manual.jump || (swim && manual.vertical));
+    if (manualOverride) {
+      this.stopSwimSpiral(); this.autoRun.stop(); this.navigation.cancel(); this.tour.cancel();
+    }
     if (this.cameraInput.lockActive && !this.autoRun.enabled) this.cameraInput.releaseLock();
     const automated = this.tour.snapshot.status === 'running' || this.navigation.status === 'running';
-    const intent = this.autoRun.running ? { x: Math.sin(this.autoRun.heading), z: Math.cos(this.autoRun.heading), run: true, jump: false }
-      : this.autoRun.active ? { x: 0, z: 0, run: false, jump: false }
+    const pitch = swim?.mode === 'swim' && this.hasExternalSwimControls() ? this.autoRun.pitch : 0;
+    const intent = this.autoRun.running ? { x: Math.sin(this.autoRun.heading) * Math.cos(pitch),
+      z: Math.cos(this.autoRun.heading) * Math.cos(pitch), vertical: Math.sin(pitch), run: true, jump: false }
+      : this.autoRun.active && !manualOverride ? { x: 0, z: 0, run: false, jump: false }
       : this.tour.snapshot.status === 'running' ? this.tour.sample(this.motion, delta)
       : this.navigation.status === 'running' ? this.navigation.sample(this.motion, delta) : manual;
-    this.motion = this.movement.update(this.movement instanceof FlightController ? frameDelta : delta, intent, automated ? (intent.run ? 4 : 1.8) : undefined);
+    const speedOverride = automated ? (intent.run ? 4 : 1.8) : undefined;
+    this.motion = swim ? swim.update(frameDelta, intent, speedOverride, this.autoRun.running ? this.swimSpiral : undefined)
+      : this.movement.update(this.movement instanceof CharacterController ? delta : frameDelta, intent, speedOverride);
+    if (swim && this.swimSpiral) {
+      this.autoRun.heading = this.motion.heading;
+      if (swim.depthPathBlocked || !swim.canSwimVertically(this.swimSpiral)) this.stopSwimSpiral();
+    }
     if (active.cityFeatures) this.city.updateLampShadowPosition(this.motion);
     this.character.update(this.motion, delta);
-    this.assets.current?.update(this.motion, delta);
+    if (this.assets.current) this.updateRiggedCharacter(this.assets.current, delta);
     this.target.update(delta);
     if (active.cityFeatures) this.traffic.update(waterDelta, [this.motion, this.target.anchor]);
     const casterAnchor = this.getCasterAnchor();
@@ -312,17 +346,24 @@ export class ViewerApp {
     this.casterMarker.position.copy(casterAnchor); this.targetMarker.position.copy(targetAnchor);
     this.particles.update(delta,targetAnchor,this.target.height*.25);
     this.particleReport?.(this.particles.snapshot);
-    this.characterReport?.(this.getCharacterStatus());
     const immediate = this.reducedMotion.matches;
+    const eyeHeight = (this.assets.current ?? this.character).eyeHeight;
+    this.swimEyeHeight = swim && !immediate && this.swimEyeHeight !== undefined
+      ? this.swimEyeHeight + (eyeHeight - this.swimEyeHeight) * (1 - Math.exp(-16 * delta))
+      : swim ? eyeHeight : undefined;
+    this.swimCameraY = swim && !immediate && this.swimCameraY !== undefined
+      ? this.swimCameraY + (this.motion.y - this.swimCameraY) * (1 - Math.exp(-16 * delta))
+      : swim ? this.motion.y : undefined;
     this.desiredCamera.aspect = this.camera.aspect;
     this.desiredCamera.updateProjectionMatrix();
-    Object.assign(this.cameras.controlOffsets, {
-      active: this.autoRun.enabled || this.autoRun.zoom !== 1 || this.autoRun.yaw !== 0 || this.autoRun.pitch !== 0,
-      eye: this.cameras.view === 'first-person' && this.cameraModes.inputMode !== 'standard',
-      yaw: this.autoRun.yaw, pitch: this.autoRun.pitch, zoom: this.autoRun.zoom,
-    });
+    this.syncCameraOffsets();
     this.cameras.update(this.getCameraSubject(), delta, immediate);
     this.updateObstruction(delta, immediate);
+    if (active.swim) {
+      this.cameraSubmerged = active.swim.updateCamera(this.camera.position);
+      this.scenes.syncAppearance();
+    }
+    this.characterReport?.(this.getCharacterStatus());
     active.headlamp?.update(this.getCameraSubject(), waterDelta, immediate,
       this.cameras.view === 'first-person' ? this.camera : undefined);
     if (this.solarReport) {
@@ -367,7 +408,8 @@ export class ViewerApp {
     }
     this.inspector.update(this.camera, this.cameras.fisheye);
     const xray = this.obstruction.mode === 'xray' && this.cameras.characterVisible
-      ? { subject: (this.assets.current ?? this.character).root, environment: active.environment } : undefined;
+      ? { subject: (this.assets.current ?? this.character).root, environment: active.environment, staticBlockers: this.fixedManorStreet } : undefined;
+    this.view.environmentScan.update(time);
     const render = () => this.view.render(this.scenes.root, this.cameras.fisheyeAmount, xray);
     if (this.needleReady && this.needle) this.needle.render(render);
     else render();
@@ -381,34 +423,55 @@ export class ViewerApp {
   get environmentId(): EnvironmentId { return this.scenes.active.id; }
   get cityFeatures(): boolean { return this.scenes.active.cityFeatures; }
 
+  scanEnvironment(): void {
+    if (this.disposed || this.contextLost) return;
+    this.view.environmentScan.start(this.motion);
+  }
+
+  private createMovement(environment: Environment): CharacterController | FlightController | SwimController {
+    const { id, walkableWorld, spawn, swim } = environment;
+    const shape = characterCapsules[this.variant];
+    if (swim) return new SwimController(walkableWorld, shape, spawn, swim.water, swim.exit);
+    if (id === 'flight') return new FlightController(walkableWorld, shape);
+    return new CharacterController(walkableWorld, shape, spawn);
+  }
+
   async selectEnvironment(id: EnvironmentId): Promise<boolean> {
-    if (this.disposed || this.contextLost || !['city','terrain','cave','flight'].includes(id)) return false;
+    if (this.disposed || this.contextLost || !isEnvironmentId(id)) return false;
     this.sceneSettings[this.environmentId] = this.captureSceneSettings();
     return this.scenes.select(id, async () => {
       const next = id === 'city'
       ? this.cityEnvironment
+      : id === 'room' ? await (await import('../scene/ManorScene')).createManor()
       : id === 'flight' ? (await import('../scene/FlightScene')).createFlight()
+      : id === 'swim' ? (await import('../scene/SwimScene')).createSwim()
       : id === 'terrain' ? (await import('../scene/TerrainScene')).createTerrain()
       : (await import('../scene/CaveScene')).createCave();
       try {
-        const candidate = next.id === 'flight' ? new FlightController(next.walkableWorld, characterCapsules[this.variant]) : new CharacterController(next.walkableWorld, characterCapsules[this.variant]);
+        const candidate = this.createMovement(next);
+        next.swim?.water.shader.configure(this.getWaterSettings());
         if (!candidate.relocate({ ...next.spawn, y: 0 })) throw Error('Invalid scene spawn');
       } catch (error) { next.dispose(); throw error; }
       return next;
     }, next => {
       this.stop();
+      this.view.environmentScan.clear();
+      this.view.environmentScan.prepare(next.environment);
       this.sceneDefaults[next.id] ??= this.captureSceneSettings();
       const saved = this.sceneSettings[next.id];
       if (saved) this.applySceneSettings(saved);
       const speed = this.movement.walkSpeed;
-      this.movement = next.id === 'flight' ? new FlightController(next.walkableWorld, characterCapsules[this.variant]) : new CharacterController(next.walkableWorld, characterCapsules[this.variant]);
-      this.input.setFlightControls(next.id === 'flight');
+      this.movement = this.createMovement(next);
+      this.swimCameraY = undefined;
+      this.swimEyeHeight = undefined;
+      this.cameraSubmerged = false;
+      this.input.setFlightControls(next.id === 'flight' || next.id === 'swim');
       this.movement.setWalkSpeed(speed);
       this.movement.relocate({ ...next.spawn, y: 0 });
       this.motion = this.movement.snapshot;
       this.navigation = new DestinationNavigation(next.walkableWorld, this.movement.shape);
       this.groundPicker = new GroundPicker(next.environment.children);
-      this.target.setWorld(next.walkableWorld);
+      this.target.setWorld(next.walkableWorld, next.targetSpawn);
       this.particles.clear();
       this.view.waterLens.clear();
       this.destinationMarker.hidden = true;
@@ -418,7 +481,7 @@ export class ViewerApp {
       this.follow.setObstructions(next.environment.children);
       const mode = this.obstruction.mode;
       this.obstruction.dispose();
-      this.obstruction = new CameraObstruction(next.environment);
+      this.obstruction = new CameraObstruction(next.environment, this.view.environmentScan.prepareMaterial);
       this.obstruction.setMode(mode);
       const following = this.cameras.following;
       this.cameraModes.configureScene(this.scenes.controls);
@@ -426,14 +489,14 @@ export class ViewerApp {
       this.cameras.setFollowing(following, this.getCameraSubject(), true);
       this.updateObstruction(0, true);
       this.character.update(this.motion, 0);
-      this.assets.current?.update(this.motion, 0);
+      if (this.assets.current) this.updateRiggedCharacter(this.assets.current, 0);
       next.headlamp?.update(this.getCameraSubject(), 0, this.reducedMotion.matches);
       this.view.renderer.domElement.setAttribute('aria-label', `Interactive ${id}`);
     });
   }
 
   private captureSceneSettings(): SceneSettings {
-    return { time: this.getTimeOfDay(), solar: this.getSolarSettings(),
+    return { time: this.scenes.active.solar?.getTime() ?? this.city.lightingPreset, solar: this.getSolarSettings(),
       lights: this.getEnvironmentLights().map(({ id, enabled, intensity, color, effects }) => ({ id, settings: { enabled, intensity, color, effects } })),
       headlamp: this.getHeadlampSettings() ?? null,
       ...(this.getTerrainSettings() ? { terrain: this.getTerrainSettings() } : {}) };
@@ -449,10 +512,15 @@ export class ViewerApp {
     this.sceneDefaults[this.environmentId] ??= structuredClone(this.sceneSettings[this.environmentId]!);
     return structuredClone({ environment: this.environmentId, scenes: this.sceneSettings,
       variant: this.variant, camera: this.cameras.view, following: this.cameras.following,
+      cameraPose: {
+        position: this.desiredCamera.position.toArray(), target: this.controls.target.toArray(),
+        yaw: this.autoRun.yaw, pitch: this.autoRun.pitch, zoom: this.autoRun.zoom,
+      },
       obstruction: this.obstruction.mode, groundPenetration: this.groundPenetration,
       sensitivity: this.autoRun.lookSensitivity, walkSpeed: this.movement.walkSpeed,
       expression: this.getExpression(), traffic: this.traffic.snapshot.settings, particles: this.particles.settings,
-      water: this.getWaterSettings(), waterLens: this.getWaterLensEnabled(), shadows: this.shadows,
+      projectileAim: this.projectileAim,
+      water: this.getWaterSettings(), swimAppearance: this.getSwimAppearance(), waterLens: this.getWaterLensEnabled(), shadows: this.shadows,
       lamps: this.getLampShadowOptions().filter(item => item.selected).map(item => item.id),
       lampDetection: this.getLampShadowDetection(), inspector: this.inspector.getSettings() });
   }
@@ -464,6 +532,7 @@ export class ViewerApp {
     const active = this.sceneSettings[this.environmentId];
     if (active) this.applySceneSettings(active);
     if (!this.setCharacter(settings.variant)) throw Error('Character needs more clearance');
+    this.setSwimAppearance(reset ? defaultSwimAppearance : settings.swimAppearance ?? defaultSwimAppearance);
     this.setWalkSpeed(settings.walkSpeed);
     this.setEmotion(settings.expression.emotion); this.setSpeech(settings.expression.speech);
     if (!this.configureTraffic(settings.traffic) || !this.configureParticles(settings.particles) ||
@@ -472,12 +541,36 @@ export class ViewerApp {
         !this.setLampShadowSelection(settings.lamps)) throw Error('Invalid panel setting ranges');
     this.setWaterLensEnabled(settings.waterLens); this.setShadows(settings.shadows);
     this.setObstructionMode(settings.obstruction); this.setGroundPenetration(settings.groundPenetration);
-    this.setCamera(settings.camera); this.setFollowing(settings.following);
+    this.projectileAim = settings.projectileAim ?? 'target';
+    this.particles.clear();
+    this.particleReport?.(this.particles.snapshot);
+    this.setCamera(settings.camera);
+    const { yaw = 0, pitch = 0, zoom = 1 } = settings.cameraPose ?? {};
+    Object.assign(this.autoRun, { yaw, pitch, zoom });
+    this.syncCameraOffsets();
+    this.cameras.select(settings.camera, this.getCameraSubject(), true);
+    this.cameras.setFollowing(settings.following, this.getCameraSubject(), true);
+    if (settings.cameraPose) this.cameras.restorePose(settings.cameraPose);
+    this.cameras.update(this.getCameraSubject(), 0, true);
+    this.updateObstruction(0, true);
     this.inspector.applySettings(settings.inspector);
     this.characterReport?.(this.getCharacterStatus());
   }
 
+  private syncCameraOffsets(): void {
+    const { enabled, yaw, pitch, zoom } = this.autoRun;
+    Object.assign(this.cameras.controlOffsets, {
+      active: enabled || zoom !== 1 || yaw !== 0 || pitch !== 0,
+      eye: this.cameras.view === 'first-person' && (yaw !== 0 || pitch !== 0 || this.cameraModes.inputMode !== 'standard'),
+      yaw, pitch, zoom,
+    });
+  }
+
   setCamera(preset: CameraPreset): void {
+    if (preset !== this.cameras.view) this.stopSwimSpiral();
+    if (this.movement instanceof SwimController && preset !== 'third-person' && preset !== 'fisheye' && this.autoRun.enabled) {
+      this.setAutoRun(false);
+    }
     this.tap.cancel();
     this.mouseOrbit.cancel();
     this.cameraModes.select(preset);
@@ -502,6 +595,9 @@ export class ViewerApp {
     this.groundPenetration = enabled;
     this.characterReport?.(this.getCharacterStatus());
   }
+  private get fixedManorStreet(): boolean {
+    return this.scenes.active.id === 'room' && this.cameras.view === 'street' && !this.cameras.following;
+  }
   private updateObstruction(delta: number, immediate: boolean): void {
     const { ceiling, walkableWorld } = this.scenes.active;
     const bounded = this.scenes.controls.constrainCamera && ceiling !== undefined;
@@ -511,7 +607,7 @@ export class ViewerApp {
       this.indoorCameraBounds.max.set(maxX - .25, ceiling - .25, maxZ - .25);
     }
     this.obstruction.update(this.desiredCamera, this.camera, this.controls.target, this.getCameraSubject(), delta, immediate,
-      this.cameras.characterVisible, bounded ? this.indoorCameraBounds : undefined);
+      this.cameras.characterVisible, bounded ? this.indoorCameraBounds : undefined, !this.fixedManorStreet);
   }
   setSpeech(text: string): void { this.expressions.setSpeech(text); this.updateExpression(); }
   getExpression(): Readonly<ExpressionState> { return this.expressions.snapshot; }
@@ -548,13 +644,14 @@ export class ViewerApp {
   setTimeOfDay(time: TimeOfDay): boolean { return !this.disposed && (this.scenes.active.solar?.setTime(time) ?? this.city.setTimeOfDay(time)); }
   configureWater(patch: Partial<WaterSettings>): boolean {
     if(this.disposed || !this.city.configureWater(patch)) return false;
+    this.scenes.active.swim?.water.shader.configure(this.city.waterSettings);
     if(!this.city.waterSettings.enabled)this.view.waterLens.clear();
     return true;
   }
   setWaterLensEnabled(enabled: boolean): void { if(!this.disposed)this.view.waterLens.enabled=enabled; }
   getWaterLensEnabled(): boolean { return this.view.waterLens.enabled; }
   getWaterSettings(): WaterSettings { return this.city.waterSettings; }
-  getWaterElapsed(): number { return this.city.waterElapsed; }
+  getWaterElapsed(): number { return this.scenes.active.swim?.water.shader.elapsed ?? this.city.waterElapsed; }
   setCharacter(variant: CharacterVariant): boolean {
     if (!characterCapsules[variant] || !this.movement.setCapsule(characterCapsules[variant])) return false;
     this.mouseOrbit.cancel(); this.cameras.endCharacterOrbit(true);
@@ -572,8 +669,9 @@ export class ViewerApp {
       !this.movement.relocate(position, snap)) return false;
     this.stop();
     this.motion = this.movement.snapshot;
+    this.swimCameraY = this.movement instanceof SwimController ? this.motion.y : undefined;
     this.character.update(this.motion, 0);
-    this.assets.current?.update(this.motion, 0);
+    if (this.assets.current) this.updateRiggedCharacter(this.assets.current, 0);
     this.city.updateLampShadowPosition(this.motion);
     this.characterReport?.(this.getCharacterStatus());
     return true;
@@ -581,9 +679,16 @@ export class ViewerApp {
   retryTarget(): void { void this.target.retry(); }
   resetTarget(): void { if(this.disposed)return; this.target.reset(); this.particles.clear(); this.particleReport?.(this.particles.snapshot); }
   configureParticles(settings: ParticleSettings): boolean { return this.particles.configure(settings); }
+  setProjectileAim(aim: ProjectileAim): void { this.projectileAim = aim; }
+  getProjectileAim(): ProjectileAim { return this.projectileAim; }
   fireParticle(): void {
     if(this.contextLost || this.disposed) return;
-    this.particles.fire(this.getCasterAnchor(),this.target.anchor); this.particleReport?.(this.particles.snapshot);
+    const origin = this.getCasterAnchor();
+    const aim = this.projectileAim === 'camera'
+      ? origin.clone().add(this.camera.getWorldDirection(new Vector3()))
+      : this.target.anchor;
+    this.particles.fire(origin, aim);
+    this.particleReport?.(this.particles.snapshot);
   }
   private getCasterAnchor(): Vector3 {
     return new Vector3(this.motion.x+Math.sin(this.motion.heading)*.3,this.motion.y+this.getSubjectHeight()*.6,this.motion.z+Math.cos(this.motion.heading)*.3);
@@ -596,7 +701,14 @@ export class ViewerApp {
   }
   private getCameraSubject(): CameraSubject {
     const subject = this.assets?.current ?? this.character;
-    return { ...this.motion, height: subject.height, eyeHeight: subject.eyeHeight, eyeForward: subject.eyeForward };
+    const y = this.swimCameraY ?? (this.motion.grounded
+      ? this.scenes.active.cameraGroundHeight?.(this.motion) ?? this.motion.y
+      : this.motion.y);
+    // The horizontal presentation extends past the upright capsule; keep the eye inside its XZ clearance.
+    const eyeForward = this.movement instanceof SwimController && this.movement.mode === 'swim'
+      ? Math.min(subject.eyeForward, this.movement.shape.radius - .06) : subject.eyeForward;
+    return { ...this.motion, y,
+      height: subject.height, eyeHeight: this.swimEyeHeight ?? subject.eyeHeight, eyeForward };
   }
   startTour(text: string, loop: boolean, speed: number): boolean {
     if (this.disposed || this.contextLost || document.hidden || !this.cityFeatures) return false;
@@ -611,6 +723,7 @@ export class ViewerApp {
   }
   setAutoRun(enabled: boolean): void {
     if (this.disposed || this.contextLost || document.hidden || (enabled && !this.cameraModes.autoRunEnabled)) return;
+    if (enabled && this.movement instanceof SwimController && !this.hasExternalSwimView()) return;
     this.input.stop();
     this.navigation.cancel();
     this.tour.cancel();
@@ -622,6 +735,28 @@ export class ViewerApp {
     this.characterReport?.(this.getCharacterStatus());
     if (this.cameraModes.followingLocked) this.cameraModes.follow();
     if (enabled) this.cameraInput.requestLock(); else this.cameraInput.releaseLock();
+  }
+  private hasExternalSwimControls(): boolean {
+    return this.movement instanceof SwimController && this.movement.mode !== 'ground' &&
+      this.hasExternalSwimView();
+  }
+  private hasExternalSwimView(): boolean {
+    return this.cameras.view === 'third-person' || this.cameras.view === 'fisheye';
+  }
+  private setSwimSpiral(direction: SwimDepthDirection): void {
+    if (!(this.movement instanceof SwimController) || !this.hasExternalSwimControls()) return;
+    if (!this.movement.canSwimVertically(direction)) {
+      this.setAutoRun(false);
+      return;
+    }
+    this.setAutoRun(true);
+    if (this.autoRun.running) this.swimSpiral = direction;
+  }
+  private stopSwimSpiral(): void {
+    if (!this.swimSpiral) return;
+    this.swimSpiral = undefined;
+    this.autoRun.stop();
+    if (this.movement instanceof SwimController) this.movement.stop(false);
   }
   getLookSensitivity(): LookSensitivity { return this.autoRun.lookSensitivity; }
   configureLookSensitivity(patch: Partial<LookSensitivity>): boolean { return this.autoRun.configureSensitivity(patch); }
@@ -637,6 +772,7 @@ export class ViewerApp {
   setRunning(enabled: boolean): void { this.input.setRun(enabled); }
   jump(): void { this.input.jump(); }
   stop(): void {
+    this.stopSwimSpiral();
     this.cameraInput?.releaseLock();
     this.cameraModes.resetGestures(); this.autoRun.stop(); this.mouseOrbit.cancel(); this.cameras.endCharacterOrbit(true); this.input.stop();
     this.characterReport?.(this.getCharacterStatus());
@@ -646,6 +782,40 @@ export class ViewerApp {
     const accepted = mode === 'flight' ? this.movement.takeOff() : this.movement.land();
     if (accepted) { this.input.stop(); this.motion = this.movement.snapshot; this.characterReport?.(this.getCharacterStatus()); }
     return accepted;
+  }
+
+  leaveWater(): boolean {
+    if (this.disposed || this.contextLost || document.hidden || !(this.movement instanceof SwimController)) return false;
+    if (!this.movement.canLeaveWater()) return false;
+    this.input.stop();
+    if (!this.movement.leaveWater()) return false;
+    this.motion = this.movement.snapshot;
+    if (this.assets.current) this.updateRiggedCharacter(this.assets.current, 0);
+    this.characterReport?.(this.getCharacterStatus());
+    return true;
+  }
+
+  getSwimStatus(): SwimStatus | null {
+    if (!(this.movement instanceof SwimController)) return null;
+    return {
+      swimming: this.movement.mode === 'swim', climbing: this.movement.mode === 'climb', bottom: this.movement.mode === 'bottom',
+      canClimb: this.movement.canLeaveWater(), atWaterline: this.movement.atWaterline, submerged: this.movement.submerged,
+      cameraSubmerged: this.cameraSubmerged, droppedTime: this.movement.droppedTime, rigged: !!this.assets.current,
+    };
+  }
+  getSwimAppearance(): SwimAppearance { return { ...this.swimAppearance }; }
+  setSwimAppearance(appearance: SwimAppearance): boolean {
+    if (this.disposed || !validSwimAppearance(appearance)) return false;
+    this.swimAppearance = { ...appearance };
+    if (this.assets.current) this.updateRiggedCharacter(this.assets.current, 0);
+    this.characterReport?.(this.getCharacterStatus());
+    return true;
+  }
+
+  private updateRiggedCharacter(model: RiggedCharacter, delta: number): void {
+    const swim = this.movement instanceof SwimController ? this.movement : null;
+    model.update(this.motion, delta, swim ? this.swimAppearance : undefined, swim?.mode === 'swim',
+      this.reducedMotion.matches, swim?.climbProgress);
   }
   bindDirection(button: HTMLButtonElement, direction: MoveDirection): void { this.input.bindDirection(button, direction); }
   getCharacterStatus(): CharacterStatus {

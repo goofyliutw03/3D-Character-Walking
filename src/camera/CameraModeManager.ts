@@ -43,7 +43,7 @@ export class CameraModeManager {
     this.policy = { ...policy };
     this.run.clear();
     this.resetInput();
-    this.camera.setIndoor(policy.framing === 'indoor');
+    this.camera.setIndoor(policy.framing === 'indoor', policy.staticFraming);
   }
 
   beginDestination(): void {

@@ -8,7 +8,7 @@ interface ActorVisual {lod:LOD;character?:Character;id:number;kind:'npc'|'vehicl
 /** Owns only simulation meshes. Shared box/material resources are released exactly once. */
 export class TrafficView {
   readonly root=new Group();
-  private readonly actors=new Group();
+  readonly actors=new Group();
   private readonly geometry=new BoxGeometry(1,1,1);
   private readonly materials=new Map<string,MeshStandardMaterial>();
   private readonly visuals:ActorVisual[]=[];

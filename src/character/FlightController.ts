@@ -67,7 +67,7 @@ export class FlightController {
     if(!hit.ok||(hit.value&&hit.value.fraction<1-1e-8)||!this.legal(target))return false;
     const ground=new CharacterController(this.world,this.shape);
     ground.setWalkSpeed(this.walkSpeed);
-    if(!ground.relocate(target,true))return false;
+    if(!ground.relocate(target,true,this.state.heading))return false;
     this.ground=ground;
     this.strategy='ground';this.state={...this.ground.snapshot};this.stop();return true;
   }

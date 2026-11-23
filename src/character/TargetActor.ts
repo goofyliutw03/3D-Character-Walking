@@ -20,6 +20,7 @@ export class TargetActor {
   private readonly fallback = new Character();
   private readonly assets: CharacterAssets;
   private readonly motion: MotionSnapshot;
+  private spawn = { x: 0, z: -1 };
   private shadows = true;
   private disposed = false;
   get model(): RiggedCharacter | null { return this.assets.current; }
@@ -30,7 +31,7 @@ export class TargetActor {
     this.root.name = 'target-actor';
     this.fallback.setVariant('woman'); this.root.add(this.fallback.root);
     this.assets = new CharacterAssets({
-      load, create: (data, definition) => new RiggedCharacter(data, definition), release: data => disposeModel(data.scene),
+      load, create: (data, definition) => new RiggedCharacter(data, definition, false), release: data => disposeModel(data.scene),
       onState: report,
       onSwap: model => {
         this.fallback.root.visible = !model && !this.disposed;
@@ -44,10 +45,16 @@ export class TargetActor {
     if (this.disposed) return;
     this.fallback.update(this.motion,delta); this.model?.update(this.motion,delta);
   }
-  setWorld(world: WalkableWorld): void { this.world = world; this.reset(); }
+  setWorld(world: WalkableWorld, spawn = { x: 0, z: -1 }): void {
+    this.world = world;
+    this.spawn = spawn;
+    this.reset();
+  }
   reset(): void {
     if (this.disposed) return;
-    Object.assign(this.motion,{ x:0, y:this.world.groundHeight(0,-1), z:-1 }); this.update(0);
+    const { x, z } = this.spawn;
+    Object.assign(this.motion, { x, y: this.world.groundHeight(x, z), z });
+    this.update(0);
   }
   retry(): Promise<void> { return this.assets.retry(); }
   setShadows(enabled: boolean): void {

@@ -2,10 +2,6 @@ import type { MovementIntent } from '../character/motion';
 
 export type MoveDirection = 'forward' | 'backward' | 'left' | 'right' | 'up' | 'down';
 const gameKeys = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ShiftLeft', 'ShiftRight', 'Space']);
-const directions: Record<MoveDirection, readonly [number, number]> = {
-  forward: [0, -1], backward: [0, 1], left: [-1, 0], right: [1, 0],
-  up: [0, 0], down: [0, 0],
-};
 
 export class InputManager {
   private readonly events = new AbortController();
@@ -56,17 +52,16 @@ export class InputManager {
     }, { signal });
   }
   sample(): MovementIntent {
-    let x = Number(this.keys.has('KeyD') || this.keys.has('ArrowRight')) - Number(this.keys.has('KeyA') || this.keys.has('ArrowLeft'));
-    let z = Number(this.keys.has('KeyS') || this.keys.has('ArrowDown')) - Number(this.keys.has('KeyW') || this.keys.has('ArrowUp'));
     const active = new Set(this.pointers.values());
     if (this.latch) active.add(this.latch);
-    for (const direction of active) {
-      x += directions[direction][0]; z += directions[direction][1];
-    }
+    const pressed = (direction: MoveDirection, ...codes: string[]) =>
+      active.has(direction) || codes.some(code => this.keys.has(code));
+    const x = Number(pressed('right', 'KeyD', 'ArrowRight')) - Number(pressed('left', 'KeyA', 'ArrowLeft'));
+    const z = Number(pressed('backward', 'KeyS', 'ArrowDown')) - Number(pressed('forward', 'KeyW', 'ArrowUp'));
     const jump = this.jumpPending;
     this.jumpPending = false;
-    const vertical = Number(this.keys.has('KeyE') || this.keys.has('Space') || active.has('up')) - Number(this.keys.has('KeyQ') || active.has('down'));
-    return { x: Math.sign(x), z: Math.sign(z), run: this.running, jump, ...(this.flightControls ? { vertical } : {}) };
+    const vertical = Number(jump || pressed('up', 'KeyE', 'Space')) - Number(pressed('down', 'KeyQ'));
+    return { x, z, run: this.running, jump, ...(this.flightControls ? { vertical } : {}) };
   }
   get running(): boolean { return this.runToggle || this.keys.has('ShiftLeft') || this.keys.has('ShiftRight'); }
   setRun(enabled: boolean): void { this.onManual(); this.runToggle = enabled; }

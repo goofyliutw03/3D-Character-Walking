@@ -1,6 +1,8 @@
 # Development plan
 
-截至 2026-11-19 的實作及驗收狀態見 [專案現況](project-status.md)。下方保留各階段的計畫與歷史決策。
+實作及驗收狀態見 [專案現況](project-status.md)。下方保留各階段的計畫與歷史決策。
+
+2026-11-22 [1Y-16] 依使用者指示在 `codex/bounded-swim` 重新開發[水域首批](../.kiro/specs/bounded-swim/)。驗收場景為 Tidal Pool，涵蓋乾濕切換、獨立取樣、淨空檢查與有界水流。外部裝置、正式效能、海洋／水道場景及太空候選保留後續範圍。
 
 2026-11-18 [1Y-15] 接續使用者確認1Y-14，執行 [bounded-flight](../.kiro/specs/bounded-flight/)：正常Environment入口、有界飛行／禁入／警戒、三維加減速與升降、連續膠囊掃掠及明確合法著陸、程序天空／網格雲、Profiles v1相容。固定步進僅flight；共用Context恢復缺口回修multi-scene-foundation。依序inline審閱、無委派／commit／push。驗證與交付狀態見該spec validation；水域／太空待本批結束確認，既有真機／效能驗收保留。
 

@@ -1,5 +1,5 @@
 import {
-  Color, HalfFloatType, Material, Mesh, MeshDepthMaterial, NearestFilter, NoBlending,
+  Color, HalfFloatType, Material, Matrix4, Mesh, MeshDepthMaterial, NearestFilter, NoBlending,
   OrthographicCamera, PlaneGeometry, RGBADepthPacking, Scene, ShaderMaterial,
   UnsignedByteType, Vector2, WebGLRenderTarget,
   type Camera, type Object3D, type WebGLRenderer,
@@ -17,6 +17,10 @@ export class CharacterXrayPass {
   private readonly geometry = new PlaneGeometry(2, 2);
   private readonly material: ShaderMaterial;
   private readonly size = new Vector2();
+  private cachedEnvironment?: Object3D;
+  private readonly cachedBlockerMaterials = new Set<Material>();
+  private readonly cachedView = new Matrix4();
+  private readonly cachedProjection = new Matrix4();
   private disposed = false;
 
   constructor(halfFloat = false) {
@@ -53,11 +57,14 @@ export class CharacterXrayPass {
     this.output.add(new Mesh(this.geometry, this.material));
   }
 
-  render(renderer: WebGLRenderer, scene: Scene, camera: Camera, subject: Object3D, environment: Object3D): void {
+  render(renderer: WebGLRenderer, scene: Scene, camera: Camera, subject: Object3D, environment: Object3D,
+    staticBlockers = false): void {
     if (this.disposed) return;
     const destination = renderer.getRenderTarget();
     if (destination) this.size.set(destination.width, destination.height);
     else renderer.getDrawingBufferSize(this.size);
+    if (!staticBlockers || this.blockers.width !== this.size.x || this.blockers.height !== this.size.y)
+      this.cachedEnvironment = undefined;
     for (const target of [this.base, this.blockers, this.actor]) {
       if (target.width !== this.size.x || target.height !== this.size.y) target.setSize(this.size.x, this.size.y);
     }
@@ -72,7 +79,18 @@ export class CharacterXrayPass {
       scene.background = null; scene.overrideMaterial = null;
       renderer.shadowMap.autoUpdate = false;
       renderer.setClearColor(0xffffff, 1);
-      this.depth(renderer, scene, camera, environment, false, this.blockers, used);
+      if (this.cachedEnvironment !== environment || !this.cachedView.equals(camera.matrixWorldInverse) ||
+          !this.cachedProjection.equals(camera.projectionMatrix)) {
+        this.cachedEnvironment = undefined;
+        this.cachedBlockerMaterials.clear();
+        this.depth(renderer, scene, camera, environment, false, this.blockers, used);
+        if (staticBlockers) {
+          this.cachedEnvironment = environment;
+          for (const material of used) this.cachedBlockerMaterials.add(material);
+          this.cachedView.copy(camera.matrixWorldInverse);
+          this.cachedProjection.copy(camera.projectionMatrix);
+        }
+      }
       this.depth(renderer, scene, camera, subject, true, this.actor, used);
       renderer.setRenderTarget(destination);
       renderer.render(this.output, this.camera);
@@ -80,7 +98,10 @@ export class CharacterXrayPass {
       scene.background = background; scene.overrideMaterial = override;
       renderer.setClearColor(clear, alpha); renderer.autoClear = autoClear;
       renderer.shadowMap.autoUpdate = shadows; renderer.setRenderTarget(destination);
-      for (const [original, depth] of this.depths) if (!used.has(original)) { depth.dispose(); this.depths.delete(original); }
+      for (const [original, depth] of this.depths) if (!used.has(original) &&
+          !(this.cachedEnvironment && this.cachedBlockerMaterials.has(original))) {
+        depth.dispose(); this.depths.delete(original);
+      }
     }
   }
 
@@ -129,6 +150,7 @@ export class CharacterXrayPass {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
+    this.cachedEnvironment = undefined; this.cachedBlockerMaterials.clear();
     for (const target of [this.base, this.blockers, this.actor]) target.dispose();
     for (const material of this.depths.values()) material.dispose();
     this.depths.clear(); this.hidden.dispose(); this.material.dispose(); this.geometry.dispose(); this.output.clear();
