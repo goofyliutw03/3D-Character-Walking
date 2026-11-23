@@ -27,13 +27,14 @@ export class CharacterXrayPass {
     this.base = new WebGLRenderTarget(1, 1, { type: halfFloat ? HalfFloatType : UnsignedByteType });
     this.hidden.visible = false;
     this.material = new ShaderMaterial({
-      uniforms: { source: { value: this.base.texture }, blockers: { value: this.blockers.texture }, actor: { value: this.actor.texture } },
+      uniforms: { source: { value: this.base.texture }, blockers: { value: this.blockers.texture }, actor: { value: this.actor.texture }, overlayOnly: { value: false } },
       depthTest: false, depthWrite: false, blending: NoBlending,
       vertexShader: `varying vec2 vUv;
         void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`,
       fragmentShader: `uniform sampler2D source;
         uniform sampler2D blockers;
         uniform sampler2D actor;
+        uniform bool overlayOnly;
         varying vec2 vUv;
         #include <packing>
         void main() {
@@ -49,7 +50,7 @@ export class CharacterXrayPass {
             if (contrast < 0.6) ghost = dot(display, vec3(0.2126, 0.7152, 0.0722)) > 0.45
               ? vec3(0.0, 0.04, 0.08) : vec3(0.35, 1.0, 1.0);
             gl_FragColor.rgb = mix(base.rgb, sRGBTransferEOTF(vec4(ghost, 1.0)).rgb, 0.5);
-          }
+          } else if (overlayOnly) discard;
           #include <tonemapping_fragment>
           #include <colorspace_fragment>
         }`,
@@ -93,6 +94,16 @@ export class CharacterXrayPass {
       }
       this.depth(renderer, scene, camera, subject, true, this.actor, used);
       renderer.setRenderTarget(destination);
+      const overlayOnly = destination === null;
+      this.material.uniforms.overlayOnly!.value = overlayOnly;
+      if (overlayOnly) {
+        // Preserve the canvas render path for unoccluded pixels, including clears and MSAA.
+        scene.background = background;
+        scene.overrideMaterial = override;
+        renderer.setClearColor(clear, alpha);
+        renderer.render(scene, camera);
+        renderer.autoClear = false;
+      }
       renderer.render(this.output, this.camera);
     } finally {
       scene.background = background; scene.overrideMaterial = override;

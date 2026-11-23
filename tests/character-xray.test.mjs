@@ -33,7 +33,7 @@ test('xray: environment filter excludes water, transparency, hidden ancestors an
   const seen=[];
   const renderer=fakeRenderer((s)=>{seen.push({mixed:[...mixed.material],water:water.material.visible,hidden:hiddenMesh.material.visible,child:child.material.visible,actor:actor.material.visible});});
   pass.render(renderer,scene,new PerspectiveCamera(),subject,environment);
-  assert.equal(seen.length,4); // base, environment depth, subject depth, composite
+  assert.equal(seen.length,5); // base, environment depth, subject depth, canvas scene, overlay
   assert.equal(seen[1].mixed[0].visible,true);assert.equal(seen[1].mixed[1].visible,false);assert.equal(seen[1].mixed[2].visible,false);
   assert.equal(seen[1].mixed[3].visible,false);assert.equal(seen[1].mixed[4].visible,false);
   assert.equal(seen[1].water,false);assert.equal(seen[1].child,false);assert.equal(seen[1].actor,false);
@@ -68,7 +68,9 @@ test('xray: fixed view reuses blocker depth while redrawing moving actor depth',
   const scene = new Scene(), environment = new Group(), subject = new Group(), camera = new PerspectiveCamera();
   scene.add(environment, subject);
   const frames = [];
-  const renderer = fakeRenderer(() => frames.push(renderer.getRenderTarget()));
+  const renderer = fakeRenderer((renderedScene) => {
+    frames.push(renderer.getRenderTarget() ?? (renderedScene === scene ? "canvas scene" : "overlay"));
+  });
   const pass = new CharacterXrayPass();
   const render = (fixed = true, blockers = environment) => {
     frames.length = 0;
@@ -77,21 +79,23 @@ test('xray: fixed view reuses blocker depth while redrawing moving actor depth',
     return [...frames];
   };
   try {
-    const [base, blockers, actor, output] = render();
-    assert.equal(frames.length, 4);
+    const [base, blockers, actor, canvas, output] = render();
+    assert.equal(canvas, "canvas scene");
+    assert.equal(output, "overlay");
+    assert.equal(frames.length, 5);
     subject.position.y += 3.6;
-    assert.deepEqual(render(), [base, actor, output]);
+    assert.deepEqual(render(), [base, actor, canvas, output]);
     camera.position.z += 1;
-    assert.deepEqual(render(), [base, blockers, actor, output]);
+    assert.deepEqual(render(), [base, blockers, actor, canvas, output]);
     camera.zoom = 2;
     camera.updateProjectionMatrix();
-    assert.equal(render().length, 4);
+    assert.equal(render().length, 5);
     renderer.getDrawingBufferSize = size => size.set(800, 600);
+    assert.equal(render().length, 5);
+    assert.equal(render(true, new Group()).length, 5);
+    assert.equal(render(false).length, 5);
+    assert.equal(render().length, 5);
     assert.equal(render().length, 4);
-    assert.equal(render(true, new Group()).length, 4);
-    assert.equal(render(false).length, 4);
-    assert.equal(render().length, 4);
-    assert.equal(render().length, 3);
   } finally {
     pass.dispose();
   }
