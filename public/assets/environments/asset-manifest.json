@@ -28,13 +28,13 @@
     },
     {
       "path": "tools/assets/prepare_manor.py",
-      "bytes": 13054,
-      "sha256": "7a28b257e3aa0f394ee603f7ac45da60ed6085f69329b79be51e5f8806ad14aa"
+      "bytes": 13048,
+      "sha256": "4900843056033dd5e419eb75d48773df025bf02a390d1ba2dda4a66281e3fcca"
     },
     {
       "path": "tools/assets/prepare_furnished_room.py",
-      "bytes": 9505,
-      "sha256": "fe02d4642fa5cd5c33e80d55d0f6c952bb7c94ccc8e5ba06157d52923d6c0c3e"
+      "bytes": 9504,
+      "sha256": "9f737d47f108bf74c0f3203515802a2db66037169b309f322c53d705af6a2f31"
     }
   ]
 }
