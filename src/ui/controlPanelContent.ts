@@ -37,6 +37,8 @@ export function controlPanelContent(obstructionHint: string): string {
         </div><p class="hint">Up to 8 effects light their surroundings at once. Extra shots still appear; lighting resumes as slots become free. No light shadows.</p>` },
       { id: 'particle-motion', label: 'Motion & limits', open: true, content: `<div class="particle-settings"><label for="particle-speed">Speed · m/s<input id="particle-speed" type="number" min="0.5" max="30" step="0.5" value="8"></label><label for="particle-lifetime">Lifetime · s<input id="particle-lifetime" type="number" min="0.1" max="10" step="0.1" value="3"></label><label for="particle-limit">Effect limit<input id="particle-limit" type="number" min="1" max="128" step="1" value="32"></label></div>
         <button id="apply-particles" type="button">Apply settings</button>
+        <label class="select-label" for="projectile-aim">Aim</label>
+        <select id="projectile-aim"><option value="target">Target</option><option value="camera">Camera direction</option></select>
         <p id="particle-settings-status" class="hint" role="status" aria-live="polite">Settings apply to new shots.</p>` }
     ] },
     { id: 'camera', label: 'Camera', open: false, children: [

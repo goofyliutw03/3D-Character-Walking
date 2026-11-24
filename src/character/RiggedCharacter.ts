@@ -3,6 +3,8 @@ import type { AnimationAction, BufferGeometry, Material, Object3D, Skeleton, Ski
 import type { GLTF } from 'three/addons/loaders/GLTFLoader.js';
 import type { AssetDefinition } from './assetCatalog';
 import type { CharacterAction, MotionSnapshot } from './motion';
+import { AquaticRig } from './AquaticRig.ts';
+import type { SwimAppearance } from './SwimAppearance.ts';
 
 export function disposeModel(root: Object3D): void {
   const geometries = new Set<BufferGeometry>(), materials = new Set<Material>();
@@ -23,17 +25,25 @@ export function disposeModel(root: Object3D): void {
 export class RiggedCharacter {
   readonly root = new Group();
   readonly mixer: AnimationMixer;
+  private readonly aquatic?: AquaticRig;
   private readonly actions: Record<CharacterAction, AnimationAction>;
   private active: AnimationAction;
   private fading: AnimationAction | undefined;
   private fadeRemaining = 0;
   private selected: CharacterAction = 'idle';
   private disposed = false;
+  private wasClimbing = false;
   get action(): CharacterAction { return this.selected; }
   get height(): number { return this.definition.height; }
-  get eyeHeight(): number { return this.definition.eyeHeight; }
-  get eyeForward(): number { return this.definition.eyeForward; }
-  constructor(private readonly gltf: GLTF, readonly definition: AssetDefinition) {
+  get eyeHeight(): number {
+    const center = this.height * .52, angle = this.aquatic?.pitch ?? 0;
+    return center + (this.definition.eyeHeight - center) * Math.cos(angle) - this.definition.eyeForward * Math.sin(angle);
+  }
+  get eyeForward(): number {
+    const angle = this.aquatic?.pitch ?? 0;
+    return (this.definition.eyeHeight - this.height * .52) * Math.sin(angle) + this.definition.eyeForward * Math.cos(angle);
+  }
+  constructor(private readonly gltf: GLTF, readonly definition: AssetDefinition, aquatic = true) {
     let hasSkin = false;
     gltf.scene.traverse(o => { if ('isSkinnedMesh' in o && o.isSkinnedMesh) hasSkin = true; });
     if (!hasSkin) throw new Error('Character has no skinned mesh.');
@@ -59,14 +69,32 @@ export class RiggedCharacter {
     const visual = new Group();
     visual.add(gltf.scene); visual.scale.setScalar(scale);
     visual.position.set(-center.x * scale, -bounds.min.y * scale, -center.z * scale);
-    this.root.name = 'rigged-character'; this.root.add(visual);
+    const pivot = new Group();
+    pivot.position.y = definition.height * .52;
+    visual.position.y -= pivot.position.y;
+    pivot.add(visual);
+    this.root.name = 'rigged-character'; this.root.add(pivot);
+    this.root.updateMatrixWorld(true);
+    if (aquatic) this.aquatic = new AquaticRig(pivot, gltf.scene, definition.height);
     this.setShadows(true);
   }
-  update(state: Readonly<MotionSnapshot>, delta: number): void {
+  update(state: Readonly<MotionSnapshot>, delta: number, appearance?: SwimAppearance, swimming = false, reduced = false,
+    climb?: number): void {
     if (this.disposed) return;
     const dt = Math.min(Math.max(delta, 0), 0.05);
     this.root.position.set(state.x, state.y, state.z);
     this.root.rotation.y = state.heading;
+    this.aquatic?.update(appearance, swimming, state.speed, dt, reduced, climb);
+    const finishedClimb = this.wasClimbing && climb === undefined && !swimming;
+    this.wasClimbing = climb !== undefined;
+    if (this.aquatic && appearance && (swimming || this.wasClimbing)) return;
+    if (finishedClimb) {
+      this.mixer.stopAllAction();
+      this.fading = undefined;
+      this.selected = state.action;
+      this.active = this.actions[state.action];
+      this.active.reset().setEffectiveWeight(1).play();
+    }
     if (state.action !== this.selected) {
       this.fading?.stop();
       const next = this.actions[state.action];
@@ -82,12 +110,14 @@ export class RiggedCharacter {
     if (this.fading && this.fadeRemaining <= 0) { this.fading.stop(); this.fading = undefined; }
   }
   setShadows(enabled: boolean): void {
+    this.aquatic?.setShadows(enabled);
     this.root.traverse(o => { if (o instanceof Mesh) { o.castShadow = enabled; o.receiveShadow = true; } });
   }
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
     this.mixer.stopAllAction(); this.mixer.uncacheRoot(this.gltf.scene);
+    this.aquatic?.dispose();
     disposeModel(this.gltf.scene); this.root.removeFromParent();
   }
 }

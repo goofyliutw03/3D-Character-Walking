@@ -1,0 +1,10 @@
+{
+  "date": "2026-11-22",
+  "assets": [
+    {
+      "path": "public/assets/environments/manor.glb",
+      "bytes": 414072,
+      "sha256": "30b3454726ed9e72e2c22ba2546c91c36417c9b02aeabc62271d12c5f5a52c4c"
+    }
+  ]
+}

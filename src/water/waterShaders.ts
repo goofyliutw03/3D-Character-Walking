@@ -8,6 +8,7 @@ float noise2(vec2 p) {
 
 const waves = /* glsl */`
 uniform float uTime, uWave, uFlow, uEnabled, uLow, uOpacity;
+uniform vec2 uHalfSize;
 float heightAt(vec2 p) {
   if (uEnabled < .5) return 0.0;
   float t = uTime * uFlow;
@@ -63,7 +64,7 @@ void main() {
   if(uLow < .5) grain = grain*.65+noise2(p*52.0-t*.7)*.35;
   float ring = pow(max(sin(d*19.0-t*5.0),0.0),14.0)*exp(-d*1.5);
   float impact = (1.0-smoothstep(.18,.62,d)) * smoothstep(.20,.69,grain);
-  float edge = 1.0-smoothstep(.0,.065,min(2.0-abs(p.x),1.5-abs(p.y)));
+  float edge = 1.0-smoothstep(.0,.065,min(uHalfSize.x-abs(p.x),uHalfSize.y-abs(p.y)));
   float foam = clamp(impact*.85+ring*.38+edge*.19,0.0,.92)*uEnabled;
   color = mix(color,vec3(.83,.94,.86),foam);
   gl_FragColor = vec4(color,uOpacity);

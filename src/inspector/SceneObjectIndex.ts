@@ -6,6 +6,7 @@ export interface ObjectRow {
   readonly parentId: number | null;
   readonly name: string;
   readonly path: string;
+  readonly profileKey: string;
   readonly checked: boolean;
   readonly matched: boolean;
 }
@@ -68,29 +69,37 @@ export class SceneObjectIndex {
     const rows: ObjectRow[] = [];
     let reused = true;
     let changed = false;
-    const visit = (object: Object3D, parentId: number | null, parentPath: string): void => {
+    const visit = (object: Object3D, parentId: number | null, parentPath: string, parentKey: string, occurrence: number): void => {
       let identity = this.identities.get(object);
       if (!identity) { identity = { id: this.nextId++, checked: true }; this.identities.set(object, identity); }
       const name = object.name.trim() || object.type;
       const path = parentPath ? `${parentPath}/${name}` : name;
+      const segment = occurrence || /[/%]/.test(name) ? encodeURIComponent(name) + '%' + occurrence : name;
+      const profileKey = parentKey ? parentKey + '/' + segment : segment;
       const previous = this.active[rows.length];
       let row: ObjectRow;
       if (previous?.object === object && previous.parentId === parentId
-        && previous.name === name && previous.path === path && previous.checked === identity.checked) {
+        && previous.name === name && previous.path === path && previous.profileKey === profileKey && previous.checked === identity.checked) {
         row = previous;
       } else {
-        const candidate = { object, ...identity, name, path, parentId, matched: false };
+        const candidate = { object, ...identity, name, path, profileKey, parentId, matched: false };
         candidate.matched = this.matches(candidate); row = candidate; reused = false;
       }
       const synchronized = this.synchronized[rows.length];
       if (synchronized !== row && (!synchronized || synchronized.id !== row.id
         || synchronized.parentId !== row.parentId || synchronized.name !== row.name
-        || synchronized.path !== row.path || synchronized.checked !== row.checked
+        || synchronized.path !== row.path || synchronized.profileKey !== row.profileKey || synchronized.checked !== row.checked
         || synchronized.matched !== row.matched)) changed = true;
       rows.push(row);
-      for (const child of object.children) visit(child, identity.id, path);
+      const siblings = new Map<string, number>();
+      for (const child of object.children) {
+        const childName = child.name.trim() || child.type;
+        const index = siblings.get(childName) ?? 0;
+        siblings.set(childName, index + 1);
+        visit(child, identity.id, path, profileKey, index);
+      }
     };
-    visit(root, null, '');
+    visit(root, null, '', '', 0);
     if (rows.length !== this.synchronized.length) changed = true;
     if (!reused || rows.length !== this.active.length) this.active = rows;
     // Keep the last sync separate: filters and checkboxes update active immediately.

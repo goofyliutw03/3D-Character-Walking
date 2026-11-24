@@ -1,6 +1,9 @@
+import { PanelProfiles, profileControlsContent } from './ui/PanelProfiles';
+import { defaultSwimAppearance, swimPoseLabels, validSwimAppearance } from './character/SwimAppearance';
 import type { ViewerApp, CameraPreset, CharacterStatus } from './engine/ViewerApp';
 import type { CharacterVariant } from './character/motion';
 import type { MoveDirection } from './input/InputManager';
+import type { EnvironmentId } from './scene/SceneSwitch';
 import type { TimeOfDay } from './scene/CityScene';
 import { emotions, speechLimit, type Emotion } from './expression/ExpressionManager';
 import { presentLoading, type LoadingState } from './ui/LoadingFeedback';
@@ -10,6 +13,12 @@ import type { ObstructionMode } from './camera/CameraObstruction';
 import { controlPanelContent } from './ui/controlPanelContent';
 import { ControlPanel } from './ui/ControlPanel';
 import './style.css';
+
+const sceneNames: Record<EnvironmentId, string> = {
+  city: 'Maple Avenue', cave: 'Cave', terrain: 'Natural terrain', flight: 'Flight field', room: '莊園豪宅', swim: 'Tidal Pool',
+};
+
+let panelProfiles: PanelProfiles | undefined;
 
 const cameraNames: Record<CameraPreset, string> = {
   overview: 'Overview', street: 'Street level', overhead: 'From above',
@@ -28,7 +37,7 @@ if (!app) throw new Error('Application root was not found.');
 app.innerHTML = `
   <header>
     <a class="brand" href="/" aria-label="Walk Studio home"><span class="brand-mark">W</span> WALK<span class="brand-light">STUDIO</span></a>
-    <div class="project-name">City street <span>/</span> Untitled scene</div>
+    <div class="project-name" id="project-name">Maple Avenue</div>
     <span class="version">CHARACTER STUDY <b>06</b></span>
   </header>
   <main>
@@ -37,8 +46,21 @@ app.innerHTML = `
         <button id="panel-toggle" data-panel-layout type="button" aria-expanded="true" aria-controls="control-panel-content" aria-label="Collapse function panel" title="Expand or collapse function panel"><span class="panel-toggle-icon" aria-hidden="true">☰</span><span class="panel-toggle-label">Function panel</span><span class="panel-toggle-chevron" aria-hidden="true">‹</span></button>
       </div>
       <div id="control-panel-content" class="panel-content">
+        ${profileControlsContent}
+        <button id="scan-environment" type="button">Scan environment</button>
         <h1 class="panel-title">Your workspace</h1>
         <p class="panel-help">Expand a category to explore.<span class="panel-resize-copy"> Drag the right edge to resize.</span></p>
+        <label class="select-label" for="environment">Scene</label>
+        <select id="environment">${Object.entries(sceneNames).map(([id, name]) => `<option value="${id}">${name}</option>`).join('')}</select>
+        <p class="hint" id="environment-status" role="status"></p>
+        <label for="walk-speed">Walk speed · m/s</label>
+        <input id="walk-speed" type="number" min="0.5" max="4" step="0.1" value="1.8">
+        <div id="swim-controls" hidden>
+          <label for="swim-pose">Swim stroke</label>
+          <select id="swim-pose">${Object.entries(swimPoseLabels).map(([id, label]) => `<option value="${id}">${label}</option>`).join('')}</select>
+          <label for="swim-outfit">Swim outfit</label>
+          <select id="swim-outfit"><option value="swimwear">Swimwear</option><option value="scuba">Scuba</option></select>
+        </div>
         <nav class="function-tree" aria-label="Viewer functions">${controlPanelContent(obstructionHints.zoom)}</nav>
         <div class="sidebar-bottom"><span class="status-dot"></span> Everything runs on your computer.</div>
       </div>
@@ -46,7 +68,7 @@ app.innerHTML = `
       <span id="panel-resize-help" class="sr-only">Use Left and Right arrows to resize, Shift for larger steps, Home for minimum and End for maximum width.</span>
     </aside>
     <div class="scene-workspace">
-    <section class="viewport" aria-label="City scene workspace" aria-busy="true">
+    <section class="viewport" aria-label="Scene workspace" aria-busy="true">
       <div id="scene"></div>
       <div class="scene-title"><span class="eyebrow">THE NEIGHBORHOOD</span><h2>Maple Avenue</h2><p>A quiet street. An open canvas.</p></div>
       <div class="scene-badge"><span class="status-dot"></span> LIVE SCENE</div>
@@ -70,11 +92,18 @@ app.innerHTML = `
       </div>
       <div class="action-controls" role="group" aria-label="Character actions">
         <button id="run" aria-pressed="false">Run</button><button id="jump">Jump</button><button id="stop">Stop</button>
+        <div id="flight-controls" hidden>
+          <button data-direction="ascend" type="button">Ascend</button>
+          <button data-direction="descend" type="button">Descend</button>
+          <button id="flight-mode" type="button">Land</button>
+        </div>
+        <button id="swim-exit" type="button" hidden>Climb out</button>
+        <span id="swim-status" role="status" hidden></span>
         <button id="fire-particle" type="button">Fire particle</button><button id="reset-target" type="button">Reset target</button>
       </div>
       <div class="movement-copy">
         <p id="navigation-status" role="status" aria-live="polite" aria-atomic="true">Tap the ground to run there.</p>
-        <p class="movement-help">Hold arrows to move · Stop cancels · Drag to orbit / pinch to zoom</p>
+        <p id="movement-help" class="movement-help">Hold arrows to move · Stop cancels · Drag to orbit / pinch to zoom</p>
         <p id="particle-status" role="status" aria-live="polite" aria-atomic="true">Ready · Active 0 · Hits 0 · Expired 0</p>
       </div>
     </section>
@@ -112,7 +141,8 @@ retryCharacter.addEventListener('click', () => {
 }, { signal: uiEvents.signal });
 let previousCharacterStatus = '';
 const updateCharacterStatus = (state: CharacterStatus): void => {
-  const key = `${state.variant}/${state.action}/${state.running}/${state.following}/${state.cameraView}/${state.navigation}/${state.obstructionMode}`;
+  const swim = viewer?.getSwimStatus();
+  const key = `${state.variant}/${state.action}/${state.running}/${state.following}/${state.cameraView}/${state.navigation}/${state.obstructionMode}/${state.flightMode}/${state.flightWarning}/${swim?.mode}/${swim?.atWaterline}/${swim?.canLeave}`;
   if (key === previousCharacterStatus) return;
   previousCharacterStatus = key;
   const names = { man: 'Man', woman: 'Woman', child: 'Child' };
@@ -124,7 +154,24 @@ const updateCharacterStatus = (state: CharacterStatus): void => {
     arrived: 'Destination reached.', blocked: 'Cannot reach that spot. Tap clear ground.',
   };
   const navigationStatus = document.querySelector('#navigation-status')!;
-  if (navigationStatus.textContent !== navigationMessages[state.navigation]) navigationStatus.textContent = navigationMessages[state.navigation];
+  const navigationMessage = state.flightMode === 'flight'
+    ? state.flightWarning ? `Approaching ${state.flightWarning === 'flight-range' ? 'flight boundary' : 'restricted airspace'}.` : 'Flying'
+    : state.flightMode === 'ground' ? 'On the ground' : navigationMessages[state.navigation];
+  if (navigationStatus.textContent !== navigationMessage) navigationStatus.textContent = navigationMessage;
+  const flightMode = document.querySelector<HTMLButtonElement>('#flight-mode')!;
+  flightMode.textContent = state.flightMode === 'ground' ? 'Take off' : 'Land';
+  flightMode.dataset.mode = state.flightMode ?? '';
+  for (const button of document.querySelectorAll<HTMLButtonElement>('#flight-controls [data-direction]')) {
+    button.disabled = !swim && state.flightMode !== 'flight';
+  }
+  document.querySelector<HTMLButtonElement>('#jump')!.hidden = state.flightMode === 'flight' || !!swim && swim.mode !== 'ground';
+  const swimExit = document.querySelector<HTMLButtonElement>('#swim-exit')!;
+  swimExit.hidden = !swim;
+  swimExit.disabled = !swim?.canLeave;
+  const swimStatus = document.querySelector<HTMLElement>('#swim-status')!;
+  swimStatus.hidden = !swim;
+  swimStatus.textContent = !swim ? '' : swim.mode === 'swim' ? (swim.atWaterline ? 'At the surface' : 'Underwater') :
+    swim.mode === 'climb' ? 'Climbing out' : swim.mode === 'bottom' ? 'On the pool floor' : 'On the platform';
   document.querySelector<HTMLInputElement>('#follow')!.checked = state.following;
   document.querySelector<HTMLInputElement>('#follow')!.disabled = state.firstPerson;
   document.querySelector<HTMLSelectElement>('#obstruction-mode')!.value = state.obstructionMode;
@@ -137,7 +184,9 @@ const updateCharacterStatus = (state: CharacterStatus): void => {
     ? 'Eye-level view stays attached to your character.'
     : state.following ? 'Following your character. Turn off to pause this view.' : 'Tracking paused. Drag to orbit, scroll to zoom.';
   const staticView = ['overview', 'street', 'overhead'].includes(state.cameraView);
-  document.querySelector('#interaction-guide')!.innerHTML = state.following && !staticView
+  document.querySelector('#interaction-guide')!.innerHTML = state.flightMode === 'flight'
+    ? '<span><b>WASD / arrows</b> fly</span><span><b>Space / C</b> ascend / descend</span><span><b>Shift</b> boost</span>'
+    : state.following && !staticView
     ? '<span><b>WASD / arrows</b> move</span><span><b>Shift</b> run</span><span><b>Space</b> jump</span>'
     : '<span><b>Drag</b> orbit</span><span><b>Scroll</b> zoom</span><span><b>Right drag</b> pan</span>';
   document.querySelector('#camera-status')!.textContent = `Camera: ${cameraNames[state.cameraView]}${state.following ? ' · following' : ''}`;
@@ -243,6 +292,63 @@ try {
   document.querySelector<HTMLSelectElement>('#character')!.addEventListener('change', event => viewer?.setCharacter((event.target as HTMLSelectElement).value as CharacterVariant), { signal: uiEvents.signal });
   document.querySelectorAll<HTMLButtonElement>('[data-direction]').forEach(button => viewer?.bindDirection(button, button.dataset.direction as MoveDirection));
   document.querySelector('#run')!.addEventListener('click', () => viewer?.setRunning(!viewer.getCharacterStatus().running), { signal: uiEvents.signal });
+  const sceneSelect = document.querySelector<HTMLSelectElement>('#environment')!;
+  const sceneStatus = document.querySelector('#environment-status')!;
+  let selection = 0;
+  let environmentOperation = Promise.resolve();
+  const swimPose = document.querySelector<HTMLSelectElement>('#swim-pose')!;
+  const swimOutfit = document.querySelector<HTMLSelectElement>('#swim-outfit')!;
+  const syncEnvironment = (): void => {
+    const active = viewer!.environmentId;
+    sceneSelect.value = active;
+    document.querySelector<HTMLSelectElement>('#lighting')!.value = viewer!.getTimeOfDay();
+    document.querySelector('.scene-title h2')!.textContent = sceneNames[active];
+    document.querySelector('#project-name')!.textContent = sceneNames[active];
+    viewport.dataset.environment = active;
+    for (const selector of ['.scene-title .eyebrow', '.scene-title p']) {
+      document.querySelector<HTMLElement>(selector)!.hidden = active !== 'city';
+    }
+    document.querySelector<HTMLElement>('#function-water-feature')!.hidden = active !== 'city' && active !== 'swim';
+    document.querySelector<HTMLElement>('#flight-controls')!.hidden = active !== 'flight' && active !== 'swim';
+    document.querySelector<HTMLElement>('#flight-mode')!.hidden = active !== 'flight';
+    document.querySelector<HTMLElement>('#swim-controls')!.hidden = active !== 'swim';
+    document.querySelector('#movement-help')!.textContent = active === 'swim'
+      ? 'Walk off the platform to enter · Space / C change depth · I / O spiral · Y stops · Surface at the edge to climb out'
+      : active === 'flight' ? 'Hold arrows to move · Stop cancels · Land within 2 m of a surface'
+      : 'Hold arrows to move · Stop cancels · Drag to orbit / pinch to zoom';
+    updateCharacterStatus(viewer!.getCharacterStatus());
+  };
+  sceneSelect.addEventListener('change', () => {
+    const version = ++selection;
+    const id = sceneSelect.value as EnvironmentId;
+    sceneStatus.textContent = `Loading ${sceneNames[id]}…`;
+    environmentOperation = viewer!.selectEnvironment(id).catch(() => false).then(accepted => {
+      if (version !== selection) return;
+      syncEnvironment();
+      sceneStatus.textContent = accepted ? '' : `Could not load ${sceneNames[id]}. ${sceneNames[viewer!.environmentId]} is still active.`;
+      panelProfiles?.changed();
+    });
+  }, { signal: uiEvents.signal });
+  for (const control of [swimPose, swimOutfit]) control.addEventListener('change', () => {
+    const appearance = { pose: swimPose.value, outfit: swimOutfit.value };
+    if (validSwimAppearance(appearance)) viewer?.setSwimAppearance(appearance);
+  }, { signal: uiEvents.signal });
+  document.querySelector('#swim-exit')!.addEventListener('click', () => viewer?.leaveWater(), { signal: uiEvents.signal });
+  document.querySelector('#scan-environment')!.addEventListener('click', () => viewer?.scanEnvironment(), { signal: uiEvents.signal });
+  document.querySelector<HTMLInputElement>('#walk-speed')!.addEventListener('change', event => {
+    const field = event.currentTarget as HTMLInputElement;
+    if (field.validity.valid) viewer?.setWalkSpeed(field.valueAsNumber);
+  }, { signal: uiEvents.signal });
+  document.querySelector<HTMLSelectElement>('#projectile-aim')!.addEventListener('change', event => {
+    viewer?.setProjectileAim((event.currentTarget as HTMLSelectElement).value === 'camera' ? 'camera' : 'target');
+  }, { signal: uiEvents.signal });
+  syncEnvironment();
+  const flightMode = document.querySelector<HTMLButtonElement>('#flight-mode')!;
+  flightMode.addEventListener('click', () => {
+    const landing = flightMode.dataset.mode === 'flight';
+    const accepted = viewer!.setFlightMode(landing ? 'ground' : 'flight');
+    sceneStatus.textContent = accepted ? '' : landing ? 'Move within 2 m of a clear landing surface.' : 'Takeoff needs more clearance.';
+  }, { signal: uiEvents.signal });
   document.querySelector('#jump')!.addEventListener('click', () => viewer?.jump(), { signal: uiEvents.signal });
   document.querySelector('#stop')!.addEventListener('click', () => viewer?.stop(), { signal: uiEvents.signal });
   document.querySelector<HTMLInputElement>('#follow')!.addEventListener('change', event => viewer?.setFollowing((event.target as HTMLInputElement).checked), { signal: uiEvents.signal });
@@ -255,6 +361,26 @@ try {
   document.querySelector('#reset')!.addEventListener('click', () => selectCamera('overview'), { signal: uiEvents.signal });
   document.querySelector<HTMLSelectElement>('#lighting')!.addEventListener('change', event => viewer?.setTimeOfDay((event.target as HTMLSelectElement).value as TimeOfDay), { signal: uiEvents.signal });
   document.querySelector<HTMLInputElement>('#shadows')!.addEventListener('change', event => viewer?.setShadows((event.target as HTMLInputElement).checked), { signal: uiEvents.signal });
+  panelProfiles = new PanelProfiles(document.querySelector<HTMLElement>('.control-panel')!, viewer, controlPanel, settings => {
+    document.querySelector<HTMLSelectElement>('#character')!.value = settings.variant;
+    document.querySelector<HTMLSelectElement>('#lighting')!.value = settings.scenes[settings.environment]!.time;
+    document.querySelector<HTMLInputElement>('#shadows')!.checked = settings.shadows;
+    const { pose, outfit } = settings.swimAppearance ?? defaultSwimAppearance;
+    document.querySelector<HTMLInputElement>('#walk-speed')!.value = String(settings.walkSpeed);
+    document.querySelector<HTMLSelectElement>('#projectile-aim')!.value = settings.projectileAim ?? 'target';
+    swimPose.value = pose;
+    swimOutfit.value = outfit;
+    document.querySelector<HTMLInputElement>('#water-lens')!.checked = settings.waterLens;
+    document.querySelector<HTMLInputElement>('#water-enabled')!.checked = settings.water.enabled;
+    document.querySelector<HTMLInputElement>('#water-paused')!.checked = settings.water.paused;
+    document.querySelector<HTMLSelectElement>('#water-quality')!.value = settings.water.quality;
+    document.querySelector<HTMLInputElement>('#water-wave')!.value = String(settings.water.waveStrength);
+    document.querySelector<HTMLInputElement>('#water-flow')!.value = String(settings.water.flowSpeed);
+    syncEnvironment();
+    syncExpression(false);
+    syncWater();
+  }, () => environmentOperation);
+  await panelProfiles.initialize();
 } catch (cause) {
   fatal = true;
   reportAsset({ phase: 'error', message: 'Scene unavailable.', recovery: 'Reload the page to retry. If the problem continues, check your connection and WebGL2 hardware acceleration.' });
@@ -267,6 +393,6 @@ try {
 }
 }
 void initialize();
-const dispose = (): void => { uiEvents.abort(); controlPanel.dispose(); viewer?.dispose(); };
+const dispose = (): void => { uiEvents.abort(); panelProfiles?.dispose(); controlPanel.dispose(); viewer?.dispose(); };
 window.addEventListener('pagehide', event => { if (!event.persisted) dispose(); }, { signal: uiEvents.signal });
 if (import.meta.hot) import.meta.hot.dispose(dispose);

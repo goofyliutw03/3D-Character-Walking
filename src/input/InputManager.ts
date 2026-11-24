@@ -1,10 +1,7 @@
 import type { MovementIntent } from '../character/motion';
 
-export type MoveDirection = 'forward' | 'backward' | 'left' | 'right';
+export type MoveDirection = 'forward' | 'backward' | 'left' | 'right' | 'ascend' | 'descend';
 const gameKeys = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ShiftLeft', 'ShiftRight', 'Space']);
-const directions: Record<MoveDirection, readonly [number, number]> = {
-  forward: [0, -1], backward: [0, 1], left: [-1, 0], right: [1, 0],
-};
 
 export class InputManager {
   private readonly events = new AbortController();
@@ -13,10 +10,11 @@ export class InputManager {
   private latch: MoveDirection | undefined;
   private runToggle = false;
   private jumpPending = false;
+  private flightControls = false;
   constructor(win: Window = window, doc: Document = document, private readonly onManual: () => void = () => {}) {
     const signal = this.events.signal;
     win.addEventListener('keydown', event => {
-      if (!gameKeys.has(event.code) || event.isComposing || this.editing(event.target) || event.altKey || event.ctrlKey || event.metaKey) return;
+      if (!(gameKeys.has(event.code) || this.flightControls && ['KeyC', 'KeyE', 'KeyQ'].includes(event.code)) || event.isComposing || this.editing(event.target) || event.altKey || event.ctrlKey || event.metaKey) return;
       event.preventDefault();
       if (event.repeat) return;
       this.onManual();
@@ -53,17 +51,21 @@ export class InputManager {
     }, { signal });
   }
   sample(): MovementIntent {
-    let x = Number(this.keys.has('KeyD') || this.keys.has('ArrowRight')) - Number(this.keys.has('KeyA') || this.keys.has('ArrowLeft'));
-    let z = Number(this.keys.has('KeyS') || this.keys.has('ArrowDown')) - Number(this.keys.has('KeyW') || this.keys.has('ArrowUp'));
     const active = new Set(this.pointers.values());
     if (this.latch) active.add(this.latch);
-    for (const direction of active) {
-      x += directions[direction][0]; z += directions[direction][1];
-    }
+    const pressed = (direction: MoveDirection, ...codes: string[]) =>
+      active.has(direction) || codes.some(code => this.keys.has(code));
+    const x = Number(pressed('right', 'KeyD', 'ArrowRight')) - Number(pressed('left', 'KeyA', 'ArrowLeft'));
+    const z = Number(pressed('backward', 'KeyS', 'ArrowDown')) - Number(pressed('forward', 'KeyW', 'ArrowUp'));
     const jump = this.jumpPending;
     this.jumpPending = false;
-    return { x: Math.sign(x), z: Math.sign(z), run: this.running, jump };
+    const intent = { x: Math.sign(x), z: Math.sign(z), run: this.running, jump };
+    if (!this.flightControls) return intent;
+    const ascend = jump || pressed('ascend', 'Space', 'KeyE');
+    const descend = pressed('descend', 'KeyC', 'KeyQ');
+    return { ...intent, vertical: Number(ascend) - Number(descend) };
   }
+  setFlightControls(enabled: boolean): void { this.stop(); this.flightControls = enabled; }
   get running(): boolean { return this.runToggle || this.keys.has('ShiftLeft') || this.keys.has('ShiftRight'); }
   setRun(enabled: boolean): void { this.onManual(); this.runToggle = enabled; }
   jump(): void { this.onManual(); this.jumpPending = true; }

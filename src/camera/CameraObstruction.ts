@@ -1,4 +1,4 @@
-import { Mesh, PerspectiveCamera, Raycaster, Vector3, type Group, type Object3D } from 'three';
+import { Mesh, PerspectiveCamera, Raycaster, Vector3, type Group, type Material, type Object3D } from 'three';
 import type { CameraSubject } from './CameraController';
 import { FollowCamera } from './FollowCamera.ts';
 import { SceneAppearance } from '../scene/SceneAppearance.ts';
@@ -18,19 +18,21 @@ export class CameraObstruction {
   private readonly direction = new Vector3();
   private readonly ray = new Raycaster();
   get mode(): ObstructionMode { return this.selected; }
-  constructor(private readonly environment: Group) { this.appearance = new SceneAppearance(environment); }
+  constructor(private readonly environment: Group, prepareMaterial?: (material: Material) => void) { this.appearance = new SceneAppearance(environment, prepareMaterial); }
+
+  prepareTransparency(compile: () => void): void { this.appearance.prepareTransparency(compile); }
 
   setMode(mode: ObstructionMode): void {
     if (this.selected === mode) return;
     this.appearance.apply('normal');
     this.selected = mode;
   }
-  update(desired: PerspectiveCamera, rendered: PerspectiveCamera, target: Vector3, subject: CameraSubject, delta: number, immediate: boolean, external = true): void {
+  update(desired: PerspectiveCamera, rendered: PerspectiveCamera, target: Vector3, subject: CameraSubject, delta: number, immediate: boolean, external = true, avoid = true): void {
     // Controls own desired; obstruction must never feed its compressed pose back.
     rendered.copy(desired, false);
     this.focus.set(subject.x, subject.y + subject.height * 0.65, subject.z);
     let destination = 1;
-    if (external) {
+    if (external && avoid) {
       this.environment.updateWorldMatrix(true, true);
       this.visibleMeshes.length = 0;
       this.environment.traverseVisible(object => { if (object instanceof Mesh && object.userData.cameraObstruction !== false) this.visibleMeshes.push(object); });
@@ -51,7 +53,7 @@ export class CameraObstruction {
     } else this.fraction = 1;
 
     if (this.selected === 'wireframe') this.appearance.apply('wireframe');
-    else if (external && this.selected === 'transparent') this.appearance.apply('transparent', this.blockers(rendered.position, subject));
+    else if (external && avoid && this.selected === 'transparent') this.appearance.apply('transparent', this.blockers(rendered.position, subject));
     else this.appearance.apply('normal');
     rendered.updateMatrixWorld(true);
   }

@@ -832,3 +832,19 @@ main[data-panel-collapsed=true] #panel-toggle { justify-content:center; padding:
 .object-node > summary input { width: 15px; height: 15px; margin: 0 5px 0 0; vertical-align: middle; }
 .object-node[data-matched="false"] > summary span { opacity: .6; }
 .object-node > summary:focus-visible, .object-node input:focus-visible { outline: 2px solid #9a5b21; outline-offset: 2px; }
+
+#environment { margin-bottom: .35rem; }
+#environment-status:empty { display: none; }
+#flight-controls { display: contents; }
+#flight-controls[hidden], .action-controls button[hidden], .function-node[hidden],
+.scene-title [hidden], #particle-status[hidden] { display: none; }
+.viewport[data-environment]:not([data-environment="city"]) .scene-title {
+  padding: .35rem .65rem;
+  border-radius: .4rem;
+  background: #f7f9efeb;
+}
+
+.profile-toolbar { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.profile-toolbar button { padding: 7px 9px; font-size: 11px; }
+.profile-toolbar select { flex: 1; min-width: 90px; width: auto; }
+.profile-help { font-size: 10px; }

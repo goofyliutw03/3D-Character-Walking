@@ -1,4 +1,4 @@
-import { DoubleSide, ShaderMaterial } from 'three';
+import { DoubleSide, ShaderMaterial, Vector2 } from 'three';
 import { fallFragment, fallVertex, waterFragment, waterVertex } from './waterShaders.ts';
 
 export type WaterQuality = 'low' | 'standard';
@@ -25,6 +25,7 @@ export class WaterShaderModule {
   private disposed = false;
   private readonly uniforms = {
     uTime:{value:0}, uWave:{value:1}, uFlow:{value:1}, uEnabled:{value:1}, uLow:{value:0},
+    uHalfSize:{value:new Vector2(2, 1.5)},
   };
   readonly surfaceMaterial = new WaterShaderMaterial({
     uniforms:{...this.uniforms,uOpacity:{value:1}},
@@ -37,6 +38,21 @@ export class WaterShaderModule {
   });
   get settings(): WaterSettings { return {...this.state}; }
   get elapsed(): number { return this.time; }
+  setSurfaceSize(width: number, depth: number): void {
+    this.uniforms.uHalfSize.value.set(width / 2, depth / 2);
+  }
+  /** CPU counterpart of heightAt in waterShaders.ts, in surface-local metres. */
+  surfaceOffset(x: number, z: number): number {
+    const { enabled, waveStrength, flowSpeed } = this.state;
+    if (!enabled) return 0;
+    const t = this.time * flowSpeed;
+    const d = Math.hypot(x, (z + 1.1) * 1.15);
+    return waveStrength * (
+      Math.sin(x * 4.2 + z * 2.8 + t * 1.3) * .013 +
+      Math.sin(x * -2.8 + z * 5.4 - t * 1.7) * .009 +
+      Math.sin(x * 7.1 - z * 3 + t * 2.1) * .004 +
+      Math.sin(d * 19 - t * 5) * Math.exp(-d * 1.8) * .012);
+  }
   configure(patch: Partial<WaterSettings>): boolean {
     if (this.disposed) return false;
     const next = {...this.state,...patch};

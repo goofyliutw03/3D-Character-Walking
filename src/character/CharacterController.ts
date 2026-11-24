@@ -7,13 +7,19 @@ export class CharacterController {
   private readonly state: MotionSnapshot;
   private velocityY = 0;
   private jumpHeld = false;
+  private walkSpeed = 1.8;
+  setWalkSpeed(speed: number): boolean {
+    if (!Number.isFinite(speed) || speed < .5 || speed > 4) return false;
+    this.walkSpeed = speed;
+    return true;
+  }
   constructor(private readonly world: WalkableWorld) {
     this.state = { x: 0, y: world.groundHeight(0, 5), z: 5, heading: Math.PI, speed: 0, grounded: true, action: 'idle' };
   }
   update(delta: number, intent: MovementIntent): Readonly<MotionSnapshot> {
     const dt = Math.min(Math.max(Number.isFinite(delta) ? delta : 0, 0), 0.05);
     const magnitude = Math.hypot(intent.x, intent.z);
-    const scale = (intent.run ? 4 : 1.8) / Math.max(1, magnitude);
+    const scale = (intent.run ? 4 : this.walkSpeed) / Math.max(1, magnitude);
     const vx = intent.x * scale;
     const vz = intent.z * scale;
     if (magnitude > 0) this.state.heading = Math.atan2(intent.x, intent.z);

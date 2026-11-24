@@ -20,6 +20,7 @@ const staticPresets = {
 const isStatic = (view: CameraView): view is keyof typeof staticPresets => view === 'overview' || view === 'street' || view === 'overhead';
 
 export class CameraController {
+  private presets: typeof staticPresets = staticPresets;
   private selected: CameraView = 'overview';
   private tracking = false;
   private obstructionAvoidance = true;
@@ -38,6 +39,7 @@ export class CameraController {
   get transitioning(): boolean { return this.transition !== undefined; }
   constructor(private readonly camera: PerspectiveCamera, private readonly orbit: Orbit, private readonly obstruction: Pick<FollowCamera, 'constrain'>, private readonly first: FirstPersonCamera) {}
 
+  setEnvironmentPresets(presets?: typeof staticPresets): void { this.presets = presets ?? staticPresets; }
   setObstructionAvoidance(enabled: boolean): void { this.obstructionAvoidance = enabled; }
 
   select(view: CameraView, subject: CameraSubject, immediate: boolean): void {
@@ -117,7 +119,7 @@ export class CameraController {
   }
   private currentFrame(): Frame { return { position: this.camera.position.clone(), target: this.orbit.target.clone() }; }
   private frame(view: Exclude<CameraView, 'first-person'>, subject: CameraSubject): Frame {
-    if (isStatic(view)) return { position: new Vector3(...staticPresets[view].position), target: new Vector3(...staticPresets[view].target) };
+    if (isStatic(view)) return { position: new Vector3(...this.presets[view].position), target: new Vector3(...this.presets[view].target) };
     const target = new Vector3(subject.x, subject.y + subject.height * 0.65, subject.z);
     const sin = Math.sin(subject.heading);
     const cos = Math.cos(subject.heading);

@@ -103,6 +103,12 @@ export class CharacterXrayPass {
             used.add(material);
             let depth = this.depths.get(material);
             if (!depth) { depth = new MeshDepthMaterial({ depthPacking: RGBADepthPacking }); this.depths.set(material, depth); }
+            if ('displacementMap' in material) {
+              const source = material as unknown as Pick<MeshDepthMaterial, 'displacementMap' | 'displacementScale' | 'displacementBias'>;
+              depth.displacementMap = source.displacementMap;
+              depth.displacementScale = source.displacementScale;
+              depth.displacementBias = source.displacementBias;
+            }
             depth.side = material.side;
             depth.alphaTest = material.alphaTest;
             depth.map = 'map' in material ? material.map as MeshDepthMaterial['map'] : null;
