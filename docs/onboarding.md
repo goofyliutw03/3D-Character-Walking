@@ -23,6 +23,14 @@
 
 執行前先閱讀 [專案規則](../AGENTS.md)、[README](../README.md) 與 [需求來源](development-plan.md)。正式操作副本的增量發佈與 localhost:4174 預覽依 [release.md](release.md)；localhost 不代表手機 LAN 驗收。
 
+## PR CI 試辦
+
+指向 `main` 的 PR 使用 [PR CI](../.github/workflows/pr-ci.yml)，在 GitHub 託管的 Windows runner 從乾淨 checkout 啟動。使用 Node 24，pnpm 版本取自 `package.json` 的 `packageManager`。依序執行 `pnpm install --frozen-lockfile`、`pnpm run test`、`pnpm run build`，建置包含 TypeScript 檢查。
+
+- 首次試跑在 PR 的 **Checks** 確認 **Test and build** 通過，並保留執行連結。接著在獨立草稿 PR 暫加一個必定失敗的測試，確認測試步驟失敗、build 略過，再關閉草稿 PR。
+- 試跑完成後由維護者確認結果，再決定是否將 **Test and build** 設為必要檢查。如需撤回試辦，可在 GitHub 停用該 workflow。
+- 正式副本繼續依 [Release 操作](release.md) 從本機發佈。瀏覽器與實機驗收沿用下方紀錄。
+
 ## 當前工作與限制
 
 - 既有六里程碑功能及追加功能的證據，以各 spec validation 為準；M6 結束確認、跨 GPU／瀏覽器、手機與摺疊裝置等剩餘驗收見 [remaining-acceptance.md](remaining-acceptance.md) 及 [roadmap](../.kiro/steering/roadmap.md)。
