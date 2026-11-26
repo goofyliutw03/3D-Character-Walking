@@ -15,7 +15,16 @@ export const profileControlsContent = `<div class="profile-toolbar">
   <label class="sr-only" for="panel-profile">Panel profile</label><select id="panel-profile"><option value="temp">temp</option></select>
   <button id="panel-save" type="button">Save</button></div>
   <p id="profile-status" class="hint" role="status">Loading local profiles…</p>
-  <p class="hint profile-help">Settings stay in this browser for this site address and port. Browser manages the file location; clearing site data removes profiles.</p>`;
+  <p class="hint profile-help">Profiles stay in this browser for this site address and port. Save also downloads a 3D debug JSON.</p>`;
+
+function downloadDebugJson(name: string, text: string): void {
+  const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `${name}-3d-debug.json`;
+  try { link.click(); }
+  finally { setTimeout(() => URL.revokeObjectURL(url), 30_000); }
+}
 
 export class PanelProfiles {
   private history = new ProfileHistory<PanelSettings>();
@@ -134,8 +143,23 @@ export class PanelProfiles {
       await this.settled();
       const settings=this.capture();
       if (JSON.stringify(settings)!==this.last) this.history.change(settings);
-      this.history.save(settings.runtime.environment,settings);
+      const name = this.history.save(settings.runtime.environment, settings);
+      let debugJson: string | undefined;
+      try {
+        debugJson = JSON.stringify({ version: 1, profile: name, capturedAt: new Date().toISOString(),
+          ...this.viewer.capture3DDebug(settings.runtime) }, null, 2);
+      } catch (error) {
+        console.error('3D debug capture failed', error);
+      }
       this.last=JSON.stringify(settings); await this.persist(true);
+      if (debugJson === undefined) { this.report('Profile saved · 3D debug capture failed'); return; }
+      try {
+        downloadDebugJson(name, debugJson);
+        this.report(`Saved · ${name}-3d-debug.json download requested`);
+      } catch (error) {
+        this.report('Profile saved · 3D debug download failed');
+        console.error('3D debug download failed', error);
+      }
     }),options);
     reset.addEventListener('click',()=>this.enqueue(async()=>{
       await this.apply(this.defaults); this.history.reset(this.capture()); await this.persist(true);

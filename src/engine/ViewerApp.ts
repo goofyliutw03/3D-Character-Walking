@@ -4,7 +4,7 @@ import { SwimController, type SwimDepthDirection } from '../character/SwimContro
 import { defaultSwimAppearance, validSwimAppearance, type SwimAppearance } from '../character/SwimAppearance';
 import { EnvironmentScan } from './EnvironmentScan';
 import { worldQuery } from '../world/LegacyWorldQuery';
-import { Group, Mesh, MeshBasicMaterial, PerspectiveCamera, SphereGeometry, Vector3 } from 'three';
+import { Color, Group, InstancedMesh, Light, Mesh, MeshBasicMaterial, PerspectiveCamera, PointLight, SphereGeometry, Vector3 } from 'three';
 import { TargetActor } from '../character/TargetActor';
 import { ParticleInteraction, type ParticleSettings, type ParticleSnapshot } from '../interaction/ParticleInteraction';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -42,6 +42,9 @@ export interface CharacterStatus { flightMode?: 'flight' | 'ground'; flightWarni
 export class ViewerApp {
   private readonly camera = new PerspectiveCamera(43, 1, 0.1, 200);
   private readonly desiredCamera = this.camera.clone();
+  private readonly swimCameraPosition = new Vector3();
+  private readonly swimCameraAim = new Vector3();
+  private cameraUnderwater = false;
   private obstruction: CameraObstruction;
   private readonly followObstruction: FollowCamera;
   private readonly scenes: SceneSwitch;
@@ -245,7 +248,7 @@ export class ViewerApp {
     this.cameras.update(this.getCameraSubject(), delta, immediate);
     this.updateObstruction(delta, immediate);
     if (active.swim) {
-      active.swim.updateCamera(this.camera.position);
+      this.cameraUnderwater = active.swim.updateCamera(this.camera.position);
       this.scenes.syncAppearance();
     }
     active.headlamp?.update(this.getCameraSubject(), waterDelta, immediate,
@@ -444,6 +447,62 @@ export class ViewerApp {
     });
   }
 
+  capture3DDebug(settings: ViewerSettings) {
+    const active = this.scenes.active;
+    const cameraState = (camera: PerspectiveCamera) => ({
+      position: camera.position.toArray(), quaternion: camera.quaternion.toArray(),
+      fov: camera.fov, zoom: camera.zoom, aspect: camera.aspect, near: camera.near, far: camera.far,
+      projection: camera.projectionMatrix.toArray(),
+    });
+    const objects: object[] = [];
+    this.scenes.root.updateMatrixWorld(true);
+    this.scenes.root.traverse(object => {
+      const materials = object instanceof Mesh ? [object.material].flat().map(material => ({
+        id: material.id, name: material.name, type: material.type, visible: material.visible,
+        opacity: material.opacity, transparent: material.transparent, depthWrite: material.depthWrite,
+        side: material.side, wireframe: 'wireframe' in material && material.wireframe,
+        color: 'color' in material && material.color instanceof Color ? material.color.getHexString() : undefined,
+        roughness: 'roughness' in material ? material.roughness : undefined,
+        metalness: 'metalness' in material ? material.metalness : undefined,
+      })) : undefined;
+      objects.push({
+        id: object.id, parent: object.parent?.id, name: object.name, type: object.type,
+        visible: object.visible, layers: object.layers.mask, matrixWorld: object.matrixWorld.toArray(),
+        position: object.position.toArray(), quaternion: object.quaternion.toArray(), scale: object.scale.toArray(),
+        castShadow: object.castShadow, receiveShadow: object.receiveShadow,
+        cameraObstruction: object.userData.cameraObstruction !== false,
+        geometry: object instanceof Mesh ? {
+          id: object.geometry.id, type: object.geometry.type,
+          vertices: object.geometry.getAttribute('position')?.count, indices: object.geometry.index?.count,
+        } : undefined,
+        instances: object instanceof InstancedMesh ? object.count : undefined, materials,
+        light: object instanceof Light ? {
+          color: object.color.getHexString(), intensity: object.intensity,
+          distance: object instanceof PointLight ? object.distance : undefined,
+          decay: object instanceof PointLight ? object.decay : undefined,
+        } : undefined,
+      });
+    });
+    const renderer = this.view.renderer;
+    return {
+      settings, objects,
+      camera: { desired: cameraState(this.desiredCamera), rendered: cameraState(this.camera),
+        orbitTarget: this.controls.target.toArray(), fisheye: this.cameras.fisheye },
+      character: { motion: { ...this.motion }, status: this.getCharacterStatus(), destination: this.navigation.target },
+      targetAnchor: this.target.anchor.toArray(), particles: this.particles.snapshot,
+      water: { elapsed: this.getWaterElapsed(), pool: active.swim ? {
+        footprint: active.swim.water.footprint, bottom: active.swim.water.bottom,
+        level: active.swim.water.level, current: active.swim.water.current, cameraUnderwater: this.cameraUnderwater,
+        swimmer: this.movement instanceof SwimController ? {
+          mode: this.movement.mode, atWaterline: this.movement.atWaterline, submerged: this.movement.submerged,
+        } : undefined,
+      } : undefined },
+      renderer: { ...this.view.stats, pixelRatio: renderer.getPixelRatio(),
+        canvas: [renderer.domElement.width, renderer.domElement.height],
+        shadows: renderer.shadowMap.enabled, toneMapping: renderer.toneMapping, exposure: renderer.toneMappingExposure },
+    };
+  }
+
   async applyPanelSettings(settings: ViewerSettings): Promise<void> {
     if (!validViewerSettings(settings)) throw new Error('Invalid panel settings');
     this.stop();
@@ -498,6 +557,19 @@ export class ViewerApp {
   }
   private updateObstruction(delta: number, immediate: boolean): void {
     this.obstruction.update(this.desiredCamera, this.camera, this.controls.target, this.getCameraSubject(), delta, immediate, this.cameras.characterVisible, !(this.environmentId === 'room' && this.cameras.view === 'street'));
+    const swim = this.scenes.active.swim;
+    if (!swim || !this.cameras.characterVisible) return;
+    const camera = this.camera;
+    const halfHeight = camera.near * Math.tan(camera.fov * Math.PI / 360) / camera.zoom;
+    const halfWidth = halfHeight * (this.cameras.fisheye ? 1 : camera.aspect);
+    this.swimCameraPosition.copy(camera.position);
+    swim.constrainCamera(this.swimCameraPosition, Math.hypot(camera.near, halfWidth, halfHeight));
+    if (camera.position.equals(this.swimCameraPosition)) return;
+    const aimDistance = Math.max(1, camera.position.distanceTo(this.controls.target));
+    camera.getWorldDirection(this.swimCameraAim).multiplyScalar(aimDistance).add(camera.position);
+    camera.position.copy(this.swimCameraPosition);
+    camera.lookAt(this.swimCameraAim);
+    camera.updateMatrixWorld(true);
   }
   setSpeech(text: string): void { this.expressions.setSpeech(text); this.updateExpression(); }
   getExpression(): Readonly<ExpressionState> { return this.expressions.snapshot; }

@@ -47,17 +47,27 @@ export function createSwim(): Environment {
   box({ ...footprint, id: 'Pool floor', minY: -5.3, maxY: -5 }, '#778f91');
   for (const solid of solids) box(solid, solid === deck ? '#d5ae69' : '#45666e');
   const wall = { minY: -5, maxY: .24 };
-  box({ ...wall, id: 'West wall', minX: -9.4, maxX: -9, minZ: -6.4, maxZ: 6.4 }, '#507179');
-  box({ ...wall, id: 'East wall', minX: 9, maxX: 9.4, minZ: -6.4, maxZ: 6.4 }, '#507179');
-  box({ ...wall, id: 'North wall', minX: -9, maxX: 9, minZ: -6.4, maxZ: -6 }, '#507179');
-  box({ ...wall, id: 'South wall', minX: -9, maxX: 9, minZ: 6, maxZ: 6.4 }, '#507179');
+  const walls = [
+    { ...wall, id: 'West wall', minX: -9.4, maxX: -9, minZ: -6.4, maxZ: 6.4 },
+    { ...wall, id: 'East wall', minX: 9, maxX: 9.4, minZ: -6.4, maxZ: 6.4 },
+    { ...wall, id: 'North wall', minX: -9, maxX: 9, minZ: -6.4, maxZ: -6 },
+    { ...wall, id: 'South wall', minX: -9, maxX: 9, minZ: 6, maxZ: 6.4 },
+  ];
+  for (const bounds of walls) box(bounds, '#507179');
+  const cameraSolids = [...solids, ...walls];
+  const cameraPositionIsBlocked = (x: number, y: number, z: number, margin: number): boolean =>
+    cameraSolids.some(bounds => x > bounds.minX - margin && x < bounds.maxX + margin &&
+      y < bounds.maxY + margin && z > bounds.minZ - margin && z < bounds.maxZ + margin);
 
   const shader = new WaterShaderModule();
   const water = new WaterVolume(footprint, -5, 0, shader);
   shader.setSurfaceSize(18, 12);
   const surfaceGeometry = new PlaneGeometry(18, 12, 180, 120);
+  const lowSurfaceGeometry = new PlaneGeometry(18, 12, 72, 48);
   surfaceGeometry.rotateX(-Math.PI / 2);
+  lowSurfaceGeometry.rotateX(-Math.PI / 2);
   geometries.add(surfaceGeometry);
+  geometries.add(lowSurfaceGeometry);
   shader.surfaceMaterial.transparent = true;
   shader.surfaceMaterial.opacity = .58;
   shader.surfaceMaterial.depthWrite = false;
@@ -96,6 +106,7 @@ export function createSwim(): Environment {
   const spawn = { x: 0, z: 4.9 };
   const updateEffects = (reduced: boolean): void => {
     const { enabled, quality } = shader.settings;
+    surface.geometry = quality === 'low' ? lowSurfaceGeometry : surfaceGeometry;
     const t = reduced ? 0 : shader.elapsed;
     plants.count = enabled ? (quality === 'low' ? 12 : 40) : 0;
     bubbles.count = enabled && !reduced ? (quality === 'low' ? 8 : 28) : 0;
@@ -135,6 +146,32 @@ export function createSwim(): Environment {
     } },
     swim: {
       water, exit: { surfaceId: deck.id },
+      constrainCamera(position, clearance) {
+        position.y = Math.max(position.y, water.bottom + clearance);
+        const { x, y, z } = position;
+        if (!cameraPositionIsBlocked(x, y, z, clearance)) return;
+        let bestDistance = Infinity;
+        for (const bounds of cameraSolids) {
+          if (x <= bounds.minX - clearance || x >= bounds.maxX + clearance ||
+              y >= bounds.maxY + clearance || z <= bounds.minZ - clearance || z >= bounds.maxZ + clearance) continue;
+          const faces = [
+            { axis: 'x', value: bounds.minX - clearance },
+            { axis: 'x', value: bounds.maxX + clearance },
+            { axis: 'z', value: bounds.minZ - clearance },
+            { axis: 'z', value: bounds.maxZ + clearance },
+            { axis: 'y', value: bounds.maxY + clearance },
+          ] as const;
+          for (const { axis, value } of faces) {
+            const distance = Math.abs((axis === 'x' ? x : axis === 'y' ? y : z) - value);
+            if (distance >= bestDistance || cameraPositionIsBlocked(
+              axis === 'x' ? value : x, axis === 'y' ? value : y, axis === 'z' ? value : z, clearance,
+            )) continue;
+            position.set(x, y, z);
+            position[axis] = value;
+            bestDistance = distance;
+          }
+        }
+      },
       updateCamera(position) {
         submerged = water.submerged(position, submerged);
         scene.fog = submerged ? underwaterFog : null;
