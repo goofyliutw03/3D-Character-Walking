@@ -2,8 +2,7 @@ import { PerspectiveCamera, Vector3 } from 'three';
 import type { MotionSnapshot } from '../character/motion';
 
 export class FirstPersonCamera {
-  update(camera: PerspectiveCamera, target: Vector3, state: Readonly<MotionSnapshot>, eyeHeight: number, eyeForward: number,
-    look?: Readonly<{ heading: number; pitch: number }>): void {
+  update(camera: PerspectiveCamera, target: Vector3, state: Readonly<MotionSnapshot>, eyeHeight: number, eyeForward: number): void {
     if (camera.fov !== 70 || camera.near !== 0.04) {
       camera.fov = 70; camera.near = 0.04;
       camera.updateProjectionMatrix();
@@ -11,11 +10,7 @@ export class FirstPersonCamera {
     const forwardX = Math.sin(state.heading);
     const forwardZ = Math.cos(state.heading);
     camera.position.set(state.x + forwardX * eyeForward, state.y + eyeHeight, state.z + forwardZ * eyeForward);
-    const heading = look?.heading ?? state.heading;
-    const pitch = look?.pitch ?? 0;
-    const horizontal = Math.cos(pitch) * 10;
-    target.set(camera.position.x + Math.sin(heading) * horizontal, camera.position.y + Math.sin(pitch) * 10,
-      camera.position.z + Math.cos(heading) * horizontal);
+    target.set(camera.position.x + forwardX * 10, camera.position.y, camera.position.z + forwardZ * 10);
     camera.up.set(0, 1, 0);
     camera.lookAt(target);
   }

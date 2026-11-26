@@ -1,21 +1,27 @@
-import { BoxGeometry, Color, CylinderGeometry, DirectionalLight, DodecahedronGeometry, Fog, Group, HemisphereLight, Mesh, MeshStandardMaterial, Scene } from 'three';
+import { solarPosition, validSolar, type SolarSettings } from './SolarPosition.ts';
+import { BoxGeometry, Color, CylinderGeometry, DirectionalLight, DodecahedronGeometry, Fog, Group, HemisphereLight, Mesh, MeshStandardMaterial, PointLight, Scene, Vector3 } from 'three';
 import type { WalkableBounds, WalkableWorld } from '../character/motion';
 import { StreetWaterFeature, streetWaterBounds } from './StreetWaterFeature.ts';
 import type { WaterSettings, SpraySource } from '../water/index.ts';
-import { ObjectLightPool } from '../lighting/ObjectLightPool.ts';
-import type { ObjectLightHandle } from '../lighting/ObjectLightPool.ts';
+import { declareGroundBox } from '../navigation/GroundPicker.ts';
+import { LegacyWorldQuery } from '../world/LegacyWorldQuery.ts';
 
 export type TimeOfDay = 'day' | 'evening' | 'night';
 
 export class CityScene {
   readonly scene = new Scene();
   readonly environment = new Group();
+  readonly buildingFallbacks: Group[] = [];
   private readonly obstacles: WalkableBounds[] = [];
-  readonly walkableWorld: WalkableWorld = {
-    bounds: { minX: -8.3, maxX: 8.3, minZ: -26.5, maxZ: 26.5 },
-    obstacles: this.obstacles,
-    groundHeight: (x: number): number => Math.abs(x) >= 4.5 ? 0.32 : 0.075,
-  };
+  readonly walkableWorld: WalkableWorld = this.createWorld();
+  private createWorld(): WalkableWorld {
+    const world = {
+      bounds: { minX: -8.3, maxX: 8.3, minZ: -26.5, maxZ: 26.5 },
+      obstacles: this.obstacles,
+      groundHeight: (x: number): number => Math.abs(x) >= 4.5 ? 0.32 : 0.075,
+    };
+    return Object.assign(world, { query: new LegacyWorldQuery(world) });
+  }
   private readonly boxes = new BoxGeometry(1, 1, 1);
   private readonly canopy = new DodecahedronGeometry(1, 1);
   private readonly pole = new CylinderGeometry(1, 1, 1, 10);
@@ -23,11 +29,20 @@ export class CityScene {
   private readonly sun = new DirectionalLight(0xfff2dc, 3.2);
   private readonly ambient = new HemisphereLight(0xdbeafa, 0xb3a88b, 2.3);
   private readonly water = new StreetWaterFeature();
-  private readonly lampLights = new ObjectLightPool(6);
-  private readonly lampHandles: ObjectLightHandle[] = [];
+  private readonly lampLights: PointLight[] = [];
+  private selectedLampIds = new Set<number>([2]);
+  private lampDetectionEnabled = false;
+  private lampDetectionRadius = 10;
+  private readonly lampSubjectPosition = new Vector3(0, this.walkableWorld.groundHeight(0, 5), 5);
+  private readonly lampWorldPosition = new Vector3();
+  private shadows = true;
+  private disposed = false;
   private readonly lampMaterial = new MeshStandardMaterial({ color: '#eee1b7', emissive: '#ffd58a', emissiveIntensity: 0, roughness: .5 });
+  private solar: SolarSettings = { enabled: false, hour: 12, season: 'spring', latitude: 25 };
+  private preset: TimeOfDay = 'day';
   private time: TimeOfDay = 'day';
   get timeOfDay(): TimeOfDay { return this.time; }
+  get lightingPreset(): TimeOfDay { return this.preset; }
   constructor() {
     this.scene.background = new Color('#e3e9df');
     this.scene.fog = new Fog('#e3e9df', 75, 160);
@@ -40,7 +55,6 @@ export class CityScene {
     this.sun.shadow.normalBias = 0.04;
     this.scene.add(this.sun);
     this.scene.add(this.environment);
-    this.scene.add(this.lampLights.root);
     this.buildStreet();
   }
   private material(color: string): MeshStandardMaterial {
@@ -62,7 +76,7 @@ export class CityScene {
   }
   private buildStreet(): void {
     const ground = (x: number, y: number, z: number, width: number, height: number, depth: number, color: string): void => {
-      this.box(this.environment, x, y, z, width, height, depth, color).userData.walkable = true;
+      declareGroundBox(this.box(this.environment, x, y, z, width, height, depth, color));
     };
     this.box(this.environment, 0, -0.4, 0, 45, 0.8, 54, '#bfccac');
     ground(0, 0.025, 0, 9, 0.05, 54, '#697272');
@@ -84,6 +98,8 @@ export class CityScene {
   }
   private building(x: number, z: number, height: number, color: string, side: number): void {
     const group = new Group();
+    group.name = `Procedural building ${this.buildingFallbacks.length + 1}`;
+    this.buildingFallbacks.push(group);
     group.position.set(x, 0.3, z);
     this.environment.add(group);
     this.box(group, 0, height / 2, 0, 7.2, height, 9.8, color);
@@ -133,8 +149,17 @@ export class CityScene {
     lens.scale.set(.55, .13, .35);
     group.add(lens);
     // Attach to the unscaled fixture group, below the lens rather than inside its scaled mesh.
-    const handle = this.lampLights.attach(group, { enabled: false, color: '#ffd58a', intensity: 120, radius: 12, decay: 2 }, lens.position.clone().setY(4.25));
-    if (handle) this.lampHandles.push(handle);
+    const light = new PointLight('#ffd58a', 0, 12, 2);
+    light.name = 'Street lamp light';
+    light.position.copy(lens.position).setY(4.25);
+    light.shadow.mapSize.set(512, 512);
+    light.shadow.camera.near = .1;
+    light.shadow.camera.far = 12;
+    light.shadow.bias = -.0003;
+    light.shadow.normalBias = .02;
+    light.castShadow = false;
+    group.add(light);
+    this.lampLights.push(light);
   }
   private bench(x: number, z: number, side: number): void {
     const group = new Group();
@@ -157,6 +182,8 @@ export class CityScene {
   }
   setTimeOfDay(time: TimeOfDay): boolean {
     if (time !== 'day' && time !== 'evening' && time !== 'night') return false;
+    this.solar.enabled = false;
+    this.preset = time;
     this.time = time;
     const evening = time === 'evening', night = time === 'night';
     const background = night ? '#101b30' : evening ? '#d4b9a5' : '#e3e9df';
@@ -169,15 +196,80 @@ export class CityScene {
     this.ambient.groundColor.set(night ? '#333849' : '#b3a88b');
     this.ambient.intensity = night ? .75 : evening ? 1.6 : 2.3;
     this.lampMaterial.emissiveIntensity = night ? 1.5 : 0;
-    for (const handle of this.lampHandles) this.lampLights.update(handle, { enabled: night });
+    for (const light of this.lampLights) light.intensity = night ? 120 : 0;
+    this.syncLampShadow();
+    return true;
+  }
+  getSolarSettings(): SolarSettings { return { ...this.solar }; }
+  configureSolar(patch: Partial<SolarSettings>): boolean {
+    const next = { ...this.solar, ...patch };
+    if (this.disposed || !validSolar(next)) return false;
+    this.solar = next;
+    if (!next.enabled) { this.setTimeOfDay(this.preset); return true; }
+    const position = solarPosition(next.hour, next.season, next.latitude);
+    this.time = position.elevation <= -6 ? 'night' : position.elevation < 10 ? 'evening' : 'day';
+    const daylight = Math.max(0, Math.min(1, (position.elevation + 6) / 18));
+    const warm = new Color('#d4b9a5'), night = new Color('#101b30'), day = new Color('#e3e9df');
+    const background = daylight < .5 ? night.lerp(warm, daylight * 2) : warm.lerp(day, daylight * 2 - 1);
+    (this.scene.background as Color).copy(background);
+    (this.scene.fog as Fog).color.copy(background);
+    this.sun.position.set(position.x * 55, position.y * 55, position.z * 55);
+    this.sun.color.set('#ffb776').lerp(new Color('#fff2dc'), daylight);
+    this.sun.intensity = 3.2 * Math.max(0, Math.min(1, position.elevation / 12));
+    this.ambient.color.set('#7086b5').lerp(new Color('#dbeafa'), daylight);
+    this.ambient.groundColor.set('#333849').lerp(new Color('#b3a88b'), daylight);
+    this.ambient.intensity = .75 + 1.55 * daylight;
+    this.lampMaterial.emissiveIntensity = this.time === 'night' ? 1.5 : 0;
+    for (const light of this.lampLights) light.intensity = this.time === 'night' ? 120 : 0;
+    this.syncLampShadow();
     return true;
   }
   setShadows(enabled: boolean): void {
+    this.shadows = enabled;
     this.sun.castShadow = enabled;
+    this.syncLampShadow();
     this.materials.forEach(material => { material.needsUpdate = true; });
   }
+  getLampShadowOptions(): { id: number; x: number; z: number; selected: boolean }[] {
+    return this.lampLights.map((light, index) => ({ id: index + 1, x: light.position.x, z: light.position.z, selected: this.selectedLampIds.has(index + 1) }));
+  }
+  setLampShadowSelection(ids: readonly number[]): boolean {
+    if (this.disposed || !Array.isArray(ids)) return false;
+    // Validate by iteration so sparse arrays cannot bypass validation.
+    for (const id of ids) if (!Number.isInteger(id) || id < 1 || id > this.lampLights.length) return false;
+    this.selectedLampIds = new Set(ids);
+    this.syncLampShadow();
+    return true;
+  }
+  getLampShadowDetection(): { enabled: boolean; radius: number } {
+    return { enabled: this.lampDetectionEnabled, radius: this.lampDetectionRadius };
+  }
+  setLampShadowDetection(enabled: boolean, radius: number): boolean {
+    if (this.disposed || typeof enabled !== 'boolean' || !Number.isFinite(radius) || radius < 1 || radius > 30) return false;
+    this.lampDetectionEnabled = enabled;
+    this.lampDetectionRadius = radius;
+    this.syncLampShadow();
+    return true;
+  }
+  updateLampShadowPosition(position: { x: number; y: number; z: number }): boolean {
+    if (this.disposed || !position || typeof position !== 'object' ||
+      !Number.isFinite(position.x) || !Number.isFinite(position.y) || !Number.isFinite(position.z)) return false;
+    this.lampSubjectPosition.set(position.x, position.y, position.z);
+    this.syncLampShadow();
+    return true;
+  }
+  private syncLampShadow(): void {
+    for (const [index, light] of this.lampLights.entries()) {
+      light.castShadow = !this.disposed && this.shadows && this.time === 'night' && this.selectedLampIds.has(index + 1) &&
+        (!this.lampDetectionEnabled || light.getWorldPosition(this.lampWorldPosition).distanceTo(this.lampSubjectPosition) <= this.lampDetectionRadius);
+    }
+  }
   dispose(): void {
-    this.lampLights.dispose(); this.lampMaterial.dispose();
+    if (this.disposed) return;
+    this.disposed = true;
+    this.syncLampShadow();
+    for (const light of this.lampLights) light.dispose();
+    this.lampMaterial.dispose();
     this.water.dispose();
     this.boxes.dispose(); this.canopy.dispose(); this.pole.dispose();
     this.materials.forEach(material => material.dispose());

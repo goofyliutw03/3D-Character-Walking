@@ -136,5 +136,5 @@ export class GroundPicker {
 
 export function pickGround(point: ScreenPoint, camera: PerspectiveCamera, width: number, height: number,
   fisheye: boolean, objects: readonly Object3D[], world: WalkableWorld): PointXZ | null {
-  return new GroundPicker(objects).pick(point, camera, width, height, fisheye, world, [], false);
+  return new GroundPicker(objects).pick(point, camera, width, height, fisheye, world);
 }

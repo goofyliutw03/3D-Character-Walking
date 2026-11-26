@@ -90,7 +90,7 @@ test('swim input combines aliases and simultaneous on-screen directions once per
   const controls = new InputManager(win, doc);
   controls.setFlightControls(true);
   const buttons = new Map();
-  for (const direction of ['left', 'right', 'forward', 'backward', 'ascend', 'descend']) {
+  for (const direction of ['left', 'right', 'forward', 'backward', 'up', 'down']) {
     const button = Object.assign(new EventTarget(), { setPointerCapture() {} });
     controls.bindDirection(button, direction);
     buttons.set(direction, button);
@@ -101,7 +101,7 @@ test('swim input combines aliases and simultaneous on-screen directions once per
   for (const [axis, positive, negative] of [
     ['x', ['KeyD', 'ArrowRight', 'right'], ['KeyA', 'ArrowLeft', 'left']],
     ['z', ['KeyS', 'ArrowDown', 'backward'], ['KeyW', 'ArrowUp', 'forward']],
-    ['vertical', ['KeyE', 'Space', 'ascend'], ['KeyQ', 'descend']],
+    ['vertical', ['KeyE', 'Space', 'up'], ['KeyQ', 'down']],
   ]) {
     const sources = [...positive, ...negative];
     for (let mask = 0; mask < 1 << sources.length; mask++) {
@@ -126,7 +126,7 @@ test('swim input combines aliases and simultaneous on-screen directions once per
   key('Space'); key('Space', 'keyup');
   assert.equal(controls.sample().vertical, 1);
   assert.equal(controls.sample().vertical, 0);
-  emit(buttons.get('descend'), 'click', { detail: 0 });
+  emit(buttons.get('down'), 'click', { detail: 0 });
   assert.equal(controls.sample().vertical, -1);
   emit(win, 'blur', {});
   assert.deepEqual(controls.sample(), { ...idle, vertical: 0 });

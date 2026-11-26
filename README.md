@@ -1,8 +1,14 @@
 # 3D Character Walk Viewer
 
+團隊接手請先讀 [專案現況](docs/project-status.md)，其中整理六個交付里程碑、後續實作、剩餘驗收與取得方式。
+
+Environment → **Natural terrain / Wind Meadow**：32×32m 靜態丘陵、五棵樹與風動草。Terrain vegetation 可選 Standard（384叢）／Low（96叢）及風動開關；品質不改通行高度，減少動態效果凍結風動。沿用走跑跳、點地、相機與Profiles（terrain00起），地表／陰影／選點使用同源高度。規格及實際驗證見 [natural-terrain-validation](.kiro/specs/natural-terrain-validation/validation.md)。完整三維碰撞／活動範圍遮罩仍為待確認規劃。
+
+新開發者：[硬體預檢、完整安裝 CLI Prompt 與 Claude Code／Codex 初始化指引](docs/onboarding.md)。先執行 `./scripts/onboarding.ps1`（預設只報告）。
+
 開發團隊引用：[v02 開發索引、keywords 與 Git tag](docs/development-reference.md)。
 
-2026-10-31：**Scene display → Lighting & shadows → Night** 新增夜晚，六盞路燈會發亮並照亮街道。**Particle interaction → Light** 可設定隨行光源開關、獨立顏色、強度cd、照射半徑m與衰減，再按Apply settings；只影響新發射。最多8個效果同時照明，額外效果仍可發射；無點光陰影／bloom。既有水Shader不接場景點光。[可重用物件光源API](docs/lighting-api.md)・[規格與驗證](.kiro/specs/night-object-lighting/validation.md)。
+2026-10-31：**Scene display → Lighting & shadows → Night** 新增夜晚，六盞路燈會發亮並照亮街道。**Particle interaction → Light** 可設定隨行光源開關、獨立顏色、強度cd、照射半徑m與衰減，再按Apply settings；只影響新發射。最多8個效果同時照明，額外效果仍可發射；Night且Shadows開啟時，在Night shadow lights勾選Light 1–6同時投影，預設Light 2；全取消即無路燈陰影，每燈獨立512px cube陰影，更多勾選增加GPU成本；粒子／通用光源池無陰影，沒有bloom。既有水Shader不接場景點光。[可重用物件光源API](docs/lighting-api.md)・[規格與驗證](.kiro/specs/night-object-lighting/validation.md)。
 
 2026-10-31：瀑布新增落水／飛濺粒子；鏡頭靠近時出現薄霧及少量水滴，離開後水滴下滑淡出、霧氣消退。**Scene display → Water feature → Camera mist & droplets** 可關閉鏡頭效果；`water.html` 的「噴濺 · 鏡頭沾水」可直接觀察。沿用暫停／品質及 reduced-motion。[規格與驗證](.kiro/specs/waterfall-spray/validation.md)・[可重用 API](docs/water-api.md)。
 
@@ -57,13 +63,15 @@ Camera 同時提供 **First person**（角色眼位，垂直 FOV 70°）與 **Th
 
 也可直接使用 `pnpm install --frozen-lockfile`、`pnpm dev`、`pnpm build`。正式建置輸出為 `dist/`；安裝版本以 `pnpm-lock.yaml` 為準。
 
-目前已完成 Stage 1.2 城市街景基礎：道路、人行道、建築、樹木、路燈、長椅、Orbit 鏡頭、Overview／Street level／From above 預設、日光／黃昏與陰影切換。使用 TypeScript OOP，並顯示 WebGL2 與 FPS。人物、GLB 與動畫尚未實作。資產預留於 `public/assets/`，Blender 原始檔預留於 `blender/`。
+以下 Stage 1.2 段落是早期完成紀錄。目前工作樹支援城市、洞穴、自然地表、飛行、莊園及 Tidal Pool。名詞、原理與現況見 [3D 基礎知識與專案架構指南](docs/3d-knowledge-architecture.md)，實機狀態見[剩餘驗收盤點](docs/remaining-acceptance.md)。
+
+Stage 1.2 當時完成城市街景基礎：道路、人行道、建築、樹木、路燈、長椅、Orbit 鏡頭、Overview／Street level／From above 預設、日光／黃昏與陰影切換，並顯示 WebGL2 與 FPS；人物、GLB 與動畫為當時的後續工作。資產位於 `public/assets/`，Blender 原始檔位於 `blender/`。
 
 - [初版設計計畫](docs/initial-design-plan.md)
 - [原始 Viewer session](docs/imported/viewer-session.md)
 - [原始 Web 3D 規畫 session](docs/imported/web-3d-planning-session.md)
 
-操作：拖曳旋轉鏡頭、滾輪縮放、右鍵拖曳平移；Reset view 回到 Overview。下個階段為人物原型、移動與動畫；詳見 [Stage 1.2 完成紀錄與下一階段設計](docs/stage-1.2.md)。
+Stage 1.2 的原始操作與後續設計見 [歷史完成紀錄](docs/stage-1.2.md)；目前操作以本 README 的功能說明與現況指南為準。
 
 ## Particle interaction · Plan v02
 
@@ -71,11 +79,11 @@ The selected player is **Caster**; an independent **Target** uses the existing l
 
 Use **Fire particle** below the scene (click, touch, or keyboard activation). Each shot travels toward Target's position at launch without homing. A simple sphere hit creates a brief particle flash once; misses expire. **Reset target** restores its default position and clears effects and counters. There is no damage, health, combat or NPC AI. First person keeps the existing Caster hiding behavior.
 
-The Particle interaction panel sets color, speed (0.5–30 m/s), radius (0.03–0.5 m), lifetime (0.1–10 s), and maximum effects (1–128, including hit bursts). Apply settings affects new shots; reducing the limit removes the oldest excess effects. Full capacity rejects new shots. Settings remain on this page only. [Specification and validation](.kiro/specs/particle-interaction/validation.md).
+The Particle interaction panel sets color, speed (0.5–30 m/s), radius (0.03–0.5 m), lifetime (0.1–10 s), and maximum effects (1–128, including hit bursts). Apply settings affects new shots; reducing the limit removes the oldest excess effects. Full capacity rejects new shots. Settings and drafts are saved with local panel profiles. [Specification and validation](.kiro/specs/particle-interaction/validation.md).
 
 ## Function panel
 
-- 左側 Function panel 按鈕可展開／收合整個面板；五大分類及子群組可各自展開。設定、文字與節點狀態保留於目前頁面，重新整理回到預設。
+- 左側 Function panel 按鈕可展開／收合整個面板；五大分類及子群組可各自展開。設定、文字與節點狀態由本機 panel profiles 保存，重新整理優先恢復 temp；奔跑與角色即時位置不恢復。
 - 桌面拖曳面板右側邊界調寬（260–520px，並為場景保留至少360px）。Tab到邊界後，用Left／Right調整16px，Shift調整32px，Home／End移至最小／最大寬度。
 - 窄版／觸控排列將面板放在場景與移動控制下方，使用全寬並隱藏調寬把手。下方移動與粒子按鈕維持原位。
 - 規格與本機驗證：[left-control-panel-tree](.kiro/specs/left-control-panel-tree/validation.md)。本機模擬窄版不等於手機LAN／真機驗收。
@@ -88,3 +96,36 @@ Mobile Orbit：在允許自由 Orbit 的鏡頭中，單指按住超過350ms或�
 Control Panel → Scene display → Scene objects 可展開實際父子物件樹。Show object numbers 預設關閉；每個 checkbox 只控制該物件的世界原點編號標籤，不會隱藏物件。編號在本次頁面載入中穩定，重新載入可能不同。標籤會重疊，可用篩選縮小觀察範圍。
 
 Name / path regex 接受區分大小寫的 JavaScript 裸 pattern（例如 `rigged-character$`，不含 `/` 分隔符）；Number ranges 接受 `10-30,45,70-80`。兩者取交集，空白不限制，Apply filters 或 Enter 套用；錯誤保留前一次有效篩選，Clear filters 清空篩選但保留 checkbox。樹保留必要祖先，`ancestor only` 不代表其標籤通過篩選。驗證與限制見 `.kiro/specs/scene-object-inspector/validation.md`。
+
+2026-10-31 LIGHT-01／1R-4：night-object-lighting requirement7/tasks11–13追加陰影自動觸發偵測，候選燈依主角含跳躍的完整3D距離≤半徑同時投影；預設auto off，1–30m預設10m。保留手動／日夜設定，非第七里程碑，M6／SCENE-04/05/FOLD待驗不變；證據見該spec validation。
+# 城市交通模擬（1T-0，2026-11-01）
+
+`Scene display → City traffic` 可啟用模擬；預設關閉，6名行人、4車。可調0–24名行人及0–8車、暫停、重置與Distance LOD。數量變更會重置；重置保留數量、啟用／暫停及LOD設定。關閉後保留狀態，重新啟用繼續。
+
+行人使用本專案既有男／女／小孩程序外觀與步態，沿凸表面NavMesh避開樹池、長椅、路燈與水景；其餘行人在所在地附近活動，輪流取得過街資格。車輛沿雙向車道、保持車距，遵循綠／黃／全紅及行人入場／清空週期；路口未清空就持續等待。主角及粒子Target獨立，車流與NPC會避讓它們，但不替使用者操控主角。
+
+LOD在24m切換較少部件的模型，帶15%遲滯；關閉可觀察近距完整模型。LOD只影響模型與步態成本，不跳過交通安全。預設上限屬資源控制，並非裝置FPS保證。此為軸對齊街道的保守模擬，沒有車禍物理、交通法規或任意GLB自動NavMesh烘焙；極端密集／使用者阻擋可能停等，可減少數量或重置。
+
+公開API：`ViewerApp.getTrafficState()` 回傳複製快照，`configureTraffic({ enabled, paused, npcCount, vehicleCount, lod })` 原子拒絕非法值，`resetTraffic()` 重置。邏輯與視覺分別位於 `src/simulation/TrafficSimulation.ts`、`TrafficView.ts`，表面導航位於 `src/navigation/SurfaceNavMesh.ts`。規格與驗證見 [.kiro/specs/city-traffic-simulation](.kiro/specs/city-traffic-simulation/)。無新增依賴或外部資產。
+
+### Solar Sport
+Scene display → Lighting & shadows → Solar Sport：勾選 Enable solar time，拖曳24小時轉盤時針，或使用時間欄位／方向鍵（±12分鐘）、Home／End。每小時5格；指北針隨實際相機朝向旋轉，北=-Z、東=+X。Season選春分／夏至／秋分／冬至，Latitude預設25°N，可輸入-90至90度；季節名稱依北半球日期，負緯度呈南半球天空。太陽時間不是所在地鐘錶時間，不含時差／折射。選既有光照預設可退出Solar模式；夜間沿用路燈及陰影設定。
+# 自動巡迴（LATER-01／1V-0，2026-11-01）
+
+Character → Automatic tour 可編輯 waypoint，每行 `X, Z`（公尺），上限32點；示範路線繞行現有街道。Loop route 決定終點後是否返回第一點，Tour speed 為0.5–4 m/s。Start route 重新開始；Pause保留下一點，Resume從目前位置重新規劃；Stop tour／下方Stop取消。
+
+手動移動、跑跳、點地、編輯輸入欄位、視窗失焦／隱藏與圖形連線中斷都會取消巡迴；不會自動恢復。修改速度、循環或路線後請重新Start。路線僅留本頁。座標落於障礙／界外或路徑不通時停止並顯示blocked，不會瞬移或跳點。巡迴沿用靜態避障，沒有增加主角對車輛／NPC的動態碰撞。規格／驗證見 [.kiro/specs/path-navigation](.kiro/specs/path-navigation/)。
+
+2026-11-02 LATER-02 / 1W-0: **Character → Position & manual speed** adds authoritative XYZ drafts, Read current / Apply, ground snap and 0.5–4 m/s manual walk speed. Scene display reports eight original CC0 Blender buildings with fallback/Retry; the streetscape remains hybrid. Rebuild and limits: [asset pipeline](docs/asset-pipeline.md), [spec validation](.kiro/specs/city-assets-editor/validation.md). Existing navigation/Run speeds remain independent; no general scene editor or scene switching is implied.
+
+## 本機 Panel Profiles（2026-11-09，1Y-10）
+
+面板頂端提供 **Panel.Reset / profile / Save**。設定變動自動更新 **temp**，reload 優先恢復 temp；Save 新增 city00–99／cave00–99 循環命名的 profile，合計保留最新10筆加temp。選另一profile前保存當前修改；乾淨的已載入profile不覆寫temp。Reset重置面板預設並寫temp，保留已存profiles。
+
+保存runtime設定、各場景光源／頭燈、四靈敏度、粒子已套用值與草稿、巡迴／XYZ草稿、表情文字、物件標籤／篩選、layout等；不恢復角色即時位置、移動、奔跑、按鍵或模擬進度。XYZ草稿不會自動Apply；粒子草稿不會取代已套用值。物件選擇以path還原，數字篩選仍依當次頁面ID，資產階層改變可能影響path對應。
+
+優先OPFS **panel-profiles.json**，瀏覽器管理實體路徑；不可用時以IndexedDB保存相同JSON，面板顯示實際方式或未保存錯誤。手機LAN HTTP使用IndexedDB fallback。不同origin／port／瀏覽器各自保存，清除網站資料會移除；不提供跨分頁合併或外部備份。損壞檔案不會由autosave覆蓋，明確Save／Reset才取代。
+
+PC第三人稱／魚眼自動奔跑會嘗試Pointer Lock；Y停止並解鎖，Esc／失焦／隱藏分頁解鎖並暫停，需明確恢復。拒絕時點畫布重試，未鎖定沿用有界控制。四項水平／垂直靈敏度0.1–5×即時生效；第一人稱指既有滾輪進入的觀看模式，魚眼共用第三人稱。手機保留觸控操作。原生鎖定仍待真人瀏覽器操作確認，headless拒絕與合成成功路徑分開記錄。
+
+[規格與驗證](.kiro/specs/panel-settings-profiles/validation.md)。未改變M6、跨GPU／效能或手機人工驗收狀態。

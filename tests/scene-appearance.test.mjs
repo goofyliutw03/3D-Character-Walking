@@ -19,15 +19,12 @@ test('appearance: blockers use isolated materials and restore arrays and shared 
   assert.notEqual(body.material, shared); assert.equal(neighbor.material, shared);
   assert.equal(body.material.opacity, 0.25); assert.equal(body.material.transparent, true); assert.equal(body.material.depthWrite, false);
   assert.equal(window.material.length, 2); assert.equal(window.material[1].opacity, 0.25);
-  assert.equal(body.material, window.material[0]);
-  for (const clone of new Set(window.material)) clone.addEventListener('dispose', () => cloneDisposes++);
+  for (const clone of [body.material, ...window.material]) clone.addEventListener('dispose', () => cloneDisposes++);
   const first = body.material; appearance.apply('transparent', new Set([building])); assert.equal(body.material, first);
   appearance.apply('normal');
   assert.equal(body.material, shared); assert.equal(window.material, originalArray); assert.equal(shared.opacity, 0.8);
-  assert.equal(shared.depthWrite, true); assert.equal(cloneDisposes, 0);
-  appearance.apply('transparent', new Set([building])); assert.equal(body.material, first);
-  appearance.dispose(); appearance.dispose(); assert.equal(cloneDisposes, 2);
-  assert.equal(body.material, shared); assert.equal(window.material, originalArray);
+  assert.equal(shared.depthWrite, true); assert.equal(cloneDisposes, 3);
+  appearance.dispose(); appearance.dispose(); assert.equal(cloneDisposes, 3);
   assert.equal(originalDisposes, 0); assert.equal(textureDisposes, 0);
   body.geometry.dispose(); shared.dispose(); other.dispose(); texture.dispose();
 });

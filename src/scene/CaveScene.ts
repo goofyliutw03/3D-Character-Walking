@@ -4,6 +4,7 @@ import { createCaveFixtures, createSkylight } from './CaveLighting.ts';
 import { environmentLight } from './EnvironmentLights.ts';
 import { Headlamp } from './Headlamp.ts';
 import { sceneControlPolicy } from './SceneControlPolicy.ts';
+import { declareGroundBox } from '../navigation/GroundPicker.ts';
 import { GroundWorldQuery, type GroundSurface } from '../world/GroundWorldQuery.ts';
 import type { SolidBox } from '../world/CapsuleBox.ts';
 
@@ -50,8 +51,7 @@ export function createCave(): Environment {
   }
 
   function ground(mesh: Mesh): void {
-    // Elevated geometry uses manual movement; destination navigation targets the cave floor.
-    mesh.userData.walkable = mesh.position.y < 0;
+    declareGroundBox(mesh);
     const b = solids[solids.length - 1]!;
     surfaces.push({ id: `cave-surface-${surfaces.length}`, minX:b.minX,maxX:b.maxX,
       minZ:b.minZ,maxZ:b.maxZ,height:b.maxY });
@@ -87,8 +87,6 @@ export function createCave(): Environment {
   const dropMaterial = new PointsMaterial({ color: '#b5d3ff', size: .065 });
   const drip = new Points(dropGeometry, dropMaterial);
   drip.name = 'Cave drips';
-  drip.raycast = () => {};
-  drip.userData.cameraObstruction = false;
   drip.frustumCulled = false;
   environment.add(drip);
   for (let i = 0; i < drops.count; i++) {

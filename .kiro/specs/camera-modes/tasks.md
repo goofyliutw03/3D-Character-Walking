@@ -62,3 +62,9 @@ inline PASS：4個子任務，依賴順序明確，全15條件對應（以實際
 計畫inline審閱PASS：6.1–6.4全映射，共用檔案必須依序進行，不可平行。
 
 2026-10-31：使用者已確認iOS／Android Mobile Orbit操作OK，忽略機型，5.2的本次手機實機待驗已完成；不概括關閉M6／SCENE-05其他項目。
+
+## 1Y-11（已核准範圍，依序執行）
+- [x] 6.1 相機姿態／投影及短時間轉向平滑（7.1–7.3）；CameraController與回歸測試。
+- [x] 6.2 魚眼淡入淡出、資源及ViewerApp接線（7.2）；依賴6.1，共用檔必須依序。
+- [x] 6.3 inline整合審閱、全套tests/build、Release smoke及索引；依賴6.2。
+計畫依使用者授權自動inline審閱PASS。無commit/push；不變更其他里程碑。

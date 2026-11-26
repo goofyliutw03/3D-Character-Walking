@@ -4,6 +4,7 @@ import { FlightWorldQuery } from '../src/world/FlightWorldQuery.ts';
 import { defaultCapsule as body } from '../src/world/WorldQuery.ts';
 import { FlightController } from '../src/character/FlightController.ts';
 import { createFlight } from '../src/scene/FlightScene.ts';
+import { ProfileHistory, parseProfiles } from '../src/settings/PanelProfiles.ts';
 const p=(x=0,y=0,z=0)=>({x,y,z});
 const data=()=>({bounds:{minX:-40,maxX:40,minY:0,maxY:40,minZ:-40,maxZ:40},
   solids:[{id:'tower',minX:4,maxX:5,minY:0,maxY:18,minZ:-2,maxZ:2}],
@@ -12,6 +13,11 @@ const data=()=>({bounds:{minX:-40,maxX:40,minY:0,maxY:40,minZ:-40,maxZ:40},
 const value=r=>{assert.equal(r.ok,true,JSON.stringify(r));return r.value;};
 const neutral={x:0,z:0,run:false,jump:false};
 const world=(q=new FlightWorldQuery(data()))=>({query:q,bounds:data().bounds,obstacles:[],groundHeight:()=>0});
+test('flight profiles: version 1 accepts flight names and old city names',()=>{
+  const h=new ProfileHistory();h.save('city',{scene:'city'},1);h.save('flight',{scene:'flight'},2);
+  const restored=parseProfiles(JSON.stringify(h.data),s=>typeof s?.scene==='string');
+  assert.equal(restored.version,1);assert.deepEqual(restored.profiles.map(p=>p.name),['city00','flight00']);
+});
 test('flight scene: shared visible boxes, safe spawn, explicit capabilities, decorative sky/clouds and disposal',()=>{
   const e=createFlight(),q=e.walkableWorld.query,c=new FlightController(e.walkableWorld);
   assert.equal(e.id,'flight');assert.equal(e.controls.autoRun,false);assert.equal(e.controls.groundNavigation,false);
@@ -61,7 +67,12 @@ test('flight strategy: explicit legal landing/takeoff, clearance and atomic fail
   const c=new FlightController(world());
   c.relocate(p(0,3,5),false);const old=c.snapshot;
   assert.equal(c.land(),false);assert.deepEqual(c.snapshot,old);
-  c.relocate(p(0,1,5),false);assert.equal(c.land(),true);
+  c.relocate(p(0,1,5),false);
+  c.update(1/30,{...neutral,z:1});
+  const heading=c.snapshot.heading;
+  assert.notEqual(heading,Math.PI);
+  assert.equal(c.land(),true);
+  assert.equal(c.snapshot.heading,heading);
   assert.equal(c.mode,'ground');assert.equal(c.snapshot.y,0);assert.equal(c.snapshot.grounded,true);
   c.update(1/60,{...neutral,z:1}); assert.equal(c.snapshot.action,'walk');
   assert.equal(c.takeOff(),true);assert.equal(c.mode,'flight');

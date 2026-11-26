@@ -1,6 +1,6 @@
 import type { MovementIntent } from '../character/motion';
 
-export type MoveDirection = 'forward' | 'backward' | 'left' | 'right' | 'ascend' | 'descend';
+export type MoveDirection = 'forward' | 'backward' | 'left' | 'right' | 'up' | 'down';
 const gameKeys = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ShiftLeft', 'ShiftRight', 'Space']);
 
 export class InputManager {
@@ -11,11 +11,11 @@ export class InputManager {
   private runToggle = false;
   private jumpPending = false;
   private flightControls = false;
-  constructor(win: Window = window, doc: Document = document, private readonly onManual: () => void = () => {},
-    private readonly onStop: () => void = () => {}) {
+  setFlightControls(enabled: boolean): void { this.stop(); this.flightControls = enabled; }
+  constructor(win: Window = window, doc: Document = document, private readonly onManual: () => void = () => {}, private readonly onStop: () => void = () => {}) {
     const signal = this.events.signal;
     win.addEventListener('keydown', event => {
-      if (!(gameKeys.has(event.code) || this.flightControls && ['KeyC', 'KeyE', 'KeyQ'].includes(event.code)) || event.isComposing || this.editing(event.target) || event.altKey || event.ctrlKey || event.metaKey) return;
+      if (!(gameKeys.has(event.code) || this.flightControls && ['KeyE','KeyQ'].includes(event.code)) || event.isComposing || this.editing(event.target) || event.altKey || event.ctrlKey || event.metaKey) return;
       event.preventDefault();
       if (event.repeat) return;
       this.onManual();
@@ -60,13 +60,9 @@ export class InputManager {
     const z = Number(pressed('backward', 'KeyS', 'ArrowDown')) - Number(pressed('forward', 'KeyW', 'ArrowUp'));
     const jump = this.jumpPending;
     this.jumpPending = false;
-    const intent = { x: Math.sign(x), z: Math.sign(z), run: this.running, jump };
-    if (!this.flightControls) return intent;
-    const ascend = jump || pressed('ascend', 'Space', 'KeyE');
-    const descend = pressed('descend', 'KeyC', 'KeyQ');
-    return { ...intent, vertical: Number(ascend) - Number(descend) };
+    const vertical = Number(jump || pressed('up', 'KeyE', 'Space')) - Number(pressed('down', 'KeyQ'));
+    return { x, z, run: this.running, jump, ...(this.flightControls ? { vertical } : {}) };
   }
-  setFlightControls(enabled: boolean): void { this.stop(); this.flightControls = enabled; }
   get running(): boolean { return this.runToggle || this.keys.has('ShiftLeft') || this.keys.has('ShiftRight'); }
   setRun(enabled: boolean): void { this.onManual(); this.runToggle = enabled; }
   jump(): void { this.onManual(); this.jumpPending = true; }

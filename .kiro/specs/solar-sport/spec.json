@@ -1,0 +1,23 @@
+{
+  "feature_name": "solar-sport",
+  "created_at": "2026-11-01T21:56:48.132039+08:00",
+  "updated_at": "2026-11-01T22:10:41.935525+08:00",
+  "language": "zh-TW",
+  "phase": "implementation-complete",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": true
+    }
+  },
+  "ready_for_implementation": true,
+  "review_note": "依使用者開始授權，requirements/design/tasks依序inline自動審閱APPROVED；非使用者逐份人工核准。"
+}

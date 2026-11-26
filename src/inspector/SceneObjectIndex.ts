@@ -19,7 +19,7 @@ export class SceneObjectIndex {
   private active: ObjectRow[] = [];
   private pattern: RegExp | null = null;
   private ranges: readonly (readonly [number, number])[] = [];
-  private synchronized: readonly ObjectRow[] = [];
+  private signature = '';
   get rows(): readonly ObjectRow[] { return this.active; }
   get treeRows(): readonly ObjectRow[] {
     const included = new Set<number>();
@@ -67,30 +67,16 @@ export class SceneObjectIndex {
   }
   sync(root: Object3D): boolean {
     const rows: ObjectRow[] = [];
-    let reused = true;
-    let changed = false;
     const visit = (object: Object3D, parentId: number | null, parentPath: string, parentKey: string, occurrence: number): void => {
       let identity = this.identities.get(object);
       if (!identity) { identity = { id: this.nextId++, checked: true }; this.identities.set(object, identity); }
       const name = object.name.trim() || object.type;
       const path = parentPath ? `${parentPath}/${name}` : name;
+      // Keep existing keys for ordinary paths and distinguish repeated siblings.
       const segment = occurrence || /[/%]/.test(name) ? encodeURIComponent(name) + '%' + occurrence : name;
       const profileKey = parentKey ? parentKey + '/' + segment : segment;
-      const previous = this.active[rows.length];
-      let row: ObjectRow;
-      if (previous?.object === object && previous.parentId === parentId
-        && previous.name === name && previous.path === path && previous.profileKey === profileKey && previous.checked === identity.checked) {
-        row = previous;
-      } else {
-        const candidate = { object, ...identity, name, path, profileKey, parentId, matched: false };
-        candidate.matched = this.matches(candidate); row = candidate; reused = false;
-      }
-      const synchronized = this.synchronized[rows.length];
-      if (synchronized !== row && (!synchronized || synchronized.id !== row.id
-        || synchronized.parentId !== row.parentId || synchronized.name !== row.name
-        || synchronized.path !== row.path || synchronized.profileKey !== row.profileKey || synchronized.checked !== row.checked
-        || synchronized.matched !== row.matched)) changed = true;
-      rows.push(row);
+      const row = { object, ...identity, name, path, profileKey, parentId, matched: false };
+      row.matched = this.matches(row); rows.push(row);
       const siblings = new Map<string, number>();
       for (const child of object.children) {
         const childName = child.name.trim() || child.type;
@@ -100,11 +86,10 @@ export class SceneObjectIndex {
       }
     };
     visit(root, null, '', '', 0);
-    if (rows.length !== this.synchronized.length) changed = true;
-    if (!reused || rows.length !== this.active.length) this.active = rows;
-    // Keep the last sync separate: filters and checkboxes update active immediately.
-    this.synchronized = this.active;
+    const signature = JSON.stringify(rows.map(({ id, parentId, name, path, profileKey, checked, matched }) => [id, parentId, name, path, profileKey, checked, matched]));
+    const changed = signature !== this.signature;
+    this.signature = signature; this.active = rows;
     return changed;
   }
-  dispose(): void { this.active = []; this.synchronized = []; this.identities = new WeakMap(); }
+  dispose(): void { this.active = []; this.identities = new WeakMap(); this.signature = ''; }
 }

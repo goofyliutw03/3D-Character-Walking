@@ -15,27 +15,19 @@ export function validViewerSettings(value: unknown): value is ViewerSettings {
     if (!isEnvironmentId(s.environment) || !['man','woman','child'].includes(s.variant) ||
       !['overview','street','overhead','first-person','third-person','front','character-overhead','low-angle','fisheye'].includes(s.camera) ||
       !['zoom','transparent','wireframe','xray'].includes(s.obstruction) ||
-      !bool(s.following,s.waterLens,s.shadows) || !range(s.walkSpeed,.5,4) ||
+      !bool(s.following,s.groundPenetration,s.waterLens,s.shadows) || !range(s.walkSpeed,.5,4) ||
+      !['thirdHorizontal','thirdVertical','firstHorizontal','firstVertical'].every(k => range(s.sensitivity[k as keyof typeof s.sensitivity],.1,5)) ||
       !['none','happy','sad','angry','surprised'].includes(s.expression.emotion) || typeof s.expression.speech !== 'string' || Array.from(s.expression.speech).length > 160) return false;
-    if (s.groundPenetration !== undefined && !bool(s.groundPenetration)) return false;
-    if (s.sensitivity !== undefined &&
-      !['thirdHorizontal','thirdVertical','firstHorizontal','firstVertical'].every(k =>
-        range(s.sensitivity![k as keyof NonNullable<ViewerSettings['sensitivity']>], .1, 5))) return false;
-    const t = s.traffic;
-    if (t !== undefined && (!bool(t.enabled,t.paused,t.lod) || !Number.isInteger(t.npcCount) ||
-      !range(t.npcCount,0,24) || !Number.isInteger(t.vehicleCount) || !range(t.vehicleCount,0,8))) return false;
-    if (s.lampDetection !== undefined && (!bool(s.lampDetection.enabled) || !range(s.lampDetection.radius,1,30))) return false;
-    if (s.lamps !== undefined && (!Array.isArray(s.lamps) || s.lamps.length > 6 ||
-      !s.lamps.every(n => Number.isInteger(n) && range(n,1,6)))) return false;
-    const p=s.particles, w=s.water;
+    const t=s.traffic, p=s.particles, w=s.water;
     const pose = s.cameraPose;
     if (pose !== undefined && (!pose || !point(pose.position) || !point(pose.target) ||
       !Number.isFinite(pose.yaw) || !range(pose.pitch, -Math.PI / 2, Math.PI / 2) || !range(pose.zoom, .25, 4))) return false;
     if (s.projectileAim !== undefined && s.projectileAim !== 'target' && s.projectileAim !== 'camera') return false;
     if (s.swimAppearance !== undefined && !validSwimAppearance(s.swimAppearance)) return false;
-    if (
+    if (!bool(t.enabled,t.paused,t.lod) || !Number.isInteger(t.npcCount) || !range(t.npcCount,0,24) || !Number.isInteger(t.vehicleCount) || !range(t.vehicleCount,0,8) ||
       !color(p.color) || !color(p.lightColor) || !bool(p.lightEnabled) || !range(p.speed,.5,30) || !range(p.size,.03,.5) || !range(p.lifetime,.1,10) || !Number.isInteger(p.maxCount) || !range(p.maxCount,1,128) || !range(p.lightIntensity,0,200) || !range(p.lightRadius,.1,30) || !range(p.lightDecay,0,4) ||
-      !bool(w.enabled,w.paused) || !['low','standard'].includes(w.quality) || !range(w.waveStrength,0,2) || !range(w.flowSpeed,0,3)) return false;
+      !bool(w.enabled,w.paused) || !['low','standard'].includes(w.quality) || !range(w.waveStrength,0,2) || !range(w.flowSpeed,0,3) ||
+      !bool(s.lampDetection.enabled) || !range(s.lampDetection.radius,1,30) || !Array.isArray(s.lamps) || s.lamps.length>6 || !s.lamps.every(n=>Number.isInteger(n)&&range(n,1,6))) return false;
     if (!s.scenes || typeof s.scenes !== 'object' || !s.scenes[s.environment] || Object.entries(s.scenes).some(([id,scene]) => {
       if (!isEnvironmentId(id) || !scene || !['day','evening','night'].includes(scene.time) || !validSolar(scene.solar) || !Array.isArray(scene.lights)) return true;
       if (id === 'terrain') return scene.headlamp !== null || scene.lights.length !== 0 || !scene.terrain ||

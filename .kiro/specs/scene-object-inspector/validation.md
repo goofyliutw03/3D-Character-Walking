@@ -72,3 +72,5 @@ token 用量：無法取得精確值。原規劃chat與本chat起點無可用官
 
 索引：2026-10-31 18:54:40+08:00 codebase_status確認green、Incremental update completed（23.1秒）。codebase_update掃描118可索引檔，added3／updated6／removed0、73新chunks，總340chunks；graph97檔188edges，watcher disabled。遵守.gitignore／.socraticodeignore及工具可索引範圍，不含外部Release／忽略harness，不宣稱全部Markdown都有embedding。既有Qdrant可用，未需啟動／安裝／下載／重建；無索引錯誤。
 收尾HEAD仍8e945afb3318373937060c8cb798e916b632deda，branch codex/v02-particle-system；未stage／commit／push，原水霧、夜間及.codex／.vscode修改保留。本機交付完成，等待使用者結束確認，不自動開始其他功能。
+
+2026-10-31 結案：使用者在交付摘要後回覆「Ok please go on」，記錄為本次場景物件檢視器的結束確認。未指定下一項新功能，不因此擴張LATER或開始其他里程碑；M6／SCENE-04/05/FOLD及既有實機限制保留。此次只更新確認紀錄，沒有新增功能或commit／push授權。token用量仍無法取得精確值，缺少可歸屬本階段的官方起點基準。

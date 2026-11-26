@@ -92,7 +92,10 @@ export class WaterPrototype {
       this.last=0;
       if(document.hidden) this.cancel('分頁已進入背景');
     },{signal:this.listeners.signal});
-    window.addEventListener('pagehide',()=>this.dispose(),{once:true,signal:this.listeners.signal});
+    window.addEventListener('pagehide',event=>{
+      if (!event.persisted) this.dispose();
+      else this.last=0;
+    },{signal:this.listeners.signal});
     this.status.textContent='水景就緒 · WebGL2';
     this.renderer.setAnimationLoop(now=>this.frame(now));
   }
@@ -160,8 +163,15 @@ export class WaterPrototype {
     if(!this.benchmark.running) this.controls.update();
     this.lens.update(delta,this.camera,this.water.getSpraySource(this.spraySource)?this.spraySource:undefined,
       this.environment,this.water.settings,window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-    this.renderer.render(this.scene,this.camera);
-    this.lens.render(this.renderer);
+    const info=this.renderer.info;
+    info.autoReset=false;
+    try {
+      info.reset();
+      this.renderer.render(this.scene,this.camera);
+      this.lens.render(this.renderer);
+    } finally {
+      info.autoReset=true;
+    }
     if(this.benchmark.running) {
       this.benchmark.sample(now,this.stats());
       if(!this.benchmark.running) {

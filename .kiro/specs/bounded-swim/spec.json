@@ -1,0 +1,14 @@
+{
+  "feature_name": "bounded-swim",
+  "created_at": "2026-11-22",
+  "updated_at": "2026-11-22",
+  "language": "zh-TW",
+  "phase": "implementation-complete",
+  "approvals": {
+    "requirements": { "generated": true, "approved": true },
+    "design": { "generated": true, "approved": true },
+    "tasks": { "generated": true, "approved": true }
+  },
+  "ready_for_implementation": true,
+  "approval_note": "依 2026-11-22 續作授權完成 inline 實質審閱。"
+}

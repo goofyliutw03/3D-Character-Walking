@@ -1,0 +1,264 @@
+import type { CameraInputMode } from '../camera/CameraModeManager';
+
+interface Actions {
+  lockEnabled?(): boolean;
+  mode(): CameraInputMode;
+  clearGesture(): void;
+  wheelEnabled(): boolean;
+  reverseEnabled(): boolean;
+  move(dx: number, dy: number, ctrl: boolean, time: number): void;
+  wheel(delta: number): void;
+  reverse(): void;
+  reset(): void;
+  suspend(): void;
+  toggle(): void;
+  depthEnabled?(): boolean;
+  depth?(direction: -1 | 1): void;
+}
+
+export class CameraInputManager {
+  lockStatus = 'Unlocked · start auto run or click scene to lock mouse';
+  private lockWanted = false;
+  private lockPending = false;
+  private unlock: () => void = () => {};
+  private request: () => void = () => {};
+  get locked(): boolean { return this.canvas?.ownerDocument.pointerLockElement === this.canvas; }
+  get lockActive(): boolean { return this.lockWanted || this.locked; }
+  private canvas: HTMLElement | undefined;
+  requestLock(): void { this.request(); }
+  releaseLock(): void { this.unlock(); }
+  private previous: { x: number; y: number; ctrl: boolean; mode: CameraInputMode } | undefined;
+  private resetTouch = (): void => {};
+  private localReset = false;
+  reset(): void { this.previous = undefined; if (!this.localReset) this.resetTouch(); }
+  private readonly events = new AbortController();
+  constructor(canvas: HTMLElement, actions: Actions) {
+    this.canvas = canvas;
+    const options = { capture: true, signal: this.events.signal };
+    const doc = canvas.ownerDocument;
+    const eligible = (): boolean => !!actions.lockEnabled?.() && !doc.hidden;
+    const fail = (): void => { this.lockPending = false; this.lockWanted = false; this.lockStatus = 'Mouse lock denied · click scene to retry (Esc unlocks)'; };
+    this.unlock = (): void => {
+      this.lockWanted = false;
+      if (this.locked) doc.exitPointerLock();
+    };
+    this.request = (): void => {
+      if (!eligible() || this.locked || this.lockPending || window.matchMedia?.('(pointer: coarse)').matches) return;
+      if (!canvas.requestPointerLock) { this.lockStatus = 'Mouse lock unsupported · using bounded mouse control'; return; }
+      this.lockWanted = true; this.lockPending = true; this.lockStatus = 'Requesting mouse lock…';
+      canvas.focus({ preventScroll: true });
+      try {
+        const result = canvas.requestPointerLock();
+        if (result && typeof result.catch === 'function') void result.then(() => {
+          if ((!this.lockWanted || this.events.signal.aborted) && this.locked) doc.exitPointerLock();
+        }).catch(fail);
+      } catch { fail(); }
+    };
+    let wasLocked = false;
+    doc.addEventListener('pointerlockchange', () => {
+      this.lockPending = false;
+      this.previous = undefined; actions.clearGesture();
+      if (this.locked) {
+        if (!this.lockWanted || !eligible()) { this.unlock(); return; }
+        wasLocked = true; this.lockStatus = 'Mouse locked · Y stops and unlocks · Esc pauses';
+      } else {
+        const unexpected = wasLocked && this.lockWanted;
+        wasLocked = false; this.lockWanted = false; this.lockStatus = 'Mouse unlocked · click scene to lock';
+        if (unexpected) actions.suspend();
+      }
+    }, options);
+    doc.addEventListener('pointerlockerror', fail, options);
+    doc.addEventListener('mousemove', event => {
+      if (!this.locked || !eligible()) return;
+      event.stopImmediatePropagation();
+      actions.move(event.movementX, event.movementY, event.ctrlKey, event.timeStamp);
+    }, options);
+    const focused = (): boolean => canvas.ownerDocument.activeElement === canvas && !canvas.ownerDocument.hidden;
+    const ownsGestures = (): boolean => {
+      const mode = actions.mode();
+      return mode === 'running-orbit' || mode === 'inspection';
+    };
+    const fingers = new Map<number, { x: number; y: number }>();
+    let blocked = false;
+    let intent: 'orbit' | 'zoom' | undefined;
+    let pair: Array<{ x: number; y: number }> = [];
+    const moved = new Set<number>();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const clearGesture = (): void => {
+      this.localReset = true;
+      try { actions.clearGesture(); } finally { this.localReset = false; }
+    };
+    let owned = false;
+    let cancelling = false;
+    const clearTouch = (): void => {
+      if (cancelling) return;
+      if (timer !== undefined) clearTimeout(timer);
+      const captured = [...fingers.keys()];
+      timer = undefined; fingers.clear(); moved.clear(); pair = []; blocked = false; owned = false; intent = undefined;
+      for (const id of captured) {
+        if (canvas.hasPointerCapture?.(id)) canvas.releasePointerCapture(id);
+      }
+    };
+    this.resetTouch = clearTouch;
+    canvas.addEventListener('blur', clearTouch, options);
+    canvas.ownerDocument.addEventListener('visibilitychange', () => { if (canvas.ownerDocument.hidden) clearTouch(); }, options);
+    const flushPair = (time: number): void => {
+      if (timer !== undefined) clearTimeout(timer);
+      timer = undefined;
+      if (fingers.size !== 2 || pair.length !== 2 || blocked) return;
+      const after = [...fingers.values()];
+      const distance = (points: typeof pair): number => Math.hypot(points[1]!.x - points[0]!.x, points[1]!.y - points[0]!.y);
+      const zoom = distance(after) - distance(pair);
+      const dx = (after[0]!.x + after[1]!.x - pair[0]!.x - pair[1]!.x) / 2;
+      const dy = (after[0]!.y + after[1]!.y - pair[0]!.y - pair[1]!.y) / 2;
+      if (!intent && Math.max(Math.abs(zoom), Math.hypot(dx, dy)) <= 2) return;
+      intent ??= Math.abs(zoom) > Math.hypot(dx, dy) * 1.4 ? 'zoom' : 'orbit';
+      pair = after; moved.clear();
+      if (intent === 'zoom' && actions.wheelEnabled()) actions.wheel(-zoom * 6);
+      else if (intent === 'orbit') actions.move(dx, dy, true, time);
+    };
+    canvas.addEventListener('pointerdown', event => {
+      if (event.pointerType !== 'touch' || (!ownsGestures() && !actions.wheelEnabled())) return;
+      if (!owned && fingers.size === 1) {
+        // Retire the single-finger Orbit/Tap sequence before taking multi-touch ownership.
+        cancelling = true;
+        for (const id of fingers.keys()) canvas.dispatchEvent(new PointerEvent('pointercancel', { pointerId: id, pointerType: 'touch', bubbles: true }));
+        cancelling = false;
+        owned = true;
+      }
+      if (ownsGestures()) owned = true;
+      fingers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      if (!owned) return;
+      event.preventDefault(); event.stopImmediatePropagation();
+      canvas.focus({ preventScroll: true });
+      canvas.setPointerCapture(event.pointerId);
+      intent = undefined;
+      pair = [...fingers.values()];
+      moved.clear();
+      blocked = fingers.size > 2;
+      clearGesture();
+    }, options);
+    canvas.addEventListener('pointermove', event => {
+      const old = fingers.get(event.pointerId);
+      if (!old) return;
+      if (!owned) { fingers.set(event.pointerId, { x: event.clientX, y: event.clientY }); return; }
+      event.preventDefault(); event.stopImmediatePropagation();
+      fingers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      if (blocked) return;
+      if (fingers.size === 1) {
+        if (ownsGestures()) actions.move(event.clientX - old.x, event.clientY - old.y, false, event.timeStamp);
+      } else {
+        moved.add(event.pointerId);
+        if (moved.size >= 2) flushPair(event.timeStamp);
+        else if (timer === undefined) timer = setTimeout(() => flushPair(event.timeStamp), 32);
+      }
+    }, options);
+    const release = (event: PointerEvent): void => {
+      if (cancelling) return;
+      if (!fingers.has(event.pointerId)) return;
+      if (owned) { event.preventDefault(); event.stopImmediatePropagation(); }
+      fingers.delete(event.pointerId);
+      intent = undefined;
+      pair = [...fingers.values()];
+      moved.clear();
+      clearGesture();
+      if (timer !== undefined) clearTimeout(timer);
+      timer = undefined;
+      if (!fingers.size) { blocked = false; owned = false; }
+    };
+    canvas.addEventListener('pointerup', release, options);
+    canvas.addEventListener('pointercancel', clearTouch, options);
+    canvas.addEventListener('lostpointercapture', release, options);
+    window.addEventListener('blur', clearTouch, options);
+    canvas.addEventListener('pointermove', event => {
+      if (event.pointerType !== 'mouse') return;
+      if (this.locked) { event.stopImmediatePropagation(); return; }
+      const mode = actions.mode();
+      if (!focused() || mode === 'standard' || (mode === 'stationary-look' && event.buttons)) {
+        this.previous = undefined;
+        return;
+      }
+      event.stopImmediatePropagation();
+      const current = { x: event.clientX, y: event.clientY, ctrl: event.ctrlKey, mode };
+      if (this.previous && this.previous.ctrl === current.ctrl && this.previous.mode === mode) {
+        actions.move(current.x - this.previous.x, current.y - this.previous.y, current.ctrl, event.timeStamp);
+      }
+      this.previous = current;
+    }, options);
+    canvas.addEventListener('pointerleave', () => actions.clearGesture(), options);
+    canvas.addEventListener('pointercancel', () => actions.clearGesture(), options);
+    canvas.addEventListener('pointerdown', event => {
+      if (event.pointerType === 'mouse' && event.button === 0 && eligible()) this.requestLock();
+      if (event.pointerType !== 'mouse') return;
+      if (!ownsGestures() && !(event.button === 1 && actions.reverseEnabled())) {
+        this.previous = undefined;
+        return;
+      }
+      canvas.focus({ preventScroll: true });
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      clearGesture();
+      if (event.button === 1) actions.reverse();
+    }, options);
+    canvas.addEventListener('wheel', event => {
+      if (!actions.wheelEnabled()) return;
+      if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
+      canvas.focus({ preventScroll: true });
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      const scale = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? canvas.clientHeight : 1;
+      actions.wheel(Math.max(-240, Math.min(240, event.deltaY * scale)));
+    }, { ...options, passive: false });
+    canvas.addEventListener('keydown', event => {
+      if (canvas.ownerDocument.activeElement !== canvas) return;
+      if (event.code === 'Escape') { this.releaseLock(); actions.suspend(); return; }
+      const unmodified = !event.ctrlKey && !event.shiftKey && !event.altKey && !event.metaKey && !event.isComposing;
+      if (unmodified && (event.code === 'KeyI' || event.code === 'KeyO') && actions.depthEnabled?.()) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        if (!event.repeat) actions.depth?.(event.code === 'KeyI' ? -1 : 1);
+        return;
+      }
+      if (event.code === 'KeyY' && unmodified) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        if (!event.repeat) actions.toggle();
+        return;
+      }
+      if (event.code !== 'F1' || event.isComposing || event.ctrlKey || event.shiftKey || event.altKey || event.metaKey || actions.mode() === 'standard') return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (!event.repeat) actions.reset();
+    }, options);
+    // Read Ctrl from each pointer event after resetting the old gesture baseline.
+    for (const type of ['keydown', 'keyup'] as const) window.addEventListener(type, event => {
+      if (event.code === 'ControlLeft' || event.code === 'ControlRight') actions.clearGesture();
+    }, options);
+    canvas.addEventListener('blur', () => {
+      actions.clearGesture();
+      if (this.locked || this.lockPending || actions.depthEnabled?.()) { this.releaseLock(); actions.suspend(); }
+    }, options);
+    window.addEventListener('blur', event => {
+      if (event.target !== window) return;
+      this.previous = undefined;
+      this.releaseLock();
+      actions.suspend();
+    }, options);
+    canvas.ownerDocument.addEventListener('visibilitychange', () => {
+      if (canvas.ownerDocument.hidden) { this.previous = undefined; this.releaseLock(); actions.suspend(); }
+    }, options);
+  }
+  dispose(): void {
+    this.releaseLock();
+    if (this.lockPending) {
+      const doc = this.canvas!.ownerDocument;
+      const finish = (): void => {
+        if (this.locked) doc.exitPointerLock();
+        doc.removeEventListener('pointerlockchange', finish); doc.removeEventListener('pointerlockerror', finish);
+      };
+      doc.addEventListener('pointerlockchange', finish, { once: true });
+      doc.addEventListener('pointerlockerror', finish, { once: true });
+    }
+    this.reset(); this.events.abort();
+  }
+}

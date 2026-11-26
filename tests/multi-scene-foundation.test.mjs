@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { Group, PointLight, Scene } from 'three';
 import { SceneSwitch } from '../src/scene/SceneSwitch.ts';
 import { createCave } from '../src/scene/CaveScene.ts';
-import { SpatialCharacterController } from '../src/character/SpatialCharacterController.ts';
+import { CharacterController } from '../src/character/CharacterController.ts';
 
 function environment(id) {
   const scene = new Scene();
@@ -58,7 +58,7 @@ test('scene bind failure restores previous scene before disposing rejected scene
 });
 test('cave walking and jump share the visible column footprint', () => {
   const cave = createCave();
-  const movement = new SpatialCharacterController(cave.walkableWorld);
+  const movement = new CharacterController(cave.walkableWorld);
   const columns = cave.environment.children.filter(object => object.name === 'Rock column');
   assert.equal(columns.length, cave.walkableWorld.obstacles.length);
   const column = columns[1];

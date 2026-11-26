@@ -3,9 +3,9 @@ import { test } from 'node:test';
 import { PerspectiveCamera, Raycaster, Vector3 } from 'three';
 import { HeightField } from '../src/scene/HeightField.ts';
 import { createTerrain } from '../src/scene/TerrainScene.ts';
-import { pickGround } from '../src/navigation/GroundPicker.ts';
+import { GroundPicker } from '../src/navigation/GroundPicker.ts';
 import { projectAnchor } from '../src/camera/AnchorProjection.ts';
-import { SpatialCharacterController } from '../src/character/SpatialCharacterController.ts';
+import { CharacterController } from '../src/character/CharacterController.ts';
 import { DestinationNavigation, isWalkable } from '../src/navigation/DestinationNavigation.ts';
 import { SceneSwitch } from '../src/scene/SceneSwitch.ts';
 
@@ -55,7 +55,7 @@ test('terrain 2: quality, wind, collision, jumping and owned resources remain bo
   terrain.update(.5,false); assert.equal(grass.material.userData.windTime.value,time);
   assert.equal(world.groundHeight(3.5,2.1),height);
   for(const o of world.obstacles) assert.equal(isWalkable({x:(o.minX+o.maxX)/2,z:(o.minZ+o.maxZ)/2},world),false);
-  const c=new SpatialCharacterController(world);
+  const c=new CharacterController(world);
   assert.equal(c.relocate({x:-8,y:0,z:-6},true),false);
   assert.equal(c.relocate({x:16,y:0,z:0},true),false);
   assert.ok(c.relocate({x:15.5,y:0,z:0},true));
@@ -95,14 +95,15 @@ test('terrain 1: quantized triangles, raycasts and CPU ground agree throughout t
     assert.ok(Number.isNaN(field.heightAt(NaN,0)));
     for (let i=0;i<field.samples.length;i++) assert.equal(field.vertexHeight(i), field.samples[i] * field.amplitude / 255);
     const camera = new PerspectiveCamera(70,1,.1,100);
+    const picker = new GroundPicker(terrain.environment.children);
     for (const fish of [false,true]) {
       const x=1.37,z=3.21,y=field.heightAt(x,z);
       camera.position.set(x,10,z+4); camera.lookAt(x,y,z); camera.updateMatrixWorld(true);
       const p=projectAnchor(new Vector3(x,y,z),camera,500,500,fish);
-      const hit=pickGround(p,camera,500,500,fish,terrain.environment.children,terrain.walkableWorld);
+      const hit=picker.pick(p,camera,500,500,fish,terrain.walkableWorld);
       assert.ok(hit); assert.ok(Math.hypot(hit.x-x,hit.z-z)<.001);
     }
-    const character = new SpatialCharacterController(terrain.walkableWorld);
+    const character = new CharacterController(terrain.walkableWorld);
     assert.ok(character.relocate({x:1,z:3,y:0},true));
     for (let i=0;i<80;i++) {
       character.update(.016,{x:1,z:0,run:true,jump:false});
@@ -116,15 +117,16 @@ test('terrain: a picked destination across terrain triangles is reachable from s
   const terrain = createTerrain();
   try {
     const world = terrain.walkableWorld;
-    const character = new SpatialCharacterController(world);
+    const character = new CharacterController(world);
     assert.ok(character.relocate({ ...terrain.spawn, y: 0 }, true));
 
     const camera = new PerspectiveCamera(70, 1, .1, 100);
-    const destination = new Vector3(5, world.groundHeight(5, 8), 8);
-    camera.position.set(5, 10, 12);
+    const destination = new Vector3(8, world.groundHeight(8, 8), 8);
+    camera.position.set(8, 10, 12);
     camera.lookAt(destination);
     camera.updateMatrixWorld(true);
-    const target = pickGround({ x: 250, y: 250 }, camera, 500, 500, false, terrain.environment.children, world);
+    const picker = new GroundPicker(terrain.environment.children);
+    const target = picker.pick({ x: 250, y: 250 }, camera, 500, 500, false, world);
     assert.ok(target);
 
     const navigation = new DestinationNavigation(world);

@@ -1,4 +1,5 @@
 import { Mesh, Vector2, Vector3, type Material, type Object3D } from 'three';
+import { preparePointLightMaterial } from './PointLightShader.ts';
 
 const travelMs = 2000;
 const fadeMs = 250;
@@ -71,6 +72,7 @@ export class EnvironmentScan {
   readonly prepareMaterial = (material: Material): void => {
     if (this.materials.has(material) || !supportedMaterials.has(material.type)) return;
     this.materials.add(material);
+    preparePointLightMaterial(material);
     const compile = material.onBeforeCompile;
     const originalKey = material.customProgramCacheKey();
     material.customProgramCacheKey = () => originalKey + '|environment-scan-v4';

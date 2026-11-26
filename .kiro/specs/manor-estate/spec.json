@@ -1,0 +1,12 @@
+{
+  "feature_name": "manor-estate",
+  "language": "zh-TW",
+  "phase": "implementation-complete",
+  "approvals": {
+    "requirements": { "generated": true, "approved": true },
+    "design": { "generated": true, "approved": true },
+    "tasks": { "generated": true, "approved": true }
+  },
+  "ready_for_implementation": true,
+  "approval_note": "依本次範圍授權進行 inline 審閱；檢查 B1 與全部樓層的對應、舊設定相容性、同源碰撞及回復方式。"
+}

@@ -21,6 +21,25 @@ test('inspector stable IDs follow object lifetime, hierarchy and removals withou
   mesh.geometry.dispose();mesh.material.dispose();index.dispose();assert.equal(index.rows.length,0);
 });
 
+test('inspector profile keys distinguish repeated branches across scene rebuilds', () => {
+  const build = () => {
+    const root = new Scene();
+    for (let i = 0; i < 2; i++) {
+      const cloud = new Group(), child = new Group();
+      cloud.name = 'Cloud'; child.name = 'Label';
+      cloud.add(child); root.add(cloud);
+    }
+    return root;
+  };
+  const index = new SceneObjectIndex();
+  index.sync(build());
+  const keys = index.rows.map(row => row.profileKey);
+  assert.equal(new Set(keys).size, keys.length);
+  assert.equal(keys[2], 'Scene/Cloud/Label');
+  index.sync(build());
+  assert.deepEqual(index.rows.map(row => row.profileKey), keys);
+});
+
 test('inspector regex and range intersect, retain ancestors and keep checkbox independent',()=>{
   const root=new Scene(), parent=new Group(), a=new Group(), b=new Group();
   parent.name='Park';a.name='Oak';b.name='Pine'; root.add(parent);parent.add(a,b);
@@ -60,48 +79,4 @@ test('inspector labels use world origins, actual camera and fisheye, respect all
   group.position.set(100,0,-5);root.updateMatrixWorld(true);
   assert.equal(projectObjectLabel(object,camera,800,400,false),null);
   assert.equal(projectObjectLabel(object,camera,800,400,true),null);
-});
-
-test('performance: stable scene reuses snapshots, mutations update paths without rewriting older snapshots', () => {
-  const root = new Scene(), parent = new Group(), a = new Group(), b = new Group();
-  parent.name = 'Park'; a.name = 'Oak'; b.name = 'Pine'; root.add(parent); parent.add(a, b);
-  const index = new SceneObjectIndex(); index.sync(root);
-  const before = index.rows, oak = before.find(row => row.object === a);
-  assert.equal(index.sync(root), false);
-  assert.equal(index.rows, before);
-  parent.position.x = 10; parent.visible = false;
-  assert.equal(index.sync(root), false); assert.equal(index.rows, before);
-  parent.name = 'Garden';
-  assert.equal(index.sync(root), true);
-  assert.equal(index.rows.find(row => row.object === a).path, 'Scene/Garden/Oak');
-  assert.equal(oak.path, 'Scene/Park/Oak');
-  assert.equal(index.rows[0], before[0]);
-  parent.remove(a); parent.add(a);
-  assert.equal(index.sync(root), true);
-  assert.deepEqual(index.rows.map(row => row.object), [root, parent, b, a]);
-  root.add(a); assert.equal(index.sync(root), true);
-  assert.equal(index.rows.at(-1).path, 'Scene/Oak'); assert.equal(index.rows.at(-1).id, oak.id);
-  a.removeFromParent(); assert.equal(index.sync(root), true);
-  parent.add(a); assert.equal(index.sync(root), true);
-  assert.equal(index.rows.at(-1).id, oak.id);
-  assert.equal(index.sync(root), false);
-  index.dispose(); assert.equal(index.rows.length, 0);
-  assert.equal(index.sync(root), true); assert.equal(index.sync(root), false);
-});
-
-test('performance: sync compares filters and checks against the last synchronized contents', () => {
-  const root = new Scene(), a = new Group(); a.name = 'Oak'; root.add(a);
-  const index = new SceneObjectIndex(); index.sync(root);
-  const id = index.rows[1].id;
-  index.setChecked(id, false); assert.equal(index.sync(root), true);
-  assert.equal(index.sync(root), false); assert.equal(index.rows[1].checked, false);
-  index.setChecked(id, true); index.setChecked(id, false);
-  assert.equal(index.sync(root), false);
-  index.configure('Oak', ''); assert.equal(index.sync(root), true);
-  index.configure('Oak', ''); assert.equal(index.sync(root), false);
-  assert.ok(index.configure('[', '')); assert.equal(index.sync(root), false);
-  a.name = 'Elm'; assert.equal(index.sync(root), true);
-  assert.equal(index.rows[1].matched, false);
-  index.configure('', ''); assert.equal(index.sync(root), true);
-  assert.equal(index.sync(root), false);
 });

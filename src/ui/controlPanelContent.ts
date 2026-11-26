@@ -1,3 +1,8 @@
+import { environmentLightsContent } from './EnvironmentLightControls';
+import { tourControlsContent } from './TourControls';
+import { characterEditorContent } from './CharacterEditor';
+import { solarControlsContent } from './SolarControls';
+import { headlampControlsContent } from './HeadlampControls';
 import { emotions, speechLimit } from '../expression/ExpressionManager';
 import { renderFunctionTree } from './FunctionTree';
 
@@ -7,6 +12,18 @@ export function controlPanelContent(obstructionHint: string): string {
       { id: 'character-choice', label: 'Selection', open: true, content: `<span class="tag" id="character-source">LOADING</span><label class="select-label" for="character">Choose a character</label>
         <select id="character"><option value="man">Man</option><option value="woman">Woman</option><option value="child">Child</option></select>
         ` },
+      { id: 'character-tour', label: 'Automatic tour', open: false, content: tourControlsContent },
+      { id: 'auto-run', label: 'Automatic run', open: true, content: `<label class="toggle-row" for="auto-run"><span>Auto run</span><input id="auto-run" type="checkbox"></label>
+        <button id="auto-run-resume" type="button" hidden>Resume auto run</button>
+        <output id="auto-run-status" aria-live="polite">Off</output>
+        <output id="mouse-lock-status" role="status">Mouse unlocked</output>
+        <p class="hint">PC: Y starts and locks the mouse; Y stops and unlocks. Esc pauses and unlocks. Click the scene to retry lock. Mobile keeps touch gestures.</p>
+        ${(['thirdHorizontal', 'thirdVertical', 'firstHorizontal', 'firstVertical'] as const).map((key, index) => `<label class="select-label" for="look-${key}">${['Third person horizontal','Third person vertical','First person horizontal','First person vertical'][index]} ×</label><input id="look-${key}" type="number" min="0.1" max="5" step="0.1" value="1">`).join('')}
+        <button id="touch-reverse" type="button">反向 180°</button>
+        <button id="touch-look-reset" type="button">鏡頭歸位</button>
+        <p class="hint">手機自動奔跑：單指左右拖曳轉向，上下調整視角。雙指同向拖曳環繞觀察，張開拉近、捏合拉遠。拉近到底後繼續張開可進入第一人稱並暫停；單指拖曳觀看，捏合退出並恢復原跑停狀態。以 Auto run 開關及 Stop 控制奔跑。</p>
+        <p class="hint">Focus the scene and press Y to start, resume, or stop auto run. In first and third person, move the mouse to look around while stationary. While auto running in first person, third person, or fisheye, move the mouse to steer and tilt the view. Hold Ctrl to look around while keeping your heading. Middle click reverses and F1 resets the view. Zoom fully in from third person or fisheye, then scroll in again to inspect in first person. Press Y to run from there or scroll out to return.</p>` },
+      { id: 'character-editor', label: 'Position & manual speed', open: false, content: characterEditorContent },
       { id: 'character-assets', label: 'Asset & action status', open: false, content: `<p class="hint" id="character-asset-hint">Loading a local rigged character. Procedural preview is available.</p>
         <a class="asset-credits" href="/assets/characters/ATTRIBUTION.md" target="_blank" rel="noopener">Character sources & modifications ↗</a>
         <p id="character-status" class="character-status" role="status" aria-live="polite" aria-atomic="true">Man · Idle</p>
@@ -19,11 +36,12 @@ export function controlPanelContent(obstructionHint: string): string {
       { id: 'speech', label: 'Speech bubble', open: true, content: `<label class="select-label" for="speech">Your character’s words</label>
         <textarea id="speech" rows="3" aria-describedby="speech-help speech-count" placeholder="A thought for the neighborhood…"></textarea>
         <div class="speech-toolbar"><span id="speech-count">0 / ${speechLimit}</span><button id="clear-speech" type="button">Clear speech</button></div>
-        <p id="speech-help" class="hint">Up to 160 characters. Text stays on this page only. Your character stops while you edit. Overlays are hidden in First person.</p>
+        <p id="speech-help" class="hint">Up to 160 characters. Saved with panel profiles in this browser. Your character stops while you edit. Overlays are hidden in First person.</p>
         <p id="expression-status" class="expression-status" role="status" aria-live="polite" aria-atomic="true">Mood: None. No speech.</p>` }
     ] },
     { id: 'particles', label: 'Particle interaction', open: false, children: [
-      { id: 'actors', label: 'Caster & Target', open: true, content: `<p class="hint">You control Caster. Target stands independently. Fire toward its current position; shots do not follow it.</p>
+      { id: 'actors', label: 'Caster & Target', open: true, content: `<label for="projectile-aim">Projectile direction</label>
+        <select id="projectile-aim"><option value="target">Toward Target</option><option value="camera">Along camera view</option></select>
         <p id="target-status" role="status" aria-live="polite">Target · Loading · procedural preview</p>
         <button id="retry-target" type="button" hidden>Retry target</button>
         ` },
@@ -37,8 +55,6 @@ export function controlPanelContent(obstructionHint: string): string {
         </div><p class="hint">Up to 8 effects light their surroundings at once. Extra shots still appear; lighting resumes as slots become free. No light shadows.</p>` },
       { id: 'particle-motion', label: 'Motion & limits', open: true, content: `<div class="particle-settings"><label for="particle-speed">Speed · m/s<input id="particle-speed" type="number" min="0.5" max="30" step="0.5" value="8"></label><label for="particle-lifetime">Lifetime · s<input id="particle-lifetime" type="number" min="0.1" max="10" step="0.1" value="3"></label><label for="particle-limit">Effect limit<input id="particle-limit" type="number" min="1" max="128" step="1" value="32"></label></div>
         <button id="apply-particles" type="button">Apply settings</button>
-        <label class="select-label" for="projectile-aim">Aim</label>
-        <select id="projectile-aim"><option value="target">Target</option><option value="camera">Camera direction</option></select>
         <p id="particle-settings-status" class="hint" role="status" aria-live="polite">Settings apply to new shots.</p>` }
     ] },
     { id: 'camera', label: 'Camera', open: false, children: [
@@ -64,19 +80,69 @@ export function controlPanelContent(obstructionHint: string): string {
           <option value="xray">4 · X-ray character · 50%</option>
         </select>
         <p class="hint" id="obstruction-hint">${obstructionHint}</p>
+        <label class="toggle-row" for="ground-penetration"><span>點擊穿透環境</span><input id="ground-penetration" type="checkbox" checked aria-describedby="ground-penetration-hint"></label>
+        <p class="hint" id="ground-penetration-hint">開啟時點地可穿透牆壁與天花板；關閉時環境會遮擋點擊。角色與指定控制物件仍會攔截。</p>
         ` }
     ] },
     { id: 'scene', label: 'Scene display', open: false, children: [
+      { id: 'environment', label: 'Environment', open: true, content: `<label class="select-label" for="environment">Active environment</label>
+        <select id="environment"><option value="city">City street</option><option value="cave">Rock chamber</option><option value="terrain">Natural terrain</option><option value="flight">Bounded flight</option><option value="room">莊園豪宅</option><option value="swim">Tidal Pool</option></select>
+        <fieldset id="swim-controls" hidden><legend>Swimming</legend>
+          <label for="swim-pose">游泳姿態</label>
+          <select id="swim-pose"><option value="breaststroke">蛙式</option><option value="dive">一般潛水</option><option value="jellyfish">水母漂浮</option></select>
+          <label for="swim-outfit">水域服裝</label>
+          <select id="swim-outfit"><option value="swimwear">運動泳裝</option><option value="scuba">潛水裝</option></select>
+          <p id="swim-status" class="hint" role="status"></p>
+          <p class="hint">第三人稱與魚眼：Y 啟停自動游泳，滑鼠俯仰控制深度，I／O 螺旋下潛或上升。水面朝金色平台游動可上岸。</p>
+          <button id="swim-exit" type="button">Climb onto the platform</button>
+          <p id="swim-climb-hint" class="hint"></p>
+          <p id="swim-result" class="hint" role="status"></p>
+        </fieldset>
+        <fieldset id="flight-controls" hidden><legend>Flight mode</legend>
+          <button id="flight-takeoff" type="button">Take off</button><button id="flight-land" type="button">Land below · 2m</button>
+          <p class="hint">WASD / arrows: world directions. E / Space: ascend. Q: descend. Shift / Run: boost (24m/s); cruise 8m/s. Release to slow; Stop brakes. Upright posture uses the existing Jump animation fallback.</p>
+          <p id="flight-status" class="hint" role="status">Flight ready.</p>
+          <p id="flight-result" class="hint" role="status"></p>
+        </fieldset>
+        <fieldset id="terrain-controls" hidden><legend>Terrain vegetation</legend>
+          <label for="terrain-quality">Vegetation quality</label><select id="terrain-quality"><option value="standard">Standard · 384 grass clumps</option><option value="low">Low · 96 grass clumps</option></select>
+          <label><input id="terrain-wind" type="checkbox" checked> Grass wind</label>
+          <p class="hint">Static hills share movement, picking and shadow heights. Quality changes vegetation only; reduced motion freezes wind.</p>
+        </fieldset>
+        <button id="scan-environment" type="button">Scan environment</button>
+        <p id="environment-status" class="hint" role="status">City street ready.</p>` },
+      { id: 'city-buildings', label: 'City buildings', open: true, content: `<p id="building-status" class="hint" role="status" aria-live="polite">Loading original Blender buildings…</p><button id="retry-buildings" type="button" hidden>Retry buildings</button><a class="asset-credits" href="/assets/city/ATTRIBUTION.md" target="_blank" rel="noopener">Original buildings & hybrid scene credits ↗</a>` },
+      { id: 'traffic-simulation', label: 'City traffic', open: false, content: `
+        <label class="toggle-row" for="traffic-enabled"><span>Enable simulation</span><input id="traffic-enabled" type="checkbox"></label>
+        <label class="toggle-row" for="traffic-paused"><span>Pause traffic & pedestrians</span><input id="traffic-paused" type="checkbox"></label>
+        <div class="particle-settings"><label for="traffic-npcs">Pedestrians · 0–24<input id="traffic-npcs" type="number" min="0" max="24" step="1" value="6"></label>
+        <label for="traffic-vehicles">Vehicles · 0–8<input id="traffic-vehicles" type="number" min="0" max="8" step="1" value="4"></label></div>
+        <label class="toggle-row" for="traffic-lod"><span>Distance LOD</span><input id="traffic-lod" type="checkbox" checked></label>
+        <div class="object-filter-actions"><button id="traffic-reset" type="button">Reset simulation</button></div>
+        <p class="hint" id="traffic-status" role="status" aria-live="polite">Simulation off · 6 pedestrians · 4 vehicles.</p>
+        <p class="hint">Procedural characters follow a surface NavMesh. Pedestrians take turns crossing; vehicles wait for clearance. Counts reset the simulation. Distant models use fewer parts. Your character and Target stay independent.</p>` },
       { id: 'scene-objects', label: 'Scene objects', open: false, content: '<div id="scene-object-inspector"></div>' },
       { id: 'atmosphere', label: 'Lighting & shadows', open: true, content: `<label class="select-label" for="lighting">Time of day</label>
+        ${solarControlsContent}
+        ${environmentLightsContent}
+        ${headlampControlsContent}
         <select id="lighting"><option value="day">☀ &nbsp; Soft daylight</option><option value="evening">◐ &nbsp; Golden hour</option><option value="night">☾ &nbsp; Night</option></select>
-        <label class="toggle-row" for="shadows"><span>Cast shadows</span><input id="shadows" type="checkbox" checked></label>` },
+        <label class="toggle-row" for="shadows"><span>Cast shadows</span><input id="shadows" type="checkbox" checked></label>
+        <fieldset id="lamp-shadows" disabled aria-describedby="lamp-shadow-help"><legend>Night shadow lights</legend>
+        <label class="toggle-row" for="lamp-shadow-auto"><span>陰影自動觸發偵測</span><input id="lamp-shadow-auto" type="checkbox"></label>
+        <label class="select-label" for="lamp-shadow-radius">偵測半徑 · <output id="lamp-shadow-radius-value" for="lamp-shadow-radius">10 m</output></label>
+        <input id="lamp-shadow-radius" type="range" min="1" max="30" step="0.5" value="10" disabled>
+        ${[-4.4, 4.4].flatMap((x, side) => [-17, 3, 20].map((z, index) => {
+          const id = side * 3 + index + 1;
+          return `<label class="toggle-row" for="lamp-shadow-${id}"><span>Light ${id} · x ${x}, z ${z} m</span><input id="lamp-shadow-${id}" data-lamp-shadow="${id}" type="checkbox"${id === 2 ? ' checked' : ''}></label>`;
+        })).join('')}</fieldset>
+        <p id="lamp-shadow-help" class="hint">Night + Cast shadows only. Checked lights are candidates. Auto off: all cast simultaneously. Auto on: candidates within the full 3D radius cast. Clear all for no lamp shadows. Default: Light 2. More lights increase GPU cost. Selection stays when disabled.</p>` },
       { id: 'water-feature', label: 'Water feature', open: true, content: `
-        <p class="hint">A small cascade at the far end of the street. Walk around the stone basin.</p>
+        <p id="water-feature-hint" class="hint">A small cascade at the far end of the street. Walk around the stone basin.</p>
         <label class="toggle-row" for="water-enabled"><span>Dynamic water</span><input id="water-enabled" type="checkbox" checked></label>
         <label class="toggle-row" for="water-paused"><span>Pause water animation</span><input id="water-paused" type="checkbox"></label>
         <label class="toggle-row" for="water-lens"><span>Camera mist & droplets</span><input id="water-lens" type="checkbox" checked></label>
-        <p class="hint">Move the camera close to the cascade to catch a little spray. Droplets drain away when you leave.</p>
+        <p id="water-lens-hint" class="hint">Move the camera close to the cascade to catch a little spray. Droplets drain away when you leave.</p>
         <label class="select-label" for="water-quality">Water quality</label>
         <select id="water-quality"><option value="standard">Standard</option><option value="low">Low</option></select>
         <label class="select-label" for="water-wave">Wave strength · <output id="water-wave-value" for="water-wave">1.0</output></label>

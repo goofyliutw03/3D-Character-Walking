@@ -1,0 +1,14 @@
+{
+  "feature_name": "world-query-range-policy",
+  "created_at": "2026-11-10",
+  "updated_at": "2026-11-10",
+  "language": "zh-TW",
+  "phase": "implementation-complete",
+  "approvals": {
+    "requirements": { "generated": true, "approved": true },
+    "design": { "generated": true, "approved": true },
+    "tasks": { "generated": true, "approved": true }
+  },
+  "ready_for_implementation": true,
+  "approval_note": "1Y-13 requirements → design → tasks依已確認本批授權循序自動inline審閱通過，非使用者逐份人工核准；不委派、不自動commit。"
+}

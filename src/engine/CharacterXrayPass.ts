@@ -1,5 +1,5 @@
 import {
-  Color, HalfFloatType, Material, Mesh, MeshDepthMaterial, NearestFilter, NoBlending,
+  Color, HalfFloatType, Material, Matrix4, Mesh, MeshDepthMaterial, NearestFilter, NoBlending,
   OrthographicCamera, PlaneGeometry, RGBADepthPacking, Scene, ShaderMaterial,
   UnsignedByteType, Vector2, WebGLRenderTarget,
   type Camera, type Object3D, type WebGLRenderer,
@@ -17,19 +17,24 @@ export class CharacterXrayPass {
   private readonly geometry = new PlaneGeometry(2, 2);
   private readonly material: ShaderMaterial;
   private readonly size = new Vector2();
+  private cachedEnvironment?: Object3D;
+  private readonly cachedBlockerMaterials = new Set<Material>();
+  private readonly cachedView = new Matrix4();
+  private readonly cachedProjection = new Matrix4();
   private disposed = false;
 
   constructor(halfFloat = false) {
     this.base = new WebGLRenderTarget(1, 1, { type: halfFloat ? HalfFloatType : UnsignedByteType });
     this.hidden.visible = false;
     this.material = new ShaderMaterial({
-      uniforms: { source: { value: this.base.texture }, blockers: { value: this.blockers.texture }, actor: { value: this.actor.texture } },
+      uniforms: { source: { value: this.base.texture }, blockers: { value: this.blockers.texture }, actor: { value: this.actor.texture }, overlayOnly: { value: false } },
       depthTest: false, depthWrite: false, blending: NoBlending,
       vertexShader: `varying vec2 vUv;
         void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`,
       fragmentShader: `uniform sampler2D source;
         uniform sampler2D blockers;
         uniform sampler2D actor;
+        uniform bool overlayOnly;
         varying vec2 vUv;
         #include <packing>
         void main() {
@@ -45,7 +50,7 @@ export class CharacterXrayPass {
             if (contrast < 0.6) ghost = dot(display, vec3(0.2126, 0.7152, 0.0722)) > 0.45
               ? vec3(0.0, 0.04, 0.08) : vec3(0.35, 1.0, 1.0);
             gl_FragColor.rgb = mix(base.rgb, sRGBTransferEOTF(vec4(ghost, 1.0)).rgb, 0.5);
-          }
+          } else if (overlayOnly) discard;
           #include <tonemapping_fragment>
           #include <colorspace_fragment>
         }`,
@@ -53,11 +58,14 @@ export class CharacterXrayPass {
     this.output.add(new Mesh(this.geometry, this.material));
   }
 
-  render(renderer: WebGLRenderer, scene: Scene, camera: Camera, subject: Object3D, environment: Object3D): void {
+  render(renderer: WebGLRenderer, scene: Scene, camera: Camera, subject: Object3D, environment: Object3D,
+    staticBlockers = false): void {
     if (this.disposed) return;
     const destination = renderer.getRenderTarget();
     if (destination) this.size.set(destination.width, destination.height);
     else renderer.getDrawingBufferSize(this.size);
+    if (!staticBlockers || this.blockers.width !== this.size.x || this.blockers.height !== this.size.y)
+      this.cachedEnvironment = undefined;
     for (const target of [this.base, this.blockers, this.actor]) {
       if (target.width !== this.size.x || target.height !== this.size.y) target.setSize(this.size.x, this.size.y);
     }
@@ -72,15 +80,39 @@ export class CharacterXrayPass {
       scene.background = null; scene.overrideMaterial = null;
       renderer.shadowMap.autoUpdate = false;
       renderer.setClearColor(0xffffff, 1);
-      this.depth(renderer, scene, camera, environment, false, this.blockers, used);
+      if (this.cachedEnvironment !== environment || !this.cachedView.equals(camera.matrixWorldInverse) ||
+          !this.cachedProjection.equals(camera.projectionMatrix)) {
+        this.cachedEnvironment = undefined;
+        this.cachedBlockerMaterials.clear();
+        this.depth(renderer, scene, camera, environment, false, this.blockers, used);
+        if (staticBlockers) {
+          this.cachedEnvironment = environment;
+          for (const material of used) this.cachedBlockerMaterials.add(material);
+          this.cachedView.copy(camera.matrixWorldInverse);
+          this.cachedProjection.copy(camera.projectionMatrix);
+        }
+      }
       this.depth(renderer, scene, camera, subject, true, this.actor, used);
       renderer.setRenderTarget(destination);
+      const overlayOnly = destination === null;
+      this.material.uniforms.overlayOnly!.value = overlayOnly;
+      if (overlayOnly) {
+        // Preserve the canvas render path for unoccluded pixels, including clears and MSAA.
+        scene.background = background;
+        scene.overrideMaterial = override;
+        renderer.setClearColor(clear, alpha);
+        renderer.render(scene, camera);
+        renderer.autoClear = false;
+      }
       renderer.render(this.output, this.camera);
     } finally {
       scene.background = background; scene.overrideMaterial = override;
       renderer.setClearColor(clear, alpha); renderer.autoClear = autoClear;
       renderer.shadowMap.autoUpdate = shadows; renderer.setRenderTarget(destination);
-      for (const [original, depth] of this.depths) if (!used.has(original)) { depth.dispose(); this.depths.delete(original); }
+      for (const [original, depth] of this.depths) if (!used.has(original) &&
+          !(this.cachedEnvironment && this.cachedBlockerMaterials.has(original))) {
+        depth.dispose(); this.depths.delete(original);
+      }
     }
   }
 
@@ -103,16 +135,13 @@ export class CharacterXrayPass {
             used.add(material);
             let depth = this.depths.get(material);
             if (!depth) { depth = new MeshDepthMaterial({ depthPacking: RGBADepthPacking }); this.depths.set(material, depth); }
-            if ('displacementMap' in material) {
-              const source = material as unknown as Pick<MeshDepthMaterial, 'displacementMap' | 'displacementScale' | 'displacementBias'>;
-              depth.displacementMap = source.displacementMap;
-              depth.displacementScale = source.displacementScale;
-              depth.displacementBias = source.displacementBias;
-            }
             depth.side = material.side;
             depth.alphaTest = material.alphaTest;
             depth.map = 'map' in material ? material.map as MeshDepthMaterial['map'] : null;
             depth.alphaMap = 'alphaMap' in material ? material.alphaMap as MeshDepthMaterial['alphaMap'] : null;
+            depth.displacementMap = 'displacementMap' in material ? material.displacementMap as MeshDepthMaterial['displacementMap'] : null;
+            depth.displacementScale = 'displacementScale' in material ? material.displacementScale as number : 1;
+            depth.displacementBias = 'displacementBias' in material ? material.displacementBias as number : 0;
             depth.clippingPlanes = material.clippingPlanes;
             depth.clipIntersection = material.clipIntersection;
             return depth;
@@ -132,6 +161,7 @@ export class CharacterXrayPass {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
+    this.cachedEnvironment = undefined; this.cachedBlockerMaterials.clear();
     for (const target of [this.base, this.blockers, this.actor]) target.dispose();
     for (const material of this.depths.values()) material.dispose();
     this.depths.clear(); this.hidden.dispose(); this.material.dispose(); this.geometry.dispose(); this.output.clear();

@@ -95,3 +95,7 @@ CameraController在允許Orbit時擁有獨立centering狀態；0.8秒smoothstep�
 設計inline審閱PASS：輸入→callback→CameraController依賴方向及單一loop維持，無跨界修改；共用檔案依序，未委派。
 
 補充：ViewerApp開始置中時改呼叫TapGesture.cancelCandidate，只清候選不清held pointer Set，避免第二指單獨短放開被誤認Run；完整生命週期cancel仍清Set。新增兩者組合回歸，fresh單指tap仍能觸發。
+
+## 1Y-11 平滑過渡設計
+CameraController保存rendered起始位置、旋轉、FOV、near與當前魚眼權重；外部維持球面路徑，眼位轉場用quaternion。投影與權重共用0.8秒smoothstep。第一人稱位置即時更新，旋轉以12/s指數平滑，避免手控延遲過長。SceneRenderer/FisheyePass僅在混合期間額外捕捉透視畫面並線性混色，穩態維持原成本。overlay/picking採權重大於一半的投影，混合期間兩幅圖像不具有單一精確投影。遮擋仍由原模組最後處理。reduced-motion同步結束所有混合。
+Boundary: 相機與渲染模組、ViewerApp單行渲染接線及測試；不改輸入、物理或其他dirty功能。依序實作，不委派。風險為混合暫時雙影與額外render target；dispose及例外還原須驗證。Rollback僅撤回本追加差異。設計inline審閱PASS。

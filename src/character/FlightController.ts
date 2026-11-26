@@ -1,4 +1,4 @@
-import { SpatialCharacterController } from './SpatialCharacterController.ts';
+import { CharacterController } from './CharacterController.ts';
 import type { MovementIntent, MotionSnapshot, WalkableWorld } from './motion.ts';
 import { FlightWorldQuery } from '../world/FlightWorldQuery.ts';
 import { defaultCapsule, finitePoint, type Capsule, type Point3 } from '../world/WorldQuery.ts';
@@ -8,7 +8,7 @@ const step=1/60;
 const zero=():Point3=>({x:0,y:0,z:0});
 /** Explicit strategy owner. Only the selected flight/ground branch may commit a transform. */
 export class FlightController {
-  private ground:SpatialCharacterController;
+  private ground:CharacterController;
   private capsule:Capsule;
   private readonly query:FlightWorldQuery;
   private state:MotionSnapshot;
@@ -20,7 +20,7 @@ export class FlightController {
     if(!(world.query instanceof FlightWorldQuery))throw Error('Flight requires a flight world query');
     this.query=world.query;
     this.capsule={...capsule};
-    this.ground=new SpatialCharacterController(world,capsule);
+    this.ground=new CharacterController(world,capsule);
     this.state={...this.ground.snapshot,grounded:false,action:'jump'};
   }
   get mode(){return this.strategy;}
@@ -65,9 +65,9 @@ export class FlightController {
     const down={x:0,y:-distance,z:0},target={...this.state,y:surface.value.height};
     const hit=this.query.sweep(this.state,down,this.shape);
     if(!hit.ok||(hit.value&&hit.value.fraction<1-1e-8)||!this.legal(target))return false;
-    const ground=new SpatialCharacterController(this.world,this.shape);
+    const ground=new CharacterController(this.world,this.shape);
     ground.setWalkSpeed(this.walkSpeed);
-    if(!ground.relocate(target,true))return false;
+    if(!ground.relocate(target,true,this.state.heading))return false;
     this.ground=ground;
     this.strategy='ground';this.state={...this.ground.snapshot};this.stop();return true;
   }

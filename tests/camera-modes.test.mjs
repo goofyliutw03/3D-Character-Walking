@@ -18,12 +18,16 @@ test('swim look controls yaw and pitch in both character camera views', () => {
   const { rig, camera } = setup();
   for (const view of ['first-person', 'third-person']) {
     rig.select(view, subject, true);
-    rig.update({ ...subject, look: { heading: Math.PI / 2, pitch: .4 } }, 1 / 60, true);
+    rig.setFollowing(true, subject, true);
+    Object.assign(rig.controlOffsets, { active: true, eye: view === 'first-person', yaw: Math.PI / 2, pitch: .4 });
+    rig.update(subject, 1 / 60, true);
     const up = camera.getWorldDirection(new Vector3());
-    assert.ok(up.x > .9 && up.y > .38 && Math.abs(up.z) < 1e-8);
-    rig.update({ ...subject, look: { heading: -Math.PI / 2, pitch: -.4 } }, 1 / 60, true);
+    assert.ok(up.x > .45 && Math.abs(up.z) < 1e-8);
+    Object.assign(rig.controlOffsets, { yaw: -Math.PI / 2, pitch: -.4 });
+    rig.update(subject, 1 / 60, true);
     const down = camera.getWorldDirection(new Vector3());
-    assert.ok(down.x < -.9 && down.y < -.38 && Math.abs(down.z) < 1e-8);
+    assert.ok(down.x < -.45 && Math.abs(down.z) < 1e-8);
+    assert.ok(Math.abs(up.y - down.y) > .5);
   }
 });
 test('1.1–1.4: front, overhead and low frames follow heading and character height', () => {
@@ -84,7 +88,7 @@ test('2.1, 2.3: static view follow preserves orbit composition and reduced motio
 });
 test('2.4, 3.3, 4.1: lens changes, first-person visibility and fixed eye anchor remain correct', () => {
   const { rig, camera } = setup();
-  rig.select('first-person', subject, false);
+  rig.select('first-person', subject, true);
   assert.equal(camera.fov, 70);
   assert.equal(rig.characterVisible, false);
   rig.setFollowing(false, subject, true);
@@ -101,6 +105,30 @@ test('2.4, 3.3, 4.1: lens changes, first-person visibility and fixed eye anchor 
   assert.equal(rig.fisheye, false);
 });
 
+test('eye transitions start at the rendered pose and can be retargeted without a jump', () => {
+  const { rig, camera } = setup();
+  const rendered = camera.clone();
+  rendered.position.set(0, 3, 1);
+  rendered.lookAt(0, 2, 5);
+  rig.select('first-person', subject, false, rendered);
+  rig.update(subject, 0, false);
+  assert.ok(camera.position.distanceTo(rendered.position) < 1e-8);
+  assert.ok(camera.quaternion.angleTo(rendered.quaternion) < 1e-7);
+  rig.update(subject, .05, false);
+  const current = camera.clone();
+  rig.select('front', subject, false);
+  rig.update(subject, 0, false);
+  assert.ok(camera.position.distanceTo(current.position) < 1e-8);
+  assert.ok(camera.quaternion.angleTo(current.quaternion) < 1e-7);
+  for (let i = 0; i < 16; i++) rig.update(subject, .05, false);
+  assert.equal(rig.transitioning, false);
+  assert.ok(camera.position.z > subject.z);
+  rig.select('first-person', subject, false);
+  rig.update(subject, .016, true);
+  assert.equal(rig.transitioning, false);
+  assert.ok(Math.abs(camera.position.y - (subject.y + subject.eyeHeight)) < 1e-8);
+});
+
 test('2.1: real OrbitControls must not lift a frozen low-angle camera', () => {
   const camera = new PerspectiveCamera(43, 1.5, 0.1, 200);
   const controls = new OrbitControls(camera);
@@ -111,4 +139,42 @@ test('2.1: real OrbitControls must not lift a frozen low-angle camera', () => {
   rig.setFollowing(false, subject, true);
   rig.update(subject, 1 / 60, false);
   assert.ok(before.distanceTo(camera.position) < 1e-8);
+});
+
+
+test('7.1–7.3: rendered pose, lens continuity, rapid retarget and reduced motion', () => {
+  const { rig, camera, controls } = setup();
+  const rendered = camera.clone();
+  rendered.position.set(1, 3, 9); rendered.lookAt(0, 2, 5);
+  rig.select('fisheye', subject, false, rendered);
+  rig.update(subject, 0, false);
+  assert.ok(camera.position.distanceTo(rendered.position) < 1e-8);
+  assert.ok(camera.quaternion.angleTo(rendered.quaternion) < 1e-7);
+  assert.equal(camera.fov, 43); assert.equal(rig.fisheyeAmount, 0);
+  for (let i = 0; i < 8; i++) rig.update(subject, .05, false);
+  assert.ok(camera.fov > 43 && camera.fov < 160);
+  assert.ok(rig.fisheyeAmount > 0 && rig.fisheyeAmount < 1);
+  const current = camera.clone(), lens = rig.fisheyeAmount;
+  rig.select('first-person', subject, false, current); rig.update(subject, 0, false);
+  assert.equal(camera.fov, current.fov); assert.equal(rig.fisheyeAmount, lens);
+  assert.ok(camera.position.distanceTo(current.position) < 1e-8);
+  rig.update(subject, .01, true);
+  assert.equal(camera.fov, 70); assert.equal(camera.near, .04); assert.equal(rig.fisheyeAmount, 0);
+  const rotation = camera.quaternion.clone();
+  rig.update({ ...subject, x: 2, heading: Math.PI }, .016, false);
+  assert.ok(camera.quaternion.angleTo(rotation) > 0);
+  assert.ok(camera.quaternion.angleTo(rotation) < Math.PI / 2);
+  assert.ok(Math.abs(camera.position.x - 2) < 1e-8);
+  rig.update({ ...subject, heading: Math.PI }, .016, true);
+  assert.ok(camera.getWorldDirection(new Vector3()).z < -.99);
+  assert.ok(controls.target.distanceTo(camera.position) > 9);
+});
+
+test('7.2: orbit interruption preserves independent projection completion', () => {
+  const { rig, camera } = setup();
+  rig.select('fisheye', subject, true);
+  rig.select('street', subject, false);
+  rig.update(subject, .05, false); rig.interrupt();
+  for (let i = 0; i < 20; i++) rig.update(subject, .05, false);
+  assert.equal(rig.fisheyeAmount, 0); assert.equal(camera.fov, 43);
 });

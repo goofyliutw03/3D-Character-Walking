@@ -3,6 +3,22 @@ import { test } from 'node:test';
 import { BoxGeometry, Group, Mesh, MeshBasicMaterial, MeshPhysicalMaterial, PerspectiveCamera, Scene, Color, Vector3 } from 'three';
 import { CharacterXrayPass } from '../src/engine/CharacterXrayPass.ts';
 import { CameraObstruction } from '../src/camera/CameraObstruction.ts';
+import { createTerrain } from '../src/scene/TerrainScene.ts';
+
+test('xray: terrain mask retains the visible displacement texture, scale and bias',()=>{
+  const terrain=createTerrain(), subject=new Group(); terrain.scene.add(subject);
+  const surface=terrain.environment.getObjectByName('Displaced terrain'), original=surface.material;
+  const pass=new CharacterXrayPass();let checked=false;
+  const renderer=fakeRenderer(()=>{
+    if(surface.material!==original&&surface.material.visible){
+      assert.equal(surface.material.displacementMap,original.displacementMap);
+      assert.equal(surface.material.displacementScale,original.displacementScale);
+      assert.equal(surface.material.displacementBias,original.displacementBias);checked=true;
+    }
+  });
+  try { pass.render(renderer,terrain.scene,new PerspectiveCamera(),subject,terrain.environment);assert.ok(checked); }
+  finally {pass.dispose();terrain.dispose();}
+});
 
 test('xray: environment filter excludes water, transparency, hidden ancestors and non-environment actors per material', () => {
   const scene = new Scene(), environment = new Group(), subject = new Group(); scene.add(environment, subject);
@@ -17,7 +33,7 @@ test('xray: environment filter excludes water, transparency, hidden ancestors an
   const seen=[];
   const renderer=fakeRenderer((s)=>{seen.push({mixed:[...mixed.material],water:water.material.visible,hidden:hiddenMesh.material.visible,child:child.material.visible,actor:actor.material.visible});});
   pass.render(renderer,scene,new PerspectiveCamera(),subject,environment);
-  assert.equal(seen.length,4); // base, environment depth, subject depth, composite
+  assert.equal(seen.length,5); // base, environment depth, subject depth, canvas scene, overlay
   assert.equal(seen[1].mixed[0].visible,true);assert.equal(seen[1].mixed[1].visible,false);assert.equal(seen[1].mixed[2].visible,false);
   assert.equal(seen[1].mixed[3].visible,false);assert.equal(seen[1].mixed[4].visible,false);
   assert.equal(seen[1].water,false);assert.equal(seen[1].child,false);assert.equal(seen[1].actor,false);
@@ -47,6 +63,43 @@ function fakeRenderer(render) {
     getDrawingBufferSize:v=>v.set(640,480),getClearColor:v=>v.copy(color),getClearAlpha:()=>alpha,
     setClearColor:(c,a)=>{color.set(c);if(a!==undefined)alpha=a;},render};
 }
+
+test('xray: fixed view reuses blocker depth while redrawing moving actor depth', () => {
+  const scene = new Scene(), environment = new Group(), subject = new Group(), camera = new PerspectiveCamera();
+  scene.add(environment, subject);
+  const frames = [];
+  const renderer = fakeRenderer((renderedScene) => {
+    frames.push(renderer.getRenderTarget() ?? (renderedScene === scene ? "canvas scene" : "overlay"));
+  });
+  const pass = new CharacterXrayPass();
+  const render = (fixed = true, blockers = environment) => {
+    frames.length = 0;
+    camera.updateMatrixWorld();
+    pass.render(renderer, scene, camera, subject, blockers, fixed);
+    return [...frames];
+  };
+  try {
+    const [base, blockers, actor, canvas, output] = render();
+    assert.equal(canvas, "canvas scene");
+    assert.equal(output, "overlay");
+    assert.equal(frames.length, 5);
+    subject.position.y += 3.6;
+    assert.deepEqual(render(), [base, actor, canvas, output]);
+    camera.position.z += 1;
+    assert.deepEqual(render(), [base, blockers, actor, canvas, output]);
+    camera.zoom = 2;
+    camera.updateProjectionMatrix();
+    assert.equal(render().length, 5);
+    renderer.getDrawingBufferSize = size => size.set(800, 600);
+    assert.equal(render().length, 5);
+    assert.equal(render(true, new Group()).length, 5);
+    assert.equal(render(false).length, 5);
+    assert.equal(render().length, 5);
+    assert.equal(render().length, 4);
+  } finally {
+    pass.dispose();
+  }
+});
 
 test('xray: mode transition restores original transparent flags before mask filtering and preserves projection', () => {
   const environment=new Group(),wall=new Mesh(new BoxGeometry(8,8,.2),new MeshBasicMaterial());wall.position.set(0,1,2);environment.add(wall);

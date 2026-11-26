@@ -1,4 +1,4 @@
-import { SpatialCharacterController } from './SpatialCharacterController.ts';
+import { CharacterController } from './CharacterController.ts';
 import type { MovementIntent, MotionSnapshot, WalkableWorld } from './motion.ts';
 import { finitePoint, type Capsule, type Point3, type WorldQuery } from '../world/WorldQuery.ts';
 import type { WaterVolume } from '../water/WaterVolume.ts';
@@ -38,7 +38,7 @@ interface ClimbPath {
 }
 
 export class SwimController {
-  private ground: SpatialCharacterController;
+  private ground: CharacterController;
   private readonly query: WorldQuery;
   private state: MotionSnapshot;
   private capsule: Capsule;
@@ -57,7 +57,7 @@ export class SwimController {
     if (!world.query) throw new Error('Swimming requires a world query');
     this.query = world.query;
     this.capsule = { ...capsule };
-    this.ground = new SpatialCharacterController(world, capsule, spawn);
+    this.ground = new CharacterController(world, capsule, spawn);
     this.state = { ...this.ground.snapshot };
   }
 
@@ -318,7 +318,7 @@ export class SwimController {
     // The dormant ground position can be too close to the edge for the current capsule.
     const support = this.query.surfaceSample({ ...this.spawn, y: 0 });
     if (!support.ok || !this.legal({ ...this.spawn, y: support.value.height })) return false;
-    const ground = new SpatialCharacterController(this.world, this.capsule, this.spawn);
+    const ground = new CharacterController(this.world, this.capsule, this.spawn);
     ground.setWalkSpeed(this.walkSpeed);
     if (!ground.relocate(point, snap, this.state.heading)) return false;
     this.ground = ground;

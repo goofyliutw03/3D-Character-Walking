@@ -40,3 +40,49 @@
 - 既有Three／Node測試工具可直接使用，不需安裝。共用檔案在瀑布chat完成後依序修改。
 - 設計修正：ParticleInteraction公開lightRoot指向停放root，ViewerApp將其作為scene sibling加入；既有root只包含Flight，保持原API／測試對children語義。所有權仍由ParticleInteraction.dispose管理。
 
+
+## 追加單一路燈陰影
+- [x] 6. CityScene單一共享陰影與最近燈選擇
+  - 六PointLight直接持有、0.5m緩衝、Night/Shadows開關、冪等回收。
+  - _Boundary: CityScene_；_Requirements: 5.1, 5.2, 5.3_
+- [x] 7. 接入主角位置並驗證整合／發佈
+  - movement後同步位置，Node回歸、production GPU回歸或明列工具阻擋、release與索引。
+  - _Boundary: ViewerApp / Feature validation_；_Depends: 6_；_Requirements: 5.2, 5.4_
+
+追加規格／設計／tasks inline自動審閱：PASS，依使用者明確授權，非逐份人工核准。邊界集中CityScene，維持通用pool與粒子契約；資源共享防止輪流選燈留下六份GPU target；task6→7依序，不委派、不commit/push。
+
+Task6 inline審閱：PASS，night tests 2/2（含24輪fixture切換與時段／Shadows往返）exit0。首次缺少PointLightShadow公開export改用PointLight.shadow；資源測試抓到PointLight.dispose會重複釋放共享map，現集中釋放後清空map/mapPass，重跑通過。沒有擴張pool API。
+
+Task7 inline審閱／驗證PASS：113/113 tests、tsc/Vite、production GPU20/20，2026-10-31 23:10:18+08 release Added2/Updated1/Skipped14成功；詳validation。
+
+## 1R-3 手選多燈（依使用者明確授權依序推進）
+- [x] 8. 獨立路燈陰影與選擇API／安全快照／回收測試
+  - _Boundary: CityScene_；_Requirements: 6.3_
+- [x] 9. ViewerApp委派與原生六checkbox、停用保留、輸入隔離
+  - _Boundary: ViewerApp / main / controlPanelContent / style_；_Depends: 8_；_Requirements: 6.1, 6.2_
+- [x] 10. 全套與production GPU、六燈成本、文件／release／索引
+  - _Boundary: Feature validation_；_Depends: 9_；_Requirements: 6.4_
+
+1R-3 規格／設計／task graph inline自動審閱PASS：手選語義、0–6有界、原子驗證、資源獨立及輸入邊界明確；依使用者授權，非逐份人工核准。不委派／commit／push。
+
+Task8 inline PASS：night tests2/2，0/1/3/6選擇、非法及sparse陣列原子拒絕、快照／輸入陣列隔離、四輪切換、獨立shadow與各target一次dispose。首次編輯tests遇預設編碼錯誤後明用UTF-8修正重跑；舊測試呼叫已移除auto API的失敗已由新語義測試取代。
+
+Task9 inline PASS：公開API委派、移除每幀auto選燈、原生fieldset/legend/六label；day/evening或Shadows off停用保留。沿用ControlPanel keydown隔離及canvas-only pointer導航。113/113 tests，tsc/Vite PASS（spawn EPERM後經宿主核准重跑）。
+
+Task10 inline／feature gate PASS：fresh113/113 tests、tsc/Vite、GPU22/22、真production窄版UI10/10、release及hash17/17、增量索引green。requirements6四項完整覆蓋，Boundary audit CLEAN；未宣稱真機／跨GPU驗收，詳validation。
+
+## 1R-4 自動觸發偵測
+- [x] 11. 距離狀態API與主角完整世界位置更新，邊界／拒絕／保留／資源測試
+  - _Boundary: CityScene / ViewerApp_；_Requirements: 7.2, 7.3, 7.4, 7.5_
+- [x] 12. auto checkbox／radius range／公尺output與即時同步
+  - _Boundary: main / controlPanelContent / style_；_Depends: 11_；_Requirements: 7.1, 7.4, 7.5_
+- [x] 13. 全套tests/build、production GPU與窄版UI、文件、release及索引
+  - _Boundary: Feature validation_；_Depends: 12_；_Requirements: 7.1–7.5_
+
+規格／設計／tasks inline審閱PASS：依使用者明確授權自動審閱，非人工逐份核准。候選與effective狀態獨立、精確邊界、權威motion含高度，沒有新增pool或資源所有權；task11→12→13依序。
+
+Task11 inline PASS：canonical114/114，含精確邊界、多候選、高度、世界父變換、非法輸入原子性、快照及模式往返；檢查motion→CityScene在movement後render前，獨立shadow所有權未變。
+
+Task12 inline PASS：production build62 modules、420px真入口DOM14項（含原生label/range、即時output、狀態保留與鍵盤隔離），無水平溢出；非真觸控／讀屏。
+
+Task13 inline PASS：114/114 tests、build62 modules、GPU29/29與UI14項；release2026-10-31 23:53:31+08 Added3/Updated1/Skipped13，17檔hash一致。最終索引結果見交付摘要。

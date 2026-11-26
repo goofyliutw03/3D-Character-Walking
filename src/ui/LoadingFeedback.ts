@@ -24,6 +24,5 @@ export function presentLoading(element: HTMLElement, state: LoadingState): void 
   element.setAttribute('role', view.error ? 'alert' : 'status');
   element.setAttribute('aria-live', view.error ? 'assertive' : 'polite');
   element.setAttribute('aria-atomic', 'true');
-  element.setAttribute('aria-busy', String(view.busy));
   if (element.textContent !== view.text) element.textContent = view.text;
 }

@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
 import { PerspectiveCamera, Vector3 } from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { SpatialCharacterController } from '../src/character/SpatialCharacterController.ts';
+import { CharacterController } from '../src/character/CharacterController.ts';
 import { DestinationNavigation, segmentClear } from '../src/navigation/DestinationNavigation.ts';
 import { GroundPicker } from '../src/navigation/GroundPicker.ts';
 import { manorWalkableWorld } from '../src/scene/ManorScene.ts';
@@ -19,7 +19,7 @@ const world = manorWalkableWorld(scene);
 const point = (x, y, z) => ({ x, y, z });
 
 test('the real second-floor headboard blocks a running jump from behind', () => {
-  const character = new SpatialCharacterController(world);
+  const character = new CharacterController(world);
   assert.ok(character.relocate(point(-6, 3.6, -5.8)));
   let furthestZ = character.snapshot.z;
   let highestY = character.snapshot.y;
@@ -47,7 +47,7 @@ test('manor GLB supports both directions on each staircase', () => {
 test('manor stair camera climbs and descends continuously while feet follow the treads', () => {
   for (const view of ['first-person', 'third-person']) {
     for (const direction of [-1, 1]) {
-      const character = new SpatialCharacterController(world);
+      const character = new CharacterController(world);
       assert.ok(character.relocate(point(3.5, direction > 0 ? 10.8 : 14.4, -direction * 4.55)));
       const camera = new PerspectiveCamera();
       const rendered = new PerspectiveCamera();
@@ -87,7 +87,7 @@ test('manor stair camera climbs and descends continuously while feet follow the 
 });
 
 test('manor navigation drives the character through doors, basement, four floors and roof', () => {
-  const character = new SpatialCharacterController(world, defaultCapsule, point(0, 0, 18));
+  const character = new CharacterController(world, defaultCapsule, point(0, 0, 18));
   const navigation = new DestinationNavigation(world);
   const itinerary = [point(-5, -3.6, -2.5), point(-4.2, 3.6, -3.6), point(6.8, 7.2, 0),
     point(0, 10.8, -3), point(-4.1, 14.4, 0), point(-5.9, 0, -10.4), point(5.9, 0, 10.4)];
@@ -101,7 +101,7 @@ test('manor navigation drives the character through doors, basement, four floors
 });
 
 test('manor fixed Street camera keeps its overhead pose during a courtyard-to-roof run', () => {
-  const character = new SpatialCharacterController(world, defaultCapsule, point(-5.9, 0, -10.4));
+  const character = new CharacterController(world, defaultCapsule, point(-5.9, 0, -10.4));
   const navigation = new DestinationNavigation(world);
   assert.ok(navigation.select(character.snapshot, point(-4.1, 14.4, 0)));
   const desired = new PerspectiveCamera();
@@ -118,7 +118,7 @@ test('manor fixed Street camera keeps its overhead pose during a courtyard-to-ro
       obstruction.update(desired, rendered, target, subject, 0, true);
       encounteredObstruction = !rendered.position.equals(desired.position);
     }
-    obstruction.update(desired, rendered, target, subject, 1/30, false, true, false);
+    obstruction.update(desired, rendered, target, subject, 1/30, false, true, undefined, false);
     assert.ok(rendered.position.equals(desired.position));
     assert.ok(rendered.quaternion.equals(desired.quaternion));
   }
@@ -149,7 +149,7 @@ test('manor on different floors validates only matching stair landings', () => {
 });
 
 test('manor navigation connects a destination and an origin midway up a staircase', () => {
-  const character = new SpatialCharacterController(world);
+  const character = new CharacterController(world);
   assert.ok(character.relocate(point(4.5, 10.8, -4.55)));
   const navigation = new DestinationNavigation(world);
   for (const destination of [point(3.5, 12.78, .17), point(0, 14.4, 4.7), point(-5.9, 0, -10.4)]) {
@@ -176,7 +176,7 @@ test('manor rejects pool destinations and running jumps from both gardens', () =
   const camera = new PerspectiveCamera(65, 1, .01, 40);
   for (const direction of [-1, 1]) {
     const x = direction * 5.9, z = direction * 13;
-    const character = new SpatialCharacterController(world, defaultCapsule, { x, z: direction * 10.4 });
+    const character = new CharacterController(world, defaultCapsule, { x, z: direction * 10.4 });
     for (let frame = 0; frame < 30; frame++) {
       character.update(1/30, { x: 0, z: direction, run: true, jump: frame === 0 });
     }
@@ -194,7 +194,7 @@ test('manor point-to-run reaches the west room and primary suite behind furnitur
     [point(-5, 3.6, 0), point(-7.1, 3.6, -5.6)],
   ];
   for (const [start, end] of trips) {
-    const character = new SpatialCharacterController(world);
+    const character = new CharacterController(world);
     assert.equal(character.relocate(start), true);
     const navigation = new DestinationNavigation(world);
     assert.equal(navigation.select(character.snapshot, end), true);

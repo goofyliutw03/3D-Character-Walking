@@ -1,0 +1,22 @@
+{
+  "feature_name": "path-navigation",
+  "created_at": "2026-11-01T23:40:07.2489673+08:00",
+  "updated_at": "2026-11-01T23:50:26.8851910+08:00",
+  "language": "zh-TW",
+  "phase": "implementation-complete",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": true
+    }
+  },
+  "ready_for_implementation": true
+}

@@ -1,5 +1,5 @@
 # Restore the optional local RAG tools without changing app dependencies.
-param([string]$Python = 'python', [switch]$Gpu)
+param([string]$Python = 'python', [switch]$Gpu, [switch]$SkipStartAndModels)
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path $PSScriptRoot -Parent
 Push-Location $projectRoot
@@ -27,6 +27,7 @@ try {
     $runtimeExe = if (Test-Path -LiteralPath $nativeOllama) { $nativeOllama } else { Join-Path $projectRoot '.local/rag/ollama/ollama.exe' }
     $signature = Get-AuthenticodeSignature $runtimeExe
     if ($signature.Status -ne 'Valid') { throw 'Ollama executable signature validation failed.' }
+    if ($SkipStartAndModels) { Write-Output 'RAG tools installed. Services and model download skipped.'; return }
     & ./scripts/rag.ps1 start
     $ready = $false
     for ($attempt = 0; $attempt -lt 15; $attempt++) {

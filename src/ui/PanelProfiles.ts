@@ -81,8 +81,8 @@ export class PanelProfiles {
     await this.storage.write(JSON.stringify(this.history.data, null, 2));
     this.protectedRead=false; this.report('Saved');
   }
-  private async apply(settings: PanelSettings): Promise<void> {
-    await this.viewer.applyPanelSettings(settings.runtime);
+  private async apply(settings: PanelSettings, reset = false): Promise<void> {
+    await this.viewer.applyPanelSettings(settings.runtime, reset);
     this.sync(settings.runtime);
     for (const el of this.fields()) {
       // Applied settings are synchronized from the viewer; these fields also hold unapplied edits.
@@ -143,26 +143,19 @@ export class PanelProfiles {
       await this.settled();
       const settings=this.capture();
       if (JSON.stringify(settings)!==this.last) this.history.change(settings);
-      const name = this.history.save(settings.runtime.environment, settings);
-      let debugJson: string | undefined;
-      try {
-        debugJson = JSON.stringify({ version: 1, profile: name, capturedAt: new Date().toISOString(),
-          ...this.viewer.capture3DDebug(settings.runtime) }, null, 2);
-      } catch (error) {
-        console.error('3D debug capture failed', error);
-      }
+      const name = this.history.save(settings.runtime.environment,settings);
       this.last=JSON.stringify(settings); await this.persist(true);
-      if (debugJson === undefined) { this.report('Profile saved · 3D debug capture failed'); return; }
       try {
-        downloadDebugJson(name, debugJson);
+        const debug = this.viewer.capture3DDebug(settings.runtime);
+        downloadDebugJson(name, JSON.stringify({ version: 1, profile: name, capturedAt: new Date().toISOString(), ...debug }, null, 2));
         this.report(`Saved · ${name}-3d-debug.json download requested`);
       } catch (error) {
-        this.report('Profile saved · 3D debug download failed');
-        console.error('3D debug download failed', error);
+        this.report('Profile saved · 3D debug export failed');
+        console.error('3D debug export failed', error);
       }
     }),options);
     reset.addEventListener('click',()=>this.enqueue(async()=>{
-      await this.apply(this.defaults); this.history.reset(this.capture()); await this.persist(true);
+      await this.apply(this.defaults,true); this.history.reset(this.capture()); await this.persist(true);
     }),options);
     this.select.addEventListener('change',()=>{
       const name=this.select.value;

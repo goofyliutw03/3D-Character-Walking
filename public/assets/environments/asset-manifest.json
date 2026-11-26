@@ -5,6 +5,36 @@
       "path": "public/assets/environments/manor.glb",
       "bytes": 414072,
       "sha256": "30b3454726ed9e72e2c22ba2546c91c36417c9b02aeabc62271d12c5f5a52c4c"
+    },
+    {
+      "path": "public/assets/environments/furnished-room.glb",
+      "bytes": 1871644,
+      "sha256": "a6c494aecfd7b2e43566ed5b6290d79b5a664593eb516186c8cda40c664c47ba"
+    },
+    {
+      "path": "tools/assets/manor/manor.blend",
+      "bytes": 203410,
+      "sha256": "e5079872b5aa967e4af088ba8b8d92cd13978ded2c3873d65a7fa6b7562780dc"
+    },
+    {
+      "path": "tools/assets/furnished-room/furnished-room.blend",
+      "bytes": 221319,
+      "sha256": "e23a27900dfcc1cdbd7ccc3f3dcde1236aa1a3e966c11d180f3b46bfd1cb22da"
+    },
+    {
+      "path": "3DScenen/Scene.LivingRoom.blend",
+      "bytes": 221975,
+      "sha256": "12ecb4c3606d755f354aef57860698fec9b6c56d4d0d3cdde2a6aa3b7ada119c"
+    },
+    {
+      "path": "tools/assets/prepare_manor.py",
+      "bytes": 13048,
+      "sha256": "4900843056033dd5e419eb75d48773df025bf02a390d1ba2dda4a66281e3fcca"
+    },
+    {
+      "path": "tools/assets/prepare_furnished_room.py",
+      "bytes": 9504,
+      "sha256": "9f737d47f108bf74c0f3203515802a2db66037169b309f322c53d705af6a2f31"
     }
   ]
 }

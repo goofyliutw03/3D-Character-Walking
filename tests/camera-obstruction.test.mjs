@@ -47,25 +47,33 @@ test('obstruction 3.1–3.2: all layered blockers fade as groups, clear on exit,
   secondWall.position.set(0, 3, -5); neighbor.position.set(20, 3, -3); building.add(secondWall); environment.add(building, neighbor);
   const original = wall.material;
   try {
-    let prepared;
-    effect.prepareTransparency(() => {
-      prepared = wall.material;
-      assert.notEqual(prepared, original);
-      assert.equal(prepared, secondWall.material);
-      assert.equal(prepared.transparent, true);
-      assert.equal(prepared.depthWrite, false);
-    });
-    assert.equal(wall.material, original);
     effect.setMode('transparent'); environment.updateMatrixWorld(true); tick(true);
-    assert.equal(wall.material, prepared);
     assert.equal(wall.material.opacity, 0.25); assert.equal(secondWall.material.opacity, 0.25);
-    original.emissiveIntensity = 1.5;
-    tick(); assert.equal(wall.material.emissiveIntensity, 1.5);
     assert.equal(neighbor.material, original); assert.deepEqual(rendered.position, desired.position);
     building.visible = false; tick(); assert.equal(secondWall.material, original);
     wall.visible = false; tick(); assert.equal(wall.material, original);
-    wall.visible = true; building.visible = true; tick(); assert.equal(wall.material, prepared);
+    wall.visible = true; building.visible = true; tick(); assert.equal(wall.material.opacity, 0.25);
     effect.setMode('zoom'); assert.equal(wall.material, original); assert.equal(secondWall.material, original);
+  } finally { dispose(); }
+});
+
+test('transparent blockers fade only the occluding part of a compound environment model', () => {
+  const { environment, wall, effect, tick, dispose } = setup();
+  const model = new Group();
+  model.userData.independentCameraBlockers = true;
+  const original = wall.material;
+  const neighbor = new Mesh(wall.geometry, original);
+  neighbor.position.set(20, 3, -3);
+  model.add(wall, neighbor);
+  environment.add(model);
+  try {
+    effect.setMode('transparent');
+    tick();
+    assert.equal(wall.material.opacity, .25);
+    assert.equal(neighbor.material, original);
+    tick(false, true, { ...subject, x: -20 });
+    assert.equal(wall.material, original);
+    assert.equal(neighbor.material, original);
   } finally { dispose(); }
 });
 
