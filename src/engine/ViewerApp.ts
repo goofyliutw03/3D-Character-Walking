@@ -77,6 +77,8 @@ export class ViewerApp {
   private readonly actorLabels: HTMLDivElement[] = [];
   private readonly environmentScan = new EnvironmentScan();
   private swimSpiral?: SwimDepthDirection;
+  private swimAutoForward = false;
+  private swimLook?: { heading: number; pitch: number };
   private swimAppearance: SwimAppearance = { ...defaultSwimAppearance };
   private sceneSettings: ViewerSettings['scenes'] = {};
   private walkSpeed = 1.8;
@@ -108,7 +110,9 @@ export class ViewerApp {
     this.movement = new CharacterController(this.city.walkableWorld);
     this.navigation = new DestinationNavigation(this.city.walkableWorld);
     this.groundPicker = new GroundPicker(this.city.environment.children);
-    this.input = new InputManager(window, document, () => { this.swimSpiral = undefined; this.navigation.cancel(); this.tap?.cancel(); });
+    this.input = new InputManager(window, document,
+      () => { this.swimSpiral = undefined; this.navigation.cancel(); this.tap?.cancel(); },
+      () => { this.swimAutoForward = false; });
     this.motion = this.movement.update(0, this.input.sample());
     this.character.update(this.motion, 0);
     this.scenes.root.add(this.character.root);
@@ -154,6 +158,23 @@ export class ViewerApp {
       },
     });
     const canvas = this.view.renderer.domElement;
+    canvas.addEventListener('pointermove', event => {
+      if (event.pointerType !== 'mouse' || !this.canSteerSwim()) return;
+      if (!Number.isFinite(event.movementX) || !Number.isFinite(event.movementY)) return;
+      const look = this.swimLook ?? { heading: this.motion.heading, pitch: 0 };
+      look.heading = (look.heading - event.movementX * .004) % (2 * Math.PI);
+      look.pitch = Math.max(-1.1, Math.min(1.1, look.pitch - event.movementY * .004));
+      this.swimLook = look;
+    }, { signal: this.events.signal });
+    window.addEventListener('keydown', event => {
+      if (event.code !== 'KeyY' || event.repeat || event.isComposing || event.altKey || event.ctrlKey || event.metaKey ||
+          event.target instanceof Element && event.target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])') ||
+          !this.canSteerSwim()) return;
+      event.preventDefault();
+      this.swimAutoForward = !this.swimAutoForward;
+      this.swimSpiral = undefined;
+      if (!this.swimAutoForward && this.movement instanceof SwimController) this.movement.stop(false);
+    }, { signal: this.events.signal });
     this.mouseOrbit = new MouseOrbitGesture(canvas,
       () => { this.tap.cancelCandidate(); this.cameras.beginCharacterOrbit(); },
       cancelled => this.cameras.endCharacterOrbit(cancelled));
@@ -161,11 +182,11 @@ export class ViewerApp {
     canvas.addEventListener('keydown', event => {
       const swimmer = this.movement;
       if (!(swimmer instanceof SwimController) || event.repeat || event.isComposing ||
-          event.altKey || event.ctrlKey || event.metaKey || !['KeyI', 'KeyO', 'KeyY'].includes(event.code)) return;
+          event.altKey || event.ctrlKey || event.metaKey || !['KeyI', 'KeyO'].includes(event.code)) return;
       event.preventDefault();
       const direction = event.code === 'KeyI' ? -1 : 1;
       this.stop();
-      if (event.code !== 'KeyY' && swimmer.canSwimVertically(direction)) this.swimSpiral = direction;
+      if (swimmer.canSwimVertically(direction)) this.swimSpiral = direction;
     }, { signal: this.events.signal });
     this.updateCanvasLabel(false);
     this.destinationMarker = document.createElement('div');
@@ -225,7 +246,18 @@ export class ViewerApp {
     const intent = this.navigation.status === 'running' ? this.navigation.sample(this.motion, delta) : manual;
     const movement = this.movement;
     if (movement instanceof SwimController) {
-      this.motion = movement.update(delta, intent, undefined, this.swimSpiral);
+      if (!this.canSteerSwim()) {
+        this.swimAutoForward = false;
+        this.swimLook = undefined;
+      }
+      const { heading, pitch } = this.swimLook ?? { heading: this.motion.heading, pitch: 0 };
+      const automatic = this.swimAutoForward && !intent.x && !intent.z;
+      const vertical = intent.vertical || (movement.mode === 'bottom' ? 0 : Math.sin(pitch));
+      const swimIntent = automatic
+        ? { ...intent, x: Math.sin(heading), z: Math.cos(heading), vertical }
+        : intent;
+      this.motion = movement.update(delta, swimIntent, undefined, this.swimSpiral);
+      if (movement.mode === 'climb') this.swimAutoForward = false;
       if (this.swimSpiral && (movement.depthPathBlocked || !movement.canSwimVertically(this.swimSpiral))) {
         this.swimSpiral = undefined;
         movement.stop(false);
@@ -395,7 +427,8 @@ export class ViewerApp {
   getSwimStatus() {
     const controller = this.movement;
     return controller instanceof SwimController
-      ? { mode: controller.mode, canLeave: controller.canLeaveWater(), atWaterline: controller.atWaterline }
+      ? { mode: controller.mode, canLeave: controller.canLeaveWater(), atWaterline: controller.atWaterline,
+        water: { loc: controller.waterLocation }, autoForward: this.swimAutoForward }
       : null;
   }
 
@@ -542,6 +575,10 @@ export class ViewerApp {
   }
 
   setCamera(preset: CameraPreset): void {
+    if (preset !== this.cameras.view) {
+      this.swimAutoForward = false;
+      this.swimLook = undefined;
+    }
     this.mouseOrbit.cancel();
     this.cameras.select(preset, this.getCameraSubject(), this.reducedMotion.matches);
     this.character.root.visible = !this.assets.current && this.cameras.characterVisible;
@@ -634,7 +671,13 @@ export class ViewerApp {
     const y = this.motion.grounded ? active.cameraGroundHeight?.(this.motion) ?? this.motion.y : this.motion.y;
     const eyeForward = this.movement instanceof SwimController && this.movement.mode === 'swim'
       ? Math.min(subject.eyeForward, this.movement.shape.radius - .06) : subject.eyeForward;
-    return { ...this.motion, y, height: subject.height, eyeHeight: subject.eyeHeight, eyeForward };
+    return { ...this.motion, y, height: subject.height, eyeHeight: subject.eyeHeight, eyeForward,
+      look: this.canSteerSwim() ? this.swimLook : undefined };
+  }
+  private canSteerSwim(): boolean {
+    return this.movement instanceof SwimController && this.scenes.controls.autoRun &&
+      (this.movement.mode === 'swim' || this.movement.mode === 'bottom') &&
+      (this.cameras.view === 'first-person' || this.cameras.view === 'third-person');
   }
   setRunning(enabled: boolean): void { this.input.setRun(enabled); }
   jump(): void { this.input.jump(); }

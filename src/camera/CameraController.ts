@@ -4,7 +4,10 @@ import type { FollowCamera } from './FollowCamera';
 import type { FirstPersonCamera } from './FirstPersonCamera';
 
 export type CameraView = 'overview' | 'street' | 'overhead' | 'first-person' | 'third-person' | 'front' | 'character-overhead' | 'low-angle' | 'fisheye';
-export interface CameraSubject extends Readonly<MotionSnapshot> { height: number; eyeHeight: number; eyeForward: number }
+export interface CameraSubject extends Readonly<MotionSnapshot> {
+  height: number; eyeHeight: number; eyeForward: number;
+  look?: Readonly<{ heading: number; pitch: number }>;
+}
 interface Orbit {
   target: Vector3; enabled: boolean; enableDamping: boolean;
   maxPolarAngle?: number;
@@ -55,7 +58,7 @@ export class CameraController {
     if (view === 'fisheye') { this.camera.fov = 160; this.camera.updateProjectionMatrix(); }
     this.transition = undefined;
     if (view === 'first-person') {
-      this.first.update(this.camera, this.orbit.target, subject, subject.eyeHeight, subject.eyeForward);
+      this.first.update(this.camera, this.orbit.target, subject, subject.eyeHeight, subject.eyeForward, subject.look);
     } else if (immediate) this.apply(this.frame(view, subject));
     else this.transition = { start: this.currentFrame(), elapsed: 0 };
   }
@@ -87,7 +90,7 @@ export class CameraController {
   update(subject: CameraSubject, delta: number, immediate: boolean): void {
     const dt = Math.min(Math.max(delta, 0), 0.05);
     if (this.selected === 'first-person') {
-      this.first.update(this.camera, this.orbit.target, subject, subject.eyeHeight, subject.eyeForward);
+      this.first.update(this.camera, this.orbit.target, subject, subject.eyeHeight, subject.eyeForward, subject.look);
     } else if (this.centering) {
       const state = this.centering;
       const previous = Math.min(state.elapsed / 0.8, 1);
@@ -112,7 +115,7 @@ export class CameraController {
         this.camera.position.add(shift); this.orbit.target.add(shift);
       }
       this.orbit.update();
-    } else if (this.tracking) {
+    } else if (this.tracking || this.selected === 'third-person' && subject.look) {
       this.interpolate(this.currentFrame(), this.frame(this.selected, subject), immediate ? 1 : 1 - Math.exp(-6 * dt));
     } else this.orbit.update();
     this.previousPosition.set(subject.x, subject.y, subject.z);
@@ -128,7 +131,11 @@ export class CameraController {
     else if (view === 'front') position.set(subject.x + sin * 6, subject.y + subject.height + 0.7, subject.z + cos * 6);
     else if (view === 'low-angle') position.set(subject.x + sin * 5, subject.y + 0.35, subject.z + cos * 5);
     else if (view === 'fisheye') position.set(subject.x - sin * 3.5, subject.y + subject.height + 0.6, subject.z - cos * 3.5);
-    else position.set(subject.x - sin * 6, subject.y + subject.height + 3, subject.z - cos * 6);
+    else if (subject.look) {
+      const { heading, pitch } = subject.look;
+      const distance = 5 * Math.cos(pitch);
+      position.copy(target).add(new Vector3(-Math.sin(heading) * distance, -5 * Math.sin(pitch), -Math.cos(heading) * distance));
+    } else position.set(subject.x - sin * 6, subject.y + subject.height + 3, subject.z - cos * 6);
     if (view === 'front' && this.obstructionAvoidance) this.resolveFront(position, target, subject);
     return { position, target };
   }

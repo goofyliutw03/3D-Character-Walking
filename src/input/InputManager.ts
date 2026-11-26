@@ -11,7 +11,8 @@ export class InputManager {
   private runToggle = false;
   private jumpPending = false;
   private flightControls = false;
-  constructor(win: Window = window, doc: Document = document, private readonly onManual: () => void = () => {}) {
+  constructor(win: Window = window, doc: Document = document, private readonly onManual: () => void = () => {},
+    private readonly onStop: () => void = () => {}) {
     const signal = this.events.signal;
     win.addEventListener('keydown', event => {
       if (!(gameKeys.has(event.code) || this.flightControls && ['KeyC', 'KeyE', 'KeyQ'].includes(event.code)) || event.isComposing || this.editing(event.target) || event.altKey || event.ctrlKey || event.metaKey) return;
@@ -71,6 +72,7 @@ export class InputManager {
   jump(): void { this.onManual(); this.jumpPending = true; }
   stop(): void {
     this.onManual();
+    this.onStop();
     this.keys.clear(); this.pointers.clear(); this.latch = undefined;
     this.runToggle = false; this.jumpPending = false;
   }

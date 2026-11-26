@@ -5,12 +5,49 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { Box3, Vector3, Group } from 'three';
 import { RiggedCharacter } from '../src/character/RiggedCharacter.ts';
 import { assetCatalog } from '../src/character/assetCatalog.ts';
+import { swimPoses } from '../src/character/SwimAppearance.ts';
 
 const load = async name => {
   const b = readFileSync(new URL(`../public/assets/characters/${name}.glb`, import.meta.url));
   return new GLTFLoader().parseAsync(b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength), '');
 };
 const motion = { x: 2, y: 0.075, z: 5, heading: 0.5, speed: 0, grounded: true, action: 'idle' };
+test('both fins stay attached to their own foot through swimming, climbing and land clips', async () => {
+  for (const [variant, definition] of Object.entries(assetCatalog)) {
+    const character = new RiggedCharacter(await load(variant), definition);
+    const appearance = { outfit: 'scuba', pose: 'breaststroke' };
+    character.update(motion, .05, appearance);
+    const fins = character.root.getObjectsByProperty('name', 'Fin blade');
+    const pockets = character.root.getObjectsByProperty('name', 'Fin foot pocket');
+    assert.equal(fins.length, 2);
+    assert.equal(pockets.length, 2);
+    const pieces = [...fins, ...pockets].map(mesh => {
+      const mount = mesh.parent;
+      const foot = mount.parent;
+      assert.match(foot.name, /^Foot[LR]$/);
+      return { mount, foot, position: mount.position.clone(), rotation: mount.quaternion.clone() };
+    });
+    const sample = (state, swimming, climb) => {
+      character.update(state, .05, appearance, swimming, false, climb);
+      for (const { mount, foot, position, rotation } of pieces) {
+        assert.equal(mount.parent, foot);
+        assert.ok(mount.position.equals(position) && mount.quaternion.equals(rotation));
+        assert.ok(mount.getWorldPosition(new Vector3()).toArray().every(Number.isFinite));
+      }
+    };
+    for (const pose of swimPoses) {
+      appearance.pose = pose;
+      for (let frame = 0; frame < 80; frame++) sample({ ...motion, speed: 1.7 }, true);
+    }
+    for (let frame = 0; frame < 40; frame++) sample(motion, true);
+    for (let frame = 0; frame <= 40; frame++) sample(motion, false, frame / 40);
+    for (const action of ['idle', 'walk', 'run', 'jump']) {
+      for (let frame = 0; frame < 30; frame++) sample({ ...motion, action }, false);
+    }
+    character.dispose();
+  }
+});
+
 test('rigged 3.1–3.4,4.1: real models normalize, animate and preserve controller position', async () => {
   for (const variant of ['man','woman','child']) {
     const character = new RiggedCharacter(await load(variant), assetCatalog[variant]);

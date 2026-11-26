@@ -238,6 +238,36 @@ test('spiral reverses depth, stops at both bounds, and hands off to colliding bo
 });
 
 for (const [name, shape] of Object.entries(characterCapsules)) {
+  test('water location and idle chest alignment in both directions: ' + name, t => {
+    const { actor, water } = fixture(t, shape);
+    const bandEdge = water.level - .4 - shape.height;
+    const chestAligned = water.level - swimWaterlineHeight[name];
+    const place = y => assert.ok(actor.relocate({ x: 0, y, z: 0 }, false));
+    assert.equal(actor.waterLocation, '00');
+    place(water.bottom);
+    assert.equal(actor.waterLocation, '03');
+    place(bandEdge - .001);
+    assert.equal(actor.waterLocation, '02');
+    advance(actor, 1);
+    assert.equal(actor.snapshot.y, bandEdge - .001);
+    place(bandEdge);
+    assert.equal(actor.waterLocation, '01');
+    for (const offset of [-.12, .12]) {
+      const start = chestAligned + offset;
+      place(start);
+      advance(actor, .1, { x: 1 });
+      assert.equal(actor.snapshot.y, start);
+      const x = actor.snapshot.x;
+      advance(actor, 1 / 60);
+      assert.ok(Math.abs(actor.snapshot.y - chestAligned) < Math.abs(offset));
+      assert.ok(Math.abs(actor.snapshot.y - start) < .01);
+      assert.equal(actor.snapshot.speed, 0);
+      advance(actor, 1);
+      assert.ok(Math.abs(actor.snapshot.y - chestAligned) < 1e-8);
+      assert.equal(actor.snapshot.x, x);
+    }
+  });
+
   test('O holds the neck–chest waterline while the torso stays submerged: ' + name, t => {
     const { pool, water, actor } = fixture(t, shape);
     assert.ok(actor.relocate({ x: 0, y: -2, z: 0 }, false));

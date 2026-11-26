@@ -14,6 +14,18 @@ const setup = () => {
   rig.select('overview', subject, true);
   return { rig, camera, controls };
 };
+test('swim look controls yaw and pitch in both character camera views', () => {
+  const { rig, camera } = setup();
+  for (const view of ['first-person', 'third-person']) {
+    rig.select(view, subject, true);
+    rig.update({ ...subject, look: { heading: Math.PI / 2, pitch: .4 } }, 1 / 60, true);
+    const up = camera.getWorldDirection(new Vector3());
+    assert.ok(up.x > .9 && up.y > .38 && Math.abs(up.z) < 1e-8);
+    rig.update({ ...subject, look: { heading: -Math.PI / 2, pitch: -.4 } }, 1 / 60, true);
+    const down = camera.getWorldDirection(new Vector3());
+    assert.ok(down.x < -.9 && down.y < -.38 && Math.abs(down.z) < 1e-8);
+  }
+});
 test('1.1–1.4: front, overhead and low frames follow heading and character height', () => {
   const { rig, camera, controls } = setup();
   rig.select('front', subject, true);

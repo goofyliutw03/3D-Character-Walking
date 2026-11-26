@@ -6,8 +6,11 @@ import { characterCapsules } from './motion.ts';
 
 const step = 1 / 60;
 const depthEpsilon = 1e-6;
+const surfaceBandDepth = .4;
+const maxFloatSpeed = .55;
 const zero = (): Point3 => ({ x: 0, y: 0, z: 0 });
 export type SwimDepthDirection = -1 | 1;
+export type WaterLocation = '00' | '01' | '02' | '03';
 // Midpoint of Chest and Neck in each normalized, upright GLB.
 export const swimWaterlineHeight = { man: 1.397012, woman: 1.315266, child: .792177 } as const;
 const rigWaterlines = Object.entries(swimWaterlineHeight).map(([variant, height]) =>
@@ -66,7 +69,12 @@ export class SwimController {
   }
   get climbProgress(): number | undefined { return this.climb && this.climbTime / climbDuration; }
   get submerged(): boolean { return this.wet; }
-  get atWaterline(): boolean { return this.state.y >= this.spiralSurfaceY - .08; }
+  get waterLocation(): WaterLocation {
+    if (!this.touchesWater(this.state)) return '00';
+    if (this.atBottom) return '03';
+    return this.touchesWater(this.state, this.water.level - surfaceBandDepth) ? '01' : '02';
+  }
+  get atWaterline(): boolean { return this.waterLocation === '01'; }
   get depthPathBlocked(): boolean { return this.spiralBlockedTime >= .5; }
   get droppedTime(): number { return this.discarded; }
   private get swimCeiling(): number { return this.water.level - .15; }
@@ -75,6 +83,16 @@ export class SwimController {
     return this.water.level - (height ?? this.capsule.height * .77);
   }
   private get atBottom(): boolean { return this.state.y <= this.water.bottom + depthEpsilon; }
+
+  private touchesWater({ x, y, z }: Point3, lower = this.water.bottom): boolean {
+    const { footprint, bottom, level } = this.water;
+    const { radius, height } = this.capsule;
+    if (y >= level || y + height < bottom - depthEpsilon) return false;
+    const dx = Math.max(0, footprint.minX - x, x - footprint.maxX);
+    const dz = Math.max(0, footprint.minZ - z, z - footprint.maxZ);
+    const dy = Math.max(0, lower - (y + height - radius), y + radius - level);
+    return Math.hypot(dx, dy, dz) <= radius + depthEpsilon;
+  }
 
   canSwimVertically(direction: SwimDepthDirection): boolean {
     return this.swimming && !this.climb &&
@@ -98,7 +116,7 @@ export class SwimController {
     if (snap && !support.ok) return false;
     const next = { ...position, y: snap && support.ok ? support.value.height : position.y };
     if (!this.legal(next)) return false;
-    const swimming = next.y <= this.swimCeiling && this.water.contains(next);
+    const swimming = this.touchesWater(next);
     if (swimming) {
       const grounded = next.y <= this.water.bottom + depthEpsilon;
       this.state = { ...this.state, ...next, grounded, action: grounded ? 'idle' : 'jump' };
@@ -140,7 +158,7 @@ export class SwimController {
   }
 
   private findClimb(direction?: Point3): ClimbPath | undefined {
-    if (!this.swimming || this.climb || !this.atWaterline) return;
+    if (!this.swimming || this.climb || this.state.y < this.spiralSurfaceY - .08) return;
     const start = this.snapshot;
     let bestDistance = Infinity;
     let best: ClimbPath | undefined;
@@ -233,17 +251,21 @@ export class SwimController {
       }
       if (spiral && (!this.canSwimVertically(spiral) || this.depthPathBlocked)) break;
       const beforeY = this.state.y;
-      const velocity = this.nextVelocity(intent, vertical, magnitude, speedOverride, spiral);
+      const floating = !magnitude && !spiral && this.atWaterline;
+      const difference = this.spiralSurfaceY - this.state.y;
+      const velocity = floating
+        ? { x: 0, y: Math.sign(difference) * Math.min(maxFloatSpeed, Math.abs(difference) / step), z: 0 }
+        : this.nextVelocity(intent, vertical, magnitude, speedOverride, spiral);
       const path = !spiral && vertical >= 0 && intent.x * velocity.x + intent.z * velocity.z > depthEpsilon
         ? this.findClimb({ x: velocity.x * step, y: 0, z: velocity.z * step }) : undefined;
       if (path) { this.startClimb(path); return this.snapshot; }
-      const position = this.move(velocity, spiral === 1 ? this.spiralSurfaceY : this.swimCeiling);
+      const position = this.move(velocity, spiral === 1 ? this.spiralSurfaceY : Math.max(this.swimCeiling, this.state.y));
       if (!position) {
         this.velocity = zero();
         if (spiral) this.spiralBlockedTime = .5;
         break;
       }
-      this.velocity = velocity;
+      this.velocity = floating ? zero() : velocity;
       Object.assign(this.state, position);
       this.sampleTorso();
       if (spiral) {

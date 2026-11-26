@@ -86,6 +86,9 @@ export class AquaticRig {
     const lens = new MeshStandardMaterial({ color: '#68dce9', metalness: .25, roughness: .21 });
     this.materials = [sportsTop, sportsBottom, neoprene, trim, metal, lens];
     const face = new Box3(), eyes = new Box3();
+    const footBounds = this.feet.map(() => new Box3());
+    const footCenters = this.feet.map(({ object }) => object.getWorldPosition(new Vector3()));
+    const footMidline = (footCenters[0]!.x + footCenters[1]!.x) / 2;
     scene.traverse(object => {
       if (!(object instanceof Mesh) || Array.isArray(object.material)) return;
       let part: Object3D | null = object;
@@ -96,6 +99,14 @@ export class AquaticRig {
         if (skin) face.expandByObject(object, true);
         if (['Eye', 'Brown'].includes(object.material.name)) eyes.expandByObject(object, true);
         return;
+      }
+      if (part.name.endsWith('_Feet')) {
+        const count = object.geometry.getAttribute('position').count;
+        for (let i = 0; i < count; i++) {
+          object.localToWorld(object.getVertexPosition(i, this.origin));
+          const index = (this.origin.x >= footMidline) === (footCenters[0]!.x >= footMidline) ? 0 : 1;
+          footBounds[index]!.expandByPoint(pivot.worldToLocal(this.origin));
+        }
       }
       const swimwear = skin ? object.material : part.name.endsWith('_Body') ? sportsTop : sportsBottom;
       this.garments.push({ mesh: object, original: object.material, swimwear, scuba: neoprene });
@@ -146,9 +157,17 @@ export class AquaticRig {
     add(this.scuba, chest, 'Air cylinder', 'tank', metal, [0, -.075, -.117], [.112, .193, .112]);
     add(this.scuba, chest, 'Cylinder strap', 'box', trim, [0, -.072, -.153], [.125, .027, .080]);
     add(this.scuba, chest, 'Tank valve', 'sphere', trim, [0, .119, -.116], [.026, .025, .026]);
-    for (const foot of this.feet) {
-      add(this.scuba, foot.object, 'Fin blade', 'box', trim, [0, -.027, .109], [.094, .024, .20]);
-      add(this.scuba, foot.object, 'Fin foot pocket', 'sphere', neoprene, [0, -.008, .062], [.046, .033, .078]);
+    for (const [index, foot] of this.feet.entries()) {
+      const bounds = footBounds[index]!;
+      if (bounds.isEmpty()) continue;
+      const ankle = pivot.worldToLocal(footCenters[index]!);
+      const footSize = bounds.getSize(new Vector3()).divideScalar(height);
+      const sole = bounds.getCenter(new Vector3()).sub(ankle).divideScalar(height);
+      sole.y = (bounds.min.y - ankle.y) / height;
+      add(this.scuba, foot.object, 'Fin blade', 'box', trim,
+        [sole.x, sole.y - .006, sole.z + footSize.z * .48], [footSize.x * 1.23, .016, footSize.z * 1.45]);
+      add(this.scuba, foot.object, 'Fin foot pocket', 'sphere', neoprene,
+        [sole.x, sole.y + .018, sole.z], [footSize.x * .55, .028, footSize.z * .52]);
     }
     this.climbBones = [...Array.from(this.joints.values(), joint => joint.object), ...this.feet.map(foot => foot.object)];
     const standing = this.captureClimbPose();
