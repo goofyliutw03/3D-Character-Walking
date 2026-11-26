@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { Vector3 } from 'three';
 import { characterCapsules } from '../src/character/motion.ts';
 import { SwimController, swimWaterlineHeight } from '../src/character/SwimController.ts';
 import { sampleSwimPose } from '../src/character/SwimAppearance.ts';
@@ -9,6 +10,44 @@ import { GroundWorldQuery } from '../src/world/GroundWorldQuery.ts';
 
 const deck = { approachZ: 3.2, height: .22 };
 const idle = { x: 0, z: 0, run: false, jump: false };
+
+test('pool camera clears the floor, walls and solids without moving valid underwater or overview poses', t => {
+  const { pool } = fixture(t);
+  const clearance = .15;
+  const adjust = xyz => {
+    const position = new Vector3(...xyz);
+    pool.swim.constrainCamera(position, clearance);
+    const result = position.toArray();
+    pool.swim.constrainCamera(position, clearance);
+    assert.deepEqual(position.toArray(), result);
+    return result;
+  };
+  assert.deepEqual(adjust([0, -5.5, 0]), [0, -5 + clearance, 0]);
+  assert.deepEqual(adjust([9.1, -1, 0]), [9 - clearance, -1, 0]);
+  assert.deepEqual(adjust([0, -.05, 4]), [0, -.05, 3.8 - clearance]);
+  assert.deepEqual(adjust([9.1, -.05, 6.1]), [9.1, .24 + clearance, 6.1]);
+  assert.deepEqual(adjust([0, -1, 0]), [0, -1, 0]);
+  assert.deepEqual(adjust([13, 11, 14]), [13, 11, 14]);
+});
+
+test('pool water quality reduces surface triangles and instance budgets and restores standard geometry', t => {
+  const { pool, water } = fixture(t);
+  const surface = pool.environment.getObjectByName('Pool surface');
+  const plants = pool.environment.getObjectByName('Aquatic plants');
+  const bubbles = pool.environment.getObjectByName('Air bubbles');
+  const standard = surface.geometry;
+  assert.equal(standard.index.count / 3, 43_200);
+  assert.deepEqual([plants.count, bubbles.count], [40, 28]);
+  water.shader.configure({ quality: 'low' });
+  pool.update(0, false);
+  assert.equal(surface.geometry.index.count / 3, 6_912);
+  assert.deepEqual([plants.count, bubbles.count], [12, 8]);
+  pool.update(0, true);
+  assert.equal(bubbles.count, 0);
+  water.shader.configure({ quality: 'standard' });
+  pool.update(0, false);
+  assert.equal(surface.geometry, standard);
+});
 function fixture(t, shape = characterCapsules.man) {
   const pool = createSwim();
   t.after(() => pool.dispose());

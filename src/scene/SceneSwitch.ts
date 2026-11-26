@@ -1,4 +1,4 @@
-import { Scene, type Group } from 'three';
+import { Scene, type Group, type Vector3 } from 'three';
 import type { WalkableWorld } from '../character/motion';
 import type { SolarSettings } from './SolarPosition';
 import type { TimeOfDay } from './CityScene';
@@ -29,6 +29,7 @@ export interface Environment {
   readonly swim?: {
     water: WaterVolume;
     exit: SwimExit;
+    constrainCamera(position: Vector3, clearance: number): void;
     updateCamera(position: Point3): boolean;
   };
   readonly terrain?: {
