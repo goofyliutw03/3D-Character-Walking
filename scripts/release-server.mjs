@@ -5,7 +5,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.glb': 'model/gltf-binary', '.png': 'image/png', '.svg': 'image/svg+xml', '.jpg': 'image/jpeg', '.ico': 'image/x-icon' };
-export async function createReleaseServer(directory) {
+export async function createReleaseServer(directory, instanceToken) {
   const root = await realpath(directory);
   await stat(path.join(root, 'index.html'));
   return http.createServer(async (req, res) => {
@@ -17,6 +17,7 @@ export async function createReleaseServer(directory) {
       if (relative.startsWith('..') || path.isAbsolute(relative)) { res.writeHead(403).end(); return; }
       const info = await stat(file);
       if (!info.isFile()) { res.writeHead(404).end(); return; }
+      if (instanceToken) res.setHeader('X-Release-Instance', instanceToken);
       res.writeHead(200, { 'Content-Type': types[path.extname(file)] ?? 'application/octet-stream', 'Content-Length': info.size, 'Cache-Control': 'no-cache', 'X-Content-Type-Options': 'nosniff' });
       if (req.method === 'HEAD') res.end();
       else createReadStream(file).on('error', () => res.destroy()).pipe(res);
@@ -24,7 +25,7 @@ export async function createReleaseServer(directory) {
   });
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const server = await createReleaseServer(process.argv[2]);
+  const server = await createReleaseServer(process.argv[2], process.argv[4]);
   server.on('error', error => { console.error(error.message); process.exit(1); });
   server.listen(Number(process.argv[3] ?? 4175), '127.0.0.1');
   // Parent pipe closes on normal Exit and on a tray host crash: no orphan service.

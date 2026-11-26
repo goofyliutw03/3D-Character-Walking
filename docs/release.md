@@ -13,6 +13,8 @@
 
 release 依序執行全部既有 tests、TypeScript／Vite production build、同步；任一步驟失敗即停止。只有 `dist` 內容會發佈至固定的 `D:\Work_Mine\Testing\3D Character Walk Viewer\Release`，不複製原始專案。`scripts/release.ps1` 為已成功建置產物的低階同步，不自行 build；日常使用上方完整流程。
 
+同步後產生 Release 同層的 `Update` 差異包供 4175 使用。差異包完整後才以目錄改名公開，dist 雜湊清單相同時略過出包。若出包失敗，命令會回報錯誤，先前已同步至 Release 的檔案仍在 4174 可用。
+
 預覽以既有 Vite 讀取外部 Release，固定 localhost:4174、strictPort；連接埠占用會報錯，不停止既有4173 preview，不開防火牆。瀏覽器使用 http://127.0.0.1:4174 ，不要直接開啟 index.html。僅本機驗證，不代表 LAN／iPhone 可用。來源編輯不會改變 Release；成功發佈後重新整理瀏覽器載入新入口。
 
 ## 同步保護與回復

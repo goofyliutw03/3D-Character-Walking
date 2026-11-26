@@ -9,6 +9,9 @@ $script:service = $null
 $tray = New-Object Windows.Forms.NotifyIcon
 $context = New-Object Windows.Forms.ApplicationContext
 $logDir = Join-Path $env:LOCALAPPDATA 'CityCharacterRelease'
+$stateDir = Join-Path $logDir "updates-$Port"
+$script:notification = $null
+$script:lastNotifiedVersion = $null
 function Write-TrayError($message) {
     [IO.Directory]::CreateDirectory($logDir) | Out-Null
     Add-Content -LiteralPath (Join-Path $logDir 'tray.log') -Value "$(Get-Date -Format o) $message"
@@ -24,23 +27,28 @@ function Stop-OwnedService {
         $script:service.Dispose()
         $script:service = $null
     }
+    if ($script:notification) {
+        Remove-Item -LiteralPath $script:notification -ErrorAction SilentlyContinue
+        $script:notification = $null
+    }
 }
 function Start-OwnedService {
     try {
         Stop-OwnedService
-        if (-not (Test-Path -LiteralPath (Join-Path $ReleasePath 'index.html'))) { throw 'Publish Release first.' }
         $node = Get-Command node.exe -ErrorAction SilentlyContinue
         $nodePath = if ($node) { $node.Source } else { Join-Path $env:USERPROFILE '.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe' }
         if (-not (Test-Path -LiteralPath $nodePath)) { throw 'Node.js not found. Install Node.js or restore its path.' }
         $info = New-Object Diagnostics.ProcessStartInfo
         $info.FileName = $nodePath
-        $info.Arguments = '"' + (Join-Path $PSScriptRoot 'release-server.mjs') + '" "' + $ReleasePath + '" ' + $Port
+        $script:notification = Join-Path $stateDir ("notification-" + [guid]::NewGuid().ToString('N') + '.json')
+        $script:lastNotifiedVersion = $null
+        $info.Arguments = '"' + (Join-Path $PSScriptRoot 'release-updater.mjs') + '" "' +
+            $ReleasePath.TrimEnd('\', '/') + '" "' + $stateDir + '" ' + $Port + ' "' + $script:notification + '"'
         $info.UseShellExecute = $false
         $info.CreateNoWindow = $true
         $info.RedirectStandardInput = $true
-        $info.RedirectStandardError = $true
         $script:service = [Diagnostics.Process]::Start($info)
-        if ($script:service.WaitForExit(800)) { throw $script:service.StandardError.ReadToEnd() }
+        if ($script:service.WaitForExit(800)) { throw 'Release controller failed. Check update.jsonl.' }
         $tray.Text = "Character Release - localhost:$Port"
     } catch { Write-TrayError $_.Exception.Message }
 }
@@ -85,7 +93,20 @@ public static class TrayNative { [DllImport("user32.dll")] public static extern 
     $timer = New-Object Windows.Forms.Timer
     $timer.Interval = 3000
     $timer.add_Tick({
-        if ($script:service -and $script:service.HasExited -and $tray.Text -notlike '*unavailable*') { Write-TrayError 'Release server stopped. Use Restart.' }
+        if ($script:service -and $script:service.HasExited -and $tray.Text -notlike '*unavailable*') {
+            Write-TrayError 'Release controller stopped. Check update.jsonl and use Restart.'
+        }
+        if ($script:notification -and (Test-Path -LiteralPath $script:notification -PathType Leaf)) {
+            try {
+                $notice = Get-Content -LiteralPath $script:notification -Raw | ConvertFrom-Json
+                if ($notice.version -ne $script:lastNotifiedVersion) {
+                    $tray.ShowBalloonTip(5000, 'Character Release', "Updated to $($notice.version) (Release $($notice.releaseDate))", [Windows.Forms.ToolTipIcon]::Info)
+                    $script:lastNotifiedVersion = $notice.version
+                }
+            } catch {
+                # Windows can hold the file briefly. The next tick retries.
+            }
+        }
     })
     $timer.Start()
     [Windows.Forms.Application]::Run($context)

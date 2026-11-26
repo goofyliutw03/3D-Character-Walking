@@ -1,5 +1,16 @@
 # 產品方向
 
+## 目前有效摘要
+
+updated_at：2026-11-19（Asia/Taipei）。依使用者核准的 steering Sync 增補，釐清實作與歷史敘述；下方原文保留為歷史，不以「魚眼後續需求」「GLB尚未實作」判定現況。
+
+- 城市檢視器已有男／女／小孩本機 skinned GLB、Idle／Walk／Run／Jump、載入／Retry，並保留明示的等待／失敗 fallback。程序化原型不能取代正式資產驗收。
+- 既有多鏡頭包括 160°圓形等距魚眼、Follow、角色中心滑鼠／觸控 Orbit及遮擋策略；情緒與純文字泡泡為 overlay 呈現，不代表臉部骨架表情。
+- 已授權追加手機點地導航、獨立站立 Target／粒子互動、水景／水霧、夜間／物件光源、功能樹及場景物件編號檢視。這些是有限追加範圍，不授權 NPC AI、戰鬥、巡迴或完整場景編輯器；細節與來源見 [roadmap](roadmap.md)。
+- 本機功能／工程量測與使用者特定操作確認各有範圍；M6、SCENE-04／05／FOLD、手機效能、跨 GPU及輔助技術未驗項仍保留，見 [剩餘驗收](../../docs/remaining-acceptance.md) 與 [效能驗證](../specs/viewer-performance/validation.md)。不從 spec phase 推定整個里程碑結案。
+
+## 歷史內容與決策沿革
+
 更新日期：2026-10-24。狀態：使用者已核准 steering 內容；本次補充較新驗證紀錄與 cc-sdd 導入連結。
 
 ## 目的與使用情境

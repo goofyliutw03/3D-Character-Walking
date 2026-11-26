@@ -20,6 +20,7 @@ function Assert-SafePath([string]$Path) {
 
 Assert-SafePath $source
 Assert-SafePath $destination
+Assert-SafePath (Join-Path (Split-Path $destination -Parent) 'Update')
 if (-not (Test-Path -LiteralPath (Join-Path $source 'index.html') -PathType Leaf)) {
     throw 'Missing dist/index.html. Run a successful production build first.'
 }
@@ -78,4 +79,6 @@ foreach ($entry in ($plan | Sort-Object @{ Expression = {
         if (Test-Path -LiteralPath $temporary) { Remove-Item -LiteralPath $temporary }
     }
 }
+& node (Join-Path $PSScriptRoot 'release-package.mjs') $source $destination
+if ($LASTEXITCODE -ne 0) { throw "Release synchronized, but Update publication failed: $LASTEXITCODE" }
 [pscustomobject]@{ Destination = $destination; Added = $added; Updated = $updated; Skipped = $skipped; CompletedAt = (Get-Date -Format o) }

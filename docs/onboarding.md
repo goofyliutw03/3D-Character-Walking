@@ -25,6 +25,8 @@
 
 ## PR CI 試辦
 
+完整流程圖、階段責任與交接窗口見 [CI/CD 流程與責任窗口](ci-cd.md)。
+
 指向 `main` 的 PR 使用 [PR CI](../.github/workflows/pr-ci.yml)，在 GitHub 託管的 Windows runner 從乾淨 checkout 啟動。使用 Node 24，pnpm 版本取自 `package.json` 的 `packageManager`。依序執行 `pnpm install --frozen-lockfile`、`pnpm run test`、`pnpm run build`，建置包含 TypeScript 檢查。
 
 - 首次試跑在 PR 的 **Checks** 確認 **Test and build** 通過，並保留執行連結。接著在獨立草稿 PR 暫加一個必定失敗的測試，確認測試步驟失敗、build 略過，再關閉草稿 PR。
