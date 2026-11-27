@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { Vector3 } from 'three';
 import { characterCapsules } from '../src/character/motion.ts';
-import { SwimController, swimWaterlineHeight } from '../src/character/SwimController.ts';
+import { SwimController, swimAutoDepth, swimWaterlineHeight } from '../src/character/SwimController.ts';
 import { sampleSwimPose } from '../src/character/SwimAppearance.ts';
 import { createSwim } from '../src/scene/SwimScene.ts';
 import { InputManager } from '../src/input/InputManager.ts';
@@ -58,6 +58,35 @@ function fixture(t, shape = characterCapsules.man) {
 function advance(actor, seconds, intent = {}, delta = 1 / 60) {
   for (let i = 0; i < Math.ceil(seconds / delta); i++) actor.update(delta, { ...idle, ...intent });
 }
+
+test('automatic swimming holds depth inside the dead zone and uses symmetric speed bands', t => {
+  const { actor } = fixture(t);
+  for (const sign of [-1, 1]) {
+    for (const [degrees, expected] of [[0, 0], [10, 0], [10.01, .25], [20, .25], [20.01, .65]]) {
+      assert.ok(actor.relocate({ x: 0, y: -3, z: 0 }, false));
+      const depth = swimAutoDepth(sign * degrees * (Math.PI / 180));
+      assert.equal(depth, expected ? sign * expected : 0);
+      for (let frame = 0; frame < 60; frame++) actor.update(1 / 60, { ...idle, z: -1 }, undefined, undefined, depth);
+      assert.ok(Math.abs(actor.snapshot.y - (-3 + sign * expected)) < 1e-8);
+      const held = actor.snapshot.y;
+      actor.update(1 / 60, { ...idle, z: -1 }, undefined, undefined, 0);
+      assert.equal(actor.snapshot.y, held);
+    }
+  }
+  assert.ok(actor.relocate({ x: 0, y: -5, z: 0 }, false));
+  actor.update(1 / 60, { ...idle, z: -1 }, undefined, undefined, .25);
+  assert.ok(actor.snapshot.y > -5);
+});
+
+test('a swimmer stopped at the platform by the posed shell can still climb', t => {
+  const { actor } = fixture(t);
+  assert.ok(actor.relocate({ x: 0, y: -1.38, z: 3 }, false));
+  assert.equal(actor.canLeaveWater(), false);
+  actor.setBodyReach(.65);
+  assert.equal(actor.canLeaveWater(), true);
+  advance(actor, 1.4, { z: 1 });
+  assert.equal(actor.mode, 'ground');
+});
 
 for (const [name, shape] of Object.entries(characterCapsules)) {
   test('dry entry, dive, surface and checked pool exit for ' + name, t => {

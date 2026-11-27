@@ -1,5 +1,18 @@
 # 結構與責任邊界
 
+## 目前有效責任補充
+
+updated_at：2026-11-19（Asia/Taipei）。依使用者核准的 Sync 補充既有模式；下方「後續／預留」為歷史時點，不表示人物、輸入、導航、UI或本機角色資產仍未實作，不構成搬移目錄授權。
+
+- ViewerApp 是組裝與每幀時序的擁有者；輸入／手勢傳遞意圖，navigation 處理目的地與靜態可走區，camera 維持構圖權威。UI 透過公開介面呼叫，不直接驅動骨架或底層渲染物件。
+- character 分開管理主角資產與獨立 Target 的載入／釋放；interaction 消費角色 anchor，管理有界粒子生命週期，不接管角色控制或引入 NPC AI。
+- water 由 `src/water/index.ts` 暴露共用 API，宿主擁有渲染、時間與掛載；scene 以街道 adapter 整合水景及障礙，獨立水景入口重用同一模組。lighting 的有界光源池管理租用／歸還，效果到期須釋放資源。公開使用方式見 [水景API](../../docs/water-api.md) 與 [光源API](../../docs/lighting-api.md)。
+- inspector 分離只讀場景索引與樹／標籤呈現；頁面內穩定 ID、checkbox／篩選只影響標籤，不編輯場景。未變列與同步快照可重用，但動態樹仍遍歷，篩選／checkbox 狀態與最後同步比較保持分離。
+- UI 的功能樹／面板管理 DOM 組織及可存取操作；renderer 持有魚眼／X-ray與鏡頭水滴效果的渲染資源。新增行為維持既有 dispose 與事件清理界線。
+- `scripts/` 的 Release／系統匣／自啟屬本機操作工具，與瀏覽器 runtime 分開；發佈只複製 dist，常駐腳本依賴原始專案。`public/assets/` 已含授權清楚的執行資產，來源／重建規則見 [資產流程](../../docs/asset-pipeline.md)。
+
+## 原始模式與歷史規劃
+
 更新日期：2026-10-24。狀態：使用者已核准 steering 內容；cc-sdd 規劃對應見 [roadmap](roadmap.md)。
 
 ## 組織原則

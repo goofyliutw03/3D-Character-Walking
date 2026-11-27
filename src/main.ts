@@ -12,6 +12,7 @@ import { LoadingPanel } from './ui/LoadingPanel';
 import type { ObstructionMode } from './camera/CameraObstruction';
 import { controlPanelContent } from './ui/controlPanelContent';
 import { ControlPanel } from './ui/ControlPanel';
+import { mouseSensitivity } from './settings/MouseSensitivity';
 import './style.css';
 
 const sceneNames: Record<EnvironmentId, string> = {
@@ -55,6 +56,11 @@ app.innerHTML = `
         <p class="hint" id="environment-status" role="status"></p>
         <label for="walk-speed">Walk speed · m/s</label>
         <input id="walk-speed" type="number" min="0.5" max="4" step="0.1" value="1.8">
+        <label for="mouse-sensitivity">Mouse sensitivity</label>
+        <div>
+          <input id="mouse-sensitivity" type="range" min="${mouseSensitivity.min}" max="${mouseSensitivity.max}" step="${mouseSensitivity.step}" value="${mouseSensitivity.defaultValue}">
+          <output id="mouse-sensitivity-value" for="mouse-sensitivity">${mouseSensitivity.defaultValue.toFixed(1)}×</output>
+        </div>
         <div id="swim-controls" hidden>
           <label for="swim-pose">Swim stroke</label>
           <select id="swim-pose">${Object.entries(swimPoseLabels).map(([id, label]) => `<option value="${id}">${label}</option>`).join('')}</select>
@@ -340,6 +346,18 @@ try {
     const field = event.currentTarget as HTMLInputElement;
     if (field.validity.valid) viewer?.setWalkSpeed(field.valueAsNumber);
   }, { signal: uiEvents.signal });
+  const mouseSensitivityField = document.querySelector<HTMLInputElement>('#mouse-sensitivity')!;
+  const mouseSensitivityValue = document.querySelector<HTMLOutputElement>('#mouse-sensitivity-value')!;
+  const showMouseSensitivity = () => {
+    const value = mouseSensitivityField.valueAsNumber;
+    mouseSensitivityValue.value = `${value.toFixed(1)}×`;
+    mouseSensitivityField.setAttribute('aria-valuetext', `${value.toFixed(1)} times`);
+  };
+  showMouseSensitivity();
+  mouseSensitivityField.addEventListener('input', () => {
+    showMouseSensitivity();
+    viewer?.setMouseSensitivity(mouseSensitivityField.valueAsNumber);
+  }, { signal: uiEvents.signal });
   document.querySelector<HTMLSelectElement>('#projectile-aim')!.addEventListener('change', event => {
     viewer?.setProjectileAim((event.currentTarget as HTMLSelectElement).value === 'camera' ? 'camera' : 'target');
   }, { signal: uiEvents.signal });
@@ -368,6 +386,8 @@ try {
     document.querySelector<HTMLInputElement>('#shadows')!.checked = settings.shadows;
     const { pose, outfit } = settings.swimAppearance ?? defaultSwimAppearance;
     document.querySelector<HTMLInputElement>('#walk-speed')!.value = String(settings.walkSpeed);
+    mouseSensitivityField.value = String(settings.mouseSensitivity ?? mouseSensitivity.defaultValue);
+    showMouseSensitivity();
     document.querySelector<HTMLSelectElement>('#projectile-aim')!.value = settings.projectileAim ?? 'target';
     swimPose.value = pose;
     swimOutfit.value = outfit;

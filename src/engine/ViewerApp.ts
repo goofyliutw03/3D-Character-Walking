@@ -1,6 +1,7 @@
 import type { ProjectileAim, SceneSettings, ViewerSettings } from '../settings/ViewerSettings';
 import { validViewerSettings } from '../settings/validateViewerSettings';
-import { SwimController, type SwimDepthDirection } from '../character/SwimController';
+import { mouseSensitivity, validMouseSensitivity } from '../settings/MouseSensitivity';
+import { SwimController, swimAutoDepth, type SwimDepthDirection } from '../character/SwimController';
 import { defaultSwimAppearance, validSwimAppearance, type SwimAppearance } from '../character/SwimAppearance';
 import { EnvironmentScan } from './EnvironmentScan';
 import { worldQuery } from '../world/LegacyWorldQuery';
@@ -82,6 +83,7 @@ export class ViewerApp {
   private swimAppearance: SwimAppearance = { ...defaultSwimAppearance };
   private sceneSettings: ViewerSettings['scenes'] = {};
   private walkSpeed = 1.8;
+  private mouseSensitivity: number = mouseSensitivity.defaultValue;
   private projectileAim: ProjectileAim = 'target';
   private shadows = true;
   private variant: CharacterVariant = 'man';
@@ -159,11 +161,15 @@ export class ViewerApp {
     });
     const canvas = this.view.renderer.domElement;
     canvas.addEventListener('pointermove', event => {
+      this.controls.rotateSpeed = event.pointerType === 'mouse' ? this.mouseSensitivity : 1;
+    }, { capture: true, signal: this.events.signal });
+    canvas.addEventListener('pointermove', event => {
       if (event.pointerType !== 'mouse' || !this.canSteerSwim()) return;
       if (!Number.isFinite(event.movementX) || !Number.isFinite(event.movementY)) return;
       const look = this.swimLook ?? { heading: this.motion.heading, pitch: 0 };
-      look.heading = (look.heading - event.movementX * .004) % (2 * Math.PI);
-      look.pitch = Math.max(-1.1, Math.min(1.1, look.pitch - event.movementY * .004));
+      const radiansPerPixel = .004 * this.mouseSensitivity;
+      look.heading = (look.heading - event.movementX * radiansPerPixel) % (2 * Math.PI);
+      look.pitch = Math.max(-1.1, Math.min(1.1, look.pitch - event.movementY * radiansPerPixel));
       this.swimLook = look;
     }, { signal: this.events.signal });
     window.addEventListener('keydown', event => {
@@ -245,6 +251,7 @@ export class ViewerApp {
     if (manual.x || manual.z || manual.jump) this.navigation.cancel();
     const intent = this.navigation.status === 'running' ? this.navigation.sample(this.motion, delta) : manual;
     const movement = this.movement;
+    let holdSwimDepth = false;
     if (movement instanceof SwimController) {
       if (!this.canSteerSwim()) {
         this.swimAutoForward = false;
@@ -252,11 +259,15 @@ export class ViewerApp {
       }
       const { heading, pitch } = this.swimLook ?? { heading: this.motion.heading, pitch: 0 };
       const automatic = this.swimAutoForward && !intent.x && !intent.z;
-      const vertical = intent.vertical || (movement.mode === 'bottom' ? 0 : Math.sin(pitch));
+      const autoDepth = automatic && movement.submerged && !intent.vertical && !intent.jump
+        ? swimAutoDepth(pitch) : undefined;
+      holdSwimDepth = autoDepth === 0 && !this.swimSpiral;
+      const surfaceSteering = automatic && !movement.submerged && movement.mode === 'swim' && !intent.jump
+        ? swimAutoDepth(pitch) : 0;
       const swimIntent = automatic
-        ? { ...intent, x: Math.sin(heading), z: Math.cos(heading), vertical }
+        ? { ...intent, x: Math.sin(heading), z: Math.cos(heading), vertical: intent.vertical || surfaceSteering }
         : intent;
-      this.motion = movement.update(delta, swimIntent, undefined, this.swimSpiral);
+      this.motion = movement.update(delta, swimIntent, undefined, this.swimSpiral, autoDepth);
       if (movement.mode === 'climb') this.swimAutoForward = false;
       if (this.swimSpiral && (movement.depthPathBlocked || !movement.canSwimVertically(this.swimSpiral))) {
         this.swimSpiral = undefined;
@@ -265,8 +276,8 @@ export class ViewerApp {
     } else {
       this.motion = movement.update(delta, intent);
     }
+    this.updateRig(delta, holdSwimDepth);
     this.character.update(this.motion, delta);
-    this.updateRig(delta);
     this.target.update(delta);
     const casterAnchor = this.getCasterAnchor();
     const targetAnchor = this.target.anchor;
@@ -442,10 +453,25 @@ export class ViewerApp {
     if (validSwimAppearance(appearance)) this.swimAppearance = { ...appearance };
   }
 
-  private updateRig(delta: number): void {
+  private updateRig(delta: number, holdDepth = false): void {
     const swim = this.movement instanceof SwimController ? this.movement : undefined;
-    this.assets.current?.update(this.motion, delta, swim ? this.swimAppearance : undefined,
+    const rig = this.assets.current;
+    rig?.update(this.motion, delta, swim ? this.swimAppearance : undefined,
       swim?.mode === 'swim', this.reducedMotion.matches, swim?.climbProgress);
+    const pool = this.scenes.active.swim;
+    swim?.setBodyReach(0);
+    if (!rig || !swim || !pool || !pool.nearBodyCollision(this.motion, rig.height + .35)) return;
+    const body = rig.sampleBodyBounds();
+    if (swim.mode === 'swim') {
+      const { x, z, heading } = this.motion;
+      const dx = Math.sin(heading), dz = Math.cos(heading);
+      const front = dx * ((dx < 0 ? body.min.x : body.max.x) - x) + dz * ((dz < 0 ? body.min.z : body.max.z) - z);
+      swim.setBodyReach(Math.max(0, front - swim.shape.radius + .1));
+    }
+    const fit = pool.fitBody(body, this.motion, swim.mode === 'swim' ? swim.shape : undefined, holdDepth);
+    if (!fit) return;
+    if (swim.fitBody(fit)) this.motion = swim.snapshot;
+    rig.root.position.set(fit.x, fit.y, fit.z);
   }
 
   private captureSceneSettings(): SceneSettings {
@@ -475,6 +501,7 @@ export class ViewerApp {
       variant: this.variant, camera: this.cameras.view, following: this.cameras.following,
       cameraPose: { position: this.desiredCamera.position.toArray(), target: this.controls.target.toArray(), yaw: 0, pitch: 0, zoom: 1 },
       obstruction: this.obstruction.mode, walkSpeed: this.walkSpeed, expression: this.getExpression(),
+      mouseSensitivity: this.mouseSensitivity,
       particles: this.particles.settings, projectileAim: this.projectileAim, water: this.getWaterSettings(), swimAppearance: this.swimAppearance,
       waterLens: this.getWaterLensEnabled(), shadows: this.shadows, inspector: this.inspector.getSettings(),
     });
@@ -544,6 +571,7 @@ export class ViewerApp {
     this.sceneSettings = structuredClone(settings.scenes);
     this.applySceneSettings(settings.scenes[settings.environment]!);
     this.setWalkSpeed(settings.walkSpeed);
+    this.setMouseSensitivity(settings.mouseSensitivity ?? mouseSensitivity.defaultValue);
     this.setEmotion(settings.expression.emotion);
     this.setSpeech(settings.expression.speech);
     this.configureParticles(settings.particles);
@@ -648,6 +676,10 @@ export class ViewerApp {
   }
   setProjectileAim(aim: ProjectileAim): void { this.projectileAim = aim; }
   getTimeOfDay(): TimeOfDay { return this.scenes.active.solar?.getTime() ?? this.timeOfDay; }
+  setMouseSensitivity(value: number): void {
+    if (validMouseSensitivity(value)) this.mouseSensitivity = value;
+  }
+
   configureParticles(settings: ParticleSettings): boolean { return this.particles.configure(settings); }
   fireParticle(): void {
     if(this.contextLost || this.disposed) return;

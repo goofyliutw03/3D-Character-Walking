@@ -1,5 +1,17 @@
 # 技術基線
 
+## 目前有效補充
+
+updated_at：2026-11-19（Asia/Taipei）。依使用者核准的 Sync 補充建置、生命週期與驗證原則；下方原始紀錄保留，限制與授權以 [AGENTS.md](../../AGENTS.md) 最新政策為準。
+
+- Vite 以 `index.html` 與 `water.html` 雙入口建置，共用水景公開 API；仍為 WebGL2，未採用 WebGPU。魚眼／X-ray離屏效果由 renderer 管理按需建立、尺寸更新及釋放，鏡頭沾水效果沿用渲染生命週期。
+- ViewerApp 統一處理 context loss／restore、停止導航與清理暫態效果；背景返回重設時間基準。這些程式路徑與本機故障注入不等於真機、跨 GPU或鎖屏恢復驗收。
+- 效能變更須保留畫質／互動，分清 CPU 微量測、瀏覽器工程樣本與正式效能驗收。既有 reduced-motion MediaQueryList 重用與 Inspector 未變快照重用是兩組獨立證據；不能將 Node 同步成本下降換算成 FPS 提升，亦不混用不同硬體／版本／harness 數字。見 [MQL驗證](../specs/viewer-performance/mql-validation.md) 與 [Inspector／PC驗證](../specs/viewer-performance/validation.md)。
+- 修改並驗證後依序執行 `./scripts/project.ps1 release`（tests → build → sync）；只同步 dist，SHA256 相同略過、資產先於 index.html、保留陌生檔與舊 hashed 資產。手動預覽為 localhost:4174，系統匣自有服務為 localhost:4175；兩者不互相接管，不代表 LAN／手機驗收。見 [Release](../../docs/release.md) 與 [系統匣](../../docs/release-tray.md)。
+- 收尾索引依 AGENTS.md 已授權增量更新及 status 確認，必要時可由既有 helper 啟動本機 RAG；不安裝工具、下載模型、重建／刪除索引或使用雲端。此限定授權優先於下方舊的 RAG 禁止敘述；commit仍另需核准，不 push。
+
+## 原始基線與歷史驗證
+
 更新日期：2026-10-24。狀態：使用者已核准 steering 內容；cc-sdd 規劃對應見 [roadmap](roadmap.md)。
 
 ## 執行平台與工具

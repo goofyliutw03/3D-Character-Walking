@@ -1,5 +1,21 @@
 # cc-sdd 規劃對應與待辦
 
+## 目前有效摘要與判讀規則
+
+updated_at：2026-11-19（Asia/Taipei）。本次依使用者核准的 steering Sync 增補，不新增功能、里程碑或實作授權；保留既有使用者內容及歷史紀錄。
+
+- 需求與六里程碑仍以 [development-plan](../../docs/development-plan.md) 為來源，授權以 [AGENTS.md](../../AGENTS.md) 為準；歷史段落中的 initialized、GLB未實作、「下一步里程碑3」及逐階段等待規則不能覆蓋較新的實作／政策。同一已核准里程碑依序自動審閱與驗證，不自動開始下一里程碑。
+- 本次盤點17個 spec.json 均為 implementation-complete，requirements／design／tasks approvals皆true；這是檔案狀態，不是使用者重新人工核准，也不代表所有驗收完成。未勾項仍有 viewer-performance 的 M6-MOBILE-01–04，以及 release-system-tray task 5.1。
+- M6與 SCENE-04／05／FOLD、跨 GPU、手機實機效能、IME／讀屏及正式效能門檻缺口維持。既有 iOS／Android Mobile Orbit確認與本機 pan／context故障注入只涵蓋記錄案例；見 [剩餘驗收](../../docs/remaining-acceptance.md) 及各 spec validation。
+- 系統匣圖示與 Browsing／Restart／Exit 依2026-11-18使用者回報已通過人工驗收；重新登入／重開機自啟仍待驗。以 [tasks](../specs/release-system-tray/tasks.md) 與 [validation](../specs/release-system-tray/validation.md) 為證，不將舊待驗文字當現況。
+- viewer-performance 合併後保留兩組工作：原 MQL tasks 1–3及證據在同目錄 [mql-tasks](../specs/viewer-performance/mql-tasks.md)／[mql-validation](../specs/viewer-performance/mql-validation.md)；Inspector快照重用與 PC工程量測為現行 [tasks 1–6](../specs/viewer-performance/tasks.md)／[validation](../specs/viewer-performance/validation.md)。編號、硬體與量測不可混用；微量測收益不等於整體 FPS提升，headless工程樣本不等於正式前景／手機驗收。下方舊表 PERF-01 為大chunk advisory，較新 PERF-01／1U-0 為效能工作，引用時附spec或來源區分，不重新編號歷史紀錄。
+- LATER-02 僅物件結構／編號檢視已獲有限追加授權並有實作；XYZ、速度滑桿與完整編輯器不因此納入。LATER-03 僅一名站立 Target／粒子互動已獲追加授權，其餘 NPC AI／NavMesh／多角色模擬仍延後；巡迴與 WebGPU仍待獨立授權。
+- 共用檔案必須依序進行，不可平行。收尾可依 AGENTS.md 啟動既有本機 RAG並增量索引，不受下方舊禁止敘述限制；不安裝／下載／重建／刪除索引，commit另需核准、不 push。
+
+## 歷史追加紀錄與導入分析
+
+2026-11-18 TRAY-01／1V-0：使用者確認系統匣人物圖示及三項選單人工驗收通過；登入／重開機自啟未明確回報，保留待驗，見 release-system-tray/validation.md。下方11月11日待驗敘述為歷史狀態。
+
 2026-11-11 TRAY-01／1V-0：[release-system-tray](../specs/release-system-tray/) 為已核准系統匣與目前使用者登入自啟；依序修改scripts及文件，與既有工作不平行。實作、服務測試與Release成功；原生系統匣及重新登入待人工驗收，詳見validation。無委派／commit／push，非新里程碑。
 
 2026-11-10 PERF-01／1U-0：[viewer-performance](../specs/viewer-performance/) 已獲使用者核准固定量測與局部優化，Windows Chrome主／Edge輔，並規劃iPhone Safari與Android Chrome／Edge／Firefox能力、畫質／DPR及生命週期驗證。依量測保留既有UI去重，僅重用偏好查詢；共用檔必須依序進行，不可平行。無委派／commit／push，非第七里程碑，M6／SCENE-04/05/FOLD真機與跨GPU未驗項保留；證據見該spec validation。

@@ -8,6 +8,12 @@ const step = 1 / 60;
 const depthEpsilon = 1e-6;
 const surfaceBandDepth = .4;
 const maxFloatSpeed = .55;
+const radiansPerDegree = Math.PI / 180;
+export function swimAutoDepth(pitch: number): number {
+  const angle = Math.abs(pitch);
+  if (angle <= 10 * radiansPerDegree) return 0;
+  return Math.sign(pitch) * (angle <= 20 * radiansPerDegree ? .25 : .65);
+}
 const zero = (): Point3 => ({ x: 0, y: 0, z: 0 });
 export type SwimDepthDirection = -1 | 1;
 export type WaterLocation = '00' | '01' | '02' | '03';
@@ -51,6 +57,7 @@ export class SwimController {
   private discarded = 0;
   private climb?: ClimbPath;
   private climbTime = 0;
+  private bodyReach = 0;
 
   constructor(private readonly world: WalkableWorld, capsule: Capsule, private readonly spawn: { x: number; z: number },
     private readonly water: WaterVolume, private readonly exit: SwimExit) {
@@ -100,6 +107,15 @@ export class SwimController {
   }
 
   setWalkSpeed(speed: number): boolean { return this.ground.setWalkSpeed(speed); }
+
+  setBodyReach(reach: number): void { this.bodyReach = reach; }
+
+  fitBody(position: Point3): boolean {
+    if (this.mode !== 'swim' || !this.legal(position)) return false;
+    Object.assign(this.state, position);
+    this.sampleTorso();
+    return true;
+  }
   setCapsule(shape: Capsule): boolean {
     if (this.climb && !this.legal(this.climb.start, shape)) return false;
     if (!this.legal(this.state, shape)) return false;
@@ -164,7 +180,7 @@ export class SwimController {
     let best: ClimbPath | undefined;
     for (const axis of direction ? [direction] : probeDirections) {
       const length = Math.hypot(axis.x, axis.z);
-      const reach = direction ? Math.min(length, .45) : .45;
+      const reach = direction ? Math.max(Math.min(length, .45), this.bodyReach) : Math.max(.45, this.bodyReach);
       const displacement = { x: axis.x / length * reach, y: 0, z: axis.z / length * reach };
       const contact = this.query.sweep(start, displacement, this.capsule);
       const hit = contact.ok ? contact.value : null;
@@ -222,8 +238,9 @@ export class SwimController {
     this.stop();
   }
 
-  update(delta: number, intent: MovementIntent, speedOverride?: number, spiral?: SwimDepthDirection): Readonly<MotionSnapshot> {
-    const vertical = intent.vertical ?? Number(intent.jump);
+  update(delta: number, intent: MovementIntent, speedOverride?: number, spiral?: SwimDepthDirection,
+    autoDepth?: number): Readonly<MotionSnapshot> {
+    const vertical = autoDepth ?? intent.vertical ?? Number(intent.jump);
     const magnitude = Math.hypot(intent.x, vertical, intent.z);
     if (!Number.isFinite(delta) || delta < 0 || delta > 3600 || !Number.isFinite(magnitude)) return this.snapshot;
     if (!this.swimming) {
@@ -256,10 +273,12 @@ export class SwimController {
       const velocity = floating
         ? { x: 0, y: Math.sign(difference) * Math.min(maxFloatSpeed, Math.abs(difference) / step), z: 0 }
         : this.nextVelocity(intent, vertical, magnitude, speedOverride, spiral);
-      const path = !spiral && vertical >= 0 && intent.x * velocity.x + intent.z * velocity.z > depthEpsilon
+      if (!spiral && autoDepth !== undefined) velocity.y = this.atBottom ? Math.max(0, autoDepth) : autoDepth;
+      const path = !spiral && autoDepth !== 0 && vertical >= 0 && intent.x * velocity.x + intent.z * velocity.z > depthEpsilon
         ? this.findClimb({ x: velocity.x * step, y: 0, z: velocity.z * step }) : undefined;
       if (path) { this.startClimb(path); return this.snapshot; }
-      const position = this.move(velocity, spiral === 1 ? this.spiralSurfaceY : Math.max(this.swimCeiling, this.state.y));
+      const position = this.move(velocity, spiral === 1 ? this.spiralSurfaceY : Math.max(this.swimCeiling, this.state.y),
+        !spiral && autoDepth === 0);
       if (!position) {
         this.velocity = zero();
         if (spiral) this.spiralBlockedTime = .5;
@@ -330,7 +349,7 @@ export class SwimController {
     return hit.ok && (!hit.value || hit.value.fraction >= 1 - 1e-8) && this.legal(end);
   }
 
-  private move(velocity: Point3, ceiling: number): Point3 | null {
+  private move(velocity: Point3, ceiling: number, holdDepth: boolean): Point3 | null {
     const { x, y, z } = this.state;
     const position = { x, y, z };
     const rest = { x: velocity.x * step, y: Math.min(velocity.y * step, ceiling - y), z: velocity.z * step };
@@ -348,9 +367,12 @@ export class SwimController {
       rest.y *= 1 - fraction;
       rest.z *= 1 - fraction;
       for (const vector of [rest, velocity]) {
-        const into = Math.min(0, vector.x * hit.normal.x + vector.y * hit.normal.y + vector.z * hit.normal.z);
+        const horizontal = hit.normal.x ** 2 + hit.normal.z ** 2;
+        const into = holdDepth
+          ? horizontal > depthEpsilon ? Math.min(0, vector.x * hit.normal.x + vector.z * hit.normal.z) / horizontal : 0
+          : Math.min(0, vector.x * hit.normal.x + vector.y * hit.normal.y + vector.z * hit.normal.z);
         vector.x -= into * hit.normal.x;
-        vector.y -= into * hit.normal.y;
+        if (!holdDepth) vector.y -= into * hit.normal.y;
         vector.z -= into * hit.normal.z;
       }
       if (Math.hypot(rest.x, rest.y, rest.z) < 1e-10) break;

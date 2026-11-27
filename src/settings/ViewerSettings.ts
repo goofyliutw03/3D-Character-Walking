@@ -36,6 +36,7 @@ export interface ViewerSettings {
   obstruction: ObstructionMode;
   groundPenetration?: boolean;
   sensitivity?: { thirdHorizontal: number; thirdVertical: number; firstHorizontal: number; firstVertical: number };
+  mouseSensitivity?: number;
   walkSpeed: number;
   expression: ExpressionState;
   traffic?: { enabled: boolean; paused: boolean; lod: boolean; npcCount: number; vehicleCount: number };

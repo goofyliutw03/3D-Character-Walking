@@ -146,6 +146,50 @@ export function createSwim(): Environment {
     } },
     swim: {
       water, exit: { surfaceId: deck.id },
+      nearBodyCollision({ x, y, z }, reach) {
+        return x - reach < bounds.minX || x + reach > bounds.maxX ||
+          z - reach < bounds.minZ || z + reach > bounds.maxZ ||
+          y - reach < bounds.minY || y + reach > bounds.maxY ||
+          solids.some(box => x + reach > box.minX && x - reach < box.maxX &&
+            y + reach > box.minY && y - reach < box.maxY && z + reach > box.minZ && z - reach < box.maxZ);
+      },
+      fitBody(body, position, capsule, holdDepth) {
+        const skin = .001;
+        const { min, max } = body;
+        if (body.isEmpty()) return;
+        const intersects = (box: SolidBox, x: number, y: number, z: number): boolean =>
+          min.x + x < box.maxX - skin && max.x + x > box.minX + skin &&
+          min.y + y < box.maxY - skin && max.y + y > box.minY + skin &&
+          min.z + z < box.maxZ - skin && max.z + z > box.minZ + skin;
+        const inside = (x: number, y: number, z: number): boolean =>
+          min.x + x >= bounds.minX - skin && max.x + x <= bounds.maxX + skin &&
+          min.y + y >= bounds.minY - skin && max.y + y <= bounds.maxY + skin &&
+          min.z + z >= bounds.minZ - skin && max.z + z <= bounds.maxZ + skin;
+        if (inside(0, 0, 0) && !solids.some(box => intersects(box, 0, 0, 0))) return;
+
+        // Face offsets let the body slide out along a wall or around a corner.
+        const offsets = (axis: 'x' | 'y' | 'z', low: number, high: number, faces: [number, number][]): number[] => [
+          0, low - min[axis] + skin, high - max[axis] - skin,
+          ...faces.flatMap(([a, b]) => [a - max[axis] - skin, b - min[axis] + skin]),
+        ];
+        const xs = offsets('x', bounds.minX, bounds.maxX, solids.map(box => [box.minX, box.maxX]));
+        const ys = holdDepth ? [0] : offsets('y', bounds.minY, bounds.maxY, solids.map(box => [box.minY, box.maxY]));
+        const zs = offsets('z', bounds.minZ, bounds.maxZ, solids.map(box => [box.minZ, box.maxZ]));
+        let distance = Infinity;
+        let fit;
+        for (const x of xs) for (const y of ys) for (const z of zs) {
+          const squared = x * x + y * y + z * z;
+          if (squared >= distance || !inside(x, y, z) || solids.some(box => intersects(box, x, y, z))) continue;
+          const next = { x: position.x + x, y: position.y + y, z: position.z + z };
+          if (capsule) {
+            const hit = query.sweep(position, { x, y, z }, capsule);
+            if (!hit.ok || (hit.value && hit.value.fraction < 1 - 1e-8)) continue;
+          }
+          distance = squared;
+          fit = next;
+        }
+        return fit;
+      },
       constrainCamera(position, clearance) {
         position.y = Math.max(position.y, water.bottom + clearance);
         const { x, y, z } = position;

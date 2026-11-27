@@ -4,6 +4,7 @@ import { validSolar } from '../scene/SolarPosition.ts';
 import type { ViewerSettings } from './ViewerSettings';
 import { SceneObjectIndex } from '../inspector/SceneObjectIndex.ts';
 import { validSwimAppearance } from '../character/SwimAppearance.ts';
+import { validMouseSensitivity } from './MouseSensitivity.ts';
 const range = (v: number, min: number, max: number): boolean => Number.isFinite(v) && v >= min && v <= max;
 const color = (v: string): boolean => typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v);
 const bool = (...values: unknown[]): boolean => values.every(v => typeof v === 'boolean');
@@ -17,6 +18,7 @@ export function validViewerSettings(value: unknown): value is ViewerSettings {
       !['zoom','transparent','wireframe','xray'].includes(s.obstruction) ||
       !bool(s.following,s.waterLens,s.shadows) || !range(s.walkSpeed,.5,4) ||
       !['none','happy','sad','angry','surprised'].includes(s.expression.emotion) || typeof s.expression.speech !== 'string' || Array.from(s.expression.speech).length > 160) return false;
+    if (s.mouseSensitivity !== undefined && !validMouseSensitivity(s.mouseSensitivity)) return false;
     if (s.groundPenetration !== undefined && !bool(s.groundPenetration)) return false;
     if (s.sensitivity !== undefined &&
       !['thirdHorizontal','thirdVertical','firstHorizontal','firstVertical'].every(k =>

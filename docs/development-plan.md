@@ -1,5 +1,9 @@
 # Development plan
 
+2026-11-24 TRAY-02／1V-1：dist 差異更新及復原已驗證，正式 4175 已切換。Windows 成功氣球與登入自啟由使用者實機驗收通過。見 [驗證紀錄](../.kiro/specs/release-system-tray/validation.md)。
+
+2026-11-18 TRAY-01／1V-0：使用者確認系統匣與 Browsing／Restart／Exit 已人工驗收；當時重新登入／重開機自啟仍待回報。
+
 2026-11-11 TRAY-01／1V-0：使用者核准 Release Windows 系統匣常駐與目前使用者登入自啟；見 [release-system-tray](../.kiro/specs/release-system-tray/) 及 [操作文件](release-tray.md)。實作、服務測試與Release成功；實際系統匣點擊及重開機待人工驗收。非新里程碑、不變更M6手機待驗；無commit/push。
 
 2026-11-10 PERF-01／1U-0：使用者核准 [viewer-performance](../.kiro/specs/viewer-performance/) 固定條件效能調查及依證據的局部優化，Chrome為主／Edge為輔，iPhone Safari必要支援、Android Chrome／Edge／Firefox列入驗證規劃。實測排除既有UI去重候選，只重用reduced-motion查詢，維持畫質；相容性矩陣見 [viewer-performance.md](viewer-performance.md)，實測／Release／索引狀態見spec validation。非第七里程碑，M6／SCENE-04/05/FOLD及手機真機未驗項不自動完成，不改OS／瀏覽器設定。
