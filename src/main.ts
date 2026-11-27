@@ -148,12 +148,12 @@ retryCharacter.addEventListener('click', () => {
 let previousCharacterStatus = '';
 const updateCharacterStatus = (state: CharacterStatus): void => {
   const swim = viewer?.getSwimStatus();
-  const key = `${state.variant}/${state.action}/${state.running}/${state.following}/${state.cameraView}/${state.navigation}/${state.obstructionMode}/${state.flightMode}/${state.flightWarning}/${swim?.mode}/${swim?.atWaterline}/${swim?.canLeave}/${swim?.autoForward}`;
+  const key = `${state.variant}/${state.action}/${state.running}/${state.autoForward}/${state.following}/${state.cameraView}/${state.navigation}/${state.obstructionMode}/${state.flightMode}/${state.flightWarning}/${swim?.mode}/${swim?.atWaterline}/${swim?.canLeave}`;
   if (key === previousCharacterStatus) return;
   previousCharacterStatus = key;
   const names = { man: 'Man', woman: 'Woman', child: 'Child' };
   const actions = { idle: 'Idle', walk: 'Walk', run: 'Run', jump: 'Jump' };
-  document.querySelector('#character-status')!.textContent = `${names[state.variant]} · ${actions[state.action]}`;
+  document.querySelector('#character-status')!.textContent = `${names[state.variant]} · ${actions[state.action]}${state.autoForward ? ' · Auto-forward on' : ''}`;
   document.querySelector('#run')!.setAttribute('aria-pressed', String(state.running));
   const navigationMessages = {
     idle: 'Tap the ground to run there.', running: 'Running to destination…',
@@ -178,7 +178,6 @@ const updateCharacterStatus = (state: CharacterStatus): void => {
   swimStatus.hidden = !swim;
   swimStatus.textContent = !swim ? '' : swim.mode === 'swim' ? (swim.atWaterline ? 'At the surface' : 'Underwater') :
     swim.mode === 'climb' ? 'Climbing out' : swim.mode === 'bottom' ? 'On the pool floor' : 'On the platform';
-  if (swim?.autoForward) swimStatus.textContent += ' · Auto-forward on';
   document.querySelector<HTMLInputElement>('#follow')!.checked = state.following;
   document.querySelector<HTMLInputElement>('#follow')!.disabled = state.firstPerson;
   document.querySelector<HTMLSelectElement>('#obstruction-mode')!.value = state.obstructionMode;
@@ -320,9 +319,9 @@ try {
     document.querySelector<HTMLElement>('#flight-mode')!.hidden = active !== 'flight';
     document.querySelector<HTMLElement>('#swim-controls')!.hidden = active !== 'swim';
     document.querySelector('#movement-help')!.textContent = active === 'swim'
-      ? 'Walk off the platform to enter · Space / C change depth · I / O spiral · In first or third person, Y toggles auto-forward and the mouse steers · Surface at the edge to climb out'
-      : active === 'flight' ? 'Hold arrows to move · Stop cancels · Land within 2 m of a surface'
-      : 'Hold arrows to move · Stop cancels · Drag to orbit / pinch to zoom';
+      ? 'Walk off the platform to enter · Y toggles auto-forward · Mouse steers in first or third person · Space / C change depth · I / O spiral · Surface at the edge to climb out'
+      : active === 'flight' ? 'Hold arrows to move · Y toggles auto-forward · Stop cancels · Land within 2 m of a surface'
+      : 'Hold arrows to move · Y toggles auto-run · Stop cancels · Drag to orbit / pinch to zoom';
     updateCharacterStatus(viewer!.getCharacterStatus());
   };
   sceneSelect.addEventListener('change', () => {

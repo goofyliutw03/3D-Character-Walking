@@ -38,7 +38,7 @@ import { createSpraySource, type WaterSettings } from '../water/index.ts';
 import { SceneObjectInspector } from '../inspector/SceneObjectInspector';
 
 export type CameraPreset = CameraView;
-export interface CharacterStatus { flightMode?: 'flight' | 'ground'; flightWarning?: string; variant: CharacterVariant; action: MotionSnapshot['action']; running: boolean; following: boolean; firstPerson: boolean; cameraView: CameraView; navigation: NavigationStatus; obstructionMode: ObstructionMode }
+export interface CharacterStatus { flightMode?: 'flight' | 'ground'; flightWarning?: string; variant: CharacterVariant; action: MotionSnapshot['action']; running: boolean; autoForward: boolean; following: boolean; firstPerson: boolean; cameraView: CameraView; navigation: NavigationStatus; obstructionMode: ObstructionMode }
 
 export class ViewerApp {
   private readonly camera = new PerspectiveCamera(43, 1, 0.1, 200);
@@ -78,7 +78,7 @@ export class ViewerApp {
   private readonly actorLabels: HTMLDivElement[] = [];
   private readonly environmentScan = new EnvironmentScan();
   private swimSpiral?: SwimDepthDirection;
-  private swimAutoForward = false;
+  private autoForward = false;
   private swimLook?: { heading: number; pitch: number };
   private swimAppearance: SwimAppearance = { ...defaultSwimAppearance };
   private sceneSettings: ViewerSettings['scenes'] = {};
@@ -114,7 +114,8 @@ export class ViewerApp {
     this.groundPicker = new GroundPicker(this.city.environment.children);
     this.input = new InputManager(window, document,
       () => { this.swimSpiral = undefined; this.navigation.cancel(); this.tap?.cancel(); },
-      () => { this.swimAutoForward = false; });
+      () => { this.autoForward = false; },
+      () => this.toggleAutoForward());
     this.motion = this.movement.update(0, this.input.sample());
     this.character.update(this.motion, 0);
     this.scenes.root.add(this.character.root);
@@ -171,15 +172,6 @@ export class ViewerApp {
       look.heading = (look.heading - event.movementX * radiansPerPixel) % (2 * Math.PI);
       look.pitch = Math.max(-1.1, Math.min(1.1, look.pitch - event.movementY * radiansPerPixel));
       this.swimLook = look;
-    }, { signal: this.events.signal });
-    window.addEventListener('keydown', event => {
-      if (event.code !== 'KeyY' || event.repeat || event.isComposing || event.altKey || event.ctrlKey || event.metaKey ||
-          event.target instanceof Element && event.target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])') ||
-          !this.canSteerSwim()) return;
-      event.preventDefault();
-      this.swimAutoForward = !this.swimAutoForward;
-      this.swimSpiral = undefined;
-      if (!this.swimAutoForward && this.movement instanceof SwimController) this.movement.stop(false);
     }, { signal: this.events.signal });
     this.mouseOrbit = new MouseOrbitGesture(canvas,
       () => { this.tap.cancelCandidate(); this.cameras.beginCharacterOrbit(); },
@@ -251,14 +243,11 @@ export class ViewerApp {
     if (manual.x || manual.z || manual.jump) this.navigation.cancel();
     const intent = this.navigation.status === 'running' ? this.navigation.sample(this.motion, delta) : manual;
     const movement = this.movement;
+    const automatic = this.autoForward && !intent.x && !intent.z;
     let holdSwimDepth = false;
     if (movement instanceof SwimController) {
-      if (!this.canSteerSwim()) {
-        this.swimAutoForward = false;
-        this.swimLook = undefined;
-      }
+      if (!this.canSteerSwim()) this.swimLook = undefined;
       const { heading, pitch } = this.swimLook ?? { heading: this.motion.heading, pitch: 0 };
-      const automatic = this.swimAutoForward && !intent.x && !intent.z;
       const autoDepth = automatic && movement.submerged && !intent.vertical && !intent.jump
         ? swimAutoDepth(pitch) : undefined;
       holdSwimDepth = autoDepth === 0 && !this.swimSpiral;
@@ -268,13 +257,17 @@ export class ViewerApp {
         ? { ...intent, x: Math.sin(heading), z: Math.cos(heading), vertical: intent.vertical || surfaceSteering }
         : intent;
       this.motion = movement.update(delta, swimIntent, undefined, this.swimSpiral, autoDepth);
-      if (movement.mode === 'climb') this.swimAutoForward = false;
+      if (movement.mode === 'climb') this.autoForward = false;
       if (this.swimSpiral && (movement.depthPathBlocked || !movement.canSwimVertically(this.swimSpiral))) {
         this.swimSpiral = undefined;
         movement.stop(false);
       }
     } else {
-      this.motion = movement.update(delta, intent);
+      const movementIntent = automatic
+        ? { ...intent, x: Math.sin(this.motion.heading), z: Math.cos(this.motion.heading),
+          run: intent.run || !(movement instanceof FlightController && movement.mode === 'flight') }
+        : intent;
+      this.motion = movement.update(delta, movementIntent);
     }
     this.updateRig(delta, holdSwimDepth);
     this.character.update(this.motion, delta);
@@ -439,7 +432,7 @@ export class ViewerApp {
     const controller = this.movement;
     return controller instanceof SwimController
       ? { mode: controller.mode, canLeave: controller.canLeaveWater(), atWaterline: controller.atWaterline,
-        water: { loc: controller.waterLocation }, autoForward: this.swimAutoForward }
+        water: { loc: controller.waterLocation }, autoForward: this.autoForward }
       : null;
   }
 
@@ -604,7 +597,6 @@ export class ViewerApp {
 
   setCamera(preset: CameraPreset): void {
     if (preset !== this.cameras.view) {
-      this.swimAutoForward = false;
       this.swimLook = undefined;
     }
     this.mouseOrbit.cancel();
@@ -711,6 +703,19 @@ export class ViewerApp {
       (this.movement.mode === 'swim' || this.movement.mode === 'bottom') &&
       (this.cameras.view === 'first-person' || this.cameras.view === 'third-person');
   }
+  private toggleAutoForward(): boolean {
+    if (this.disposed || this.contextLost || !this.scenes.controls.autoRun ||
+        this.movement instanceof SwimController && this.movement.mode === 'climb') return false;
+    this.autoForward = !this.autoForward;
+    this.navigation.cancel();
+    this.tap.cancel();
+    this.swimSpiral = undefined;
+    if (!this.autoForward) {
+      if (this.movement instanceof SwimController) this.movement.stop(false);
+      if (this.movement instanceof FlightController) this.movement.stop();
+    }
+    return true;
+  }
   setRunning(enabled: boolean): void { this.input.setRun(enabled); }
   jump(): void { this.input.jump(); }
   stop(): void { this.mouseOrbit.cancel(); this.cameras.endCharacterOrbit(true); this.input.stop(); if (this.movement instanceof FlightController || this.movement instanceof SwimController) this.movement.stop(); }
@@ -718,7 +723,7 @@ export class ViewerApp {
   getCharacterStatus(): CharacterStatus {
     const flight = this.movement instanceof FlightController ? this.movement : undefined;
     const warning = flight?.mode === 'flight' ? flight.warning : null;
-    return { flightMode: flight?.mode, flightWarning: warning?.id, variant: this.variant, action: this.motion.action, running: this.input.running || this.navigation.status === 'running', following: this.cameras.following, firstPerson: this.cameras.view === 'first-person', cameraView: this.cameras.view, navigation: this.navigation.status, obstructionMode: this.obstruction.mode };
+    return { flightMode: flight?.mode, flightWarning: warning?.id, variant: this.variant, action: this.motion.action, running: this.input.running || this.navigation.status === 'running', autoForward: this.autoForward, following: this.cameras.following, firstPerson: this.cameras.view === 'first-person', cameraView: this.cameras.view, navigation: this.navigation.status, obstructionMode: this.obstruction.mode };
   }
   setShadows(enabled: boolean): void {
     this.shadows = enabled;

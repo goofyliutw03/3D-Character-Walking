@@ -70,7 +70,7 @@ export function createFlight():Environment {
     const color=d.y>.1?'#9bc9ec':d.y>0?'#c59b80':'#172738';(scene.background as Color).set(color);(scene.fog as Fog).color.set(color);
   };sync();
   return {id:'flight',scene,environment,spawn:{x:0,z:5},cityFeatures:false,
-    controls:sceneControlPolicy('open',{groundNavigation:false,autoRun:false}),
+    controls:sceneControlPolicy('open',{groundNavigation:false}),
     walkableWorld:{bounds:data.bounds,obstacles:[],groundHeight:()=>0,query:new FlightWorldQuery(data)},
     solar:{getSettings:()=>({...solar}),configure(patch){const next={...solar,...patch};if(disposed||!validSolar(next))return false;solar=next;sync();return true;},
       getTime:()=>time,setTime(next){if(disposed||!['day','evening','night'].includes(next))return false;time=next;solar.enabled=false;sync();return true;}},

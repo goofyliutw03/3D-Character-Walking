@@ -14,7 +14,7 @@ const neutral={x:0,z:0,run:false,jump:false};
 const world=(q=new FlightWorldQuery(data()))=>({query:q,bounds:data().bounds,obstacles:[],groundHeight:()=>0});
 test('flight scene: shared visible boxes, safe spawn, explicit capabilities, decorative sky/clouds and disposal',()=>{
   const e=createFlight(),q=e.walkableWorld.query,c=new FlightController(e.walkableWorld);
-  assert.equal(e.id,'flight');assert.equal(e.controls.autoRun,false);assert.equal(e.controls.groundNavigation,false);
+  assert.equal(e.id,'flight');assert.equal(e.controls.autoRun,true);assert.equal(e.controls.groundNavigation,false);
   assert.equal(value(q.overlap(c.snapshot,body)),false);
   const boxes=e.environment.children.filter(o=>o.userData.solidBox);
   assert.ok(boxes.length>=3);

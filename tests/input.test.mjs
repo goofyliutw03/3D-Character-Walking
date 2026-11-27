@@ -11,6 +11,31 @@ const setup = () => {
 class Button extends EventTarget {
   setPointerCapture() {}
 }
+test('Y toggles auto-forward once per press and respects editors, modifiers and Stop', () => {
+  const win = new EventTarget(), doc = Object.assign(new EventTarget(), { hidden: false });
+  let active = false;
+  const input = new InputManager(win, doc, undefined, () => { active = false; }, () => {
+    active = !active;
+    return true;
+  });
+  const press = ({ target, ...props } = {}) => {
+    const keydown = event('keydown', { code: 'KeyY', ...props });
+    if (target) Object.defineProperty(keydown, 'target', { value: target });
+    return win.dispatchEvent(keydown);
+  };
+  assert.equal(press(), false);
+  assert.equal(active, true);
+  for (const props of [{ repeat: true }, { ctrlKey: true }, { isComposing: true }, { target: { closest: () => ({}) } }]) {
+    assert.equal(press(props), true);
+    assert.equal(active, true);
+  }
+  assert.equal(press(), false);
+  assert.equal(active, false);
+  press();
+  input.stop();
+  assert.equal(active, false);
+  input.dispose();
+});
 test('mobile 4.1–4.2: manual and lifecycle notifications cancel a navigation consumer', () => {
   const win = new EventTarget(), doc = Object.assign(new EventTarget(), { hidden: false });
   let active = true;

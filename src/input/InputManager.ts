@@ -12,9 +12,16 @@ export class InputManager {
   private jumpPending = false;
   private flightControls = false;
   constructor(win: Window = window, doc: Document = document, private readonly onManual: () => void = () => {},
-    private readonly onStop: () => void = () => {}) {
+    private readonly onStop: () => void = () => {},
+    private readonly onAutoForward: () => boolean = () => false) {
     const signal = this.events.signal;
     win.addEventListener('keydown', event => {
+      if (event.code === 'KeyY') {
+        if (!event.repeat && !event.isComposing && !event.altKey && !event.ctrlKey && !event.metaKey &&
+            !this.editing(event.target, 'input, textarea, select, [contenteditable]:not([contenteditable="false"])') &&
+            this.onAutoForward()) event.preventDefault();
+        return;
+      }
       if (!(gameKeys.has(event.code) || this.flightControls && ['KeyC', 'KeyE', 'KeyQ'].includes(event.code)) || event.isComposing || this.editing(event.target) || event.altKey || event.ctrlKey || event.metaKey) return;
       event.preventDefault();
       if (event.repeat) return;
