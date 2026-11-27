@@ -43,6 +43,7 @@ export interface Environment {
     setTime(time: TimeOfDay): boolean;
   };
   update?(delta: number, reducedMotion: boolean): void;
+  updateCamera?(position: Point3): void;
   dispose(): void;
 }
 

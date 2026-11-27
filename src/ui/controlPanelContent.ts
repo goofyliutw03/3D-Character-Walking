@@ -86,7 +86,7 @@ export function controlPanelContent(obstructionHint: string): string {
     ] },
     { id: 'scene', label: 'Scene display', open: false, children: [
       { id: 'environment', label: 'Environment', open: true, content: `<label class="select-label" for="environment">Active environment</label>
-        <select id="environment"><option value="city">City street</option><option value="cave">Rock chamber</option><option value="terrain">Natural terrain</option><option value="flight">Bounded flight</option><option value="room">莊園豪宅</option><option value="swim">Tidal Pool</option></select>
+        <select id="environment"><option value="city">City street</option><option value="cave">Rock chamber</option><option value="terrain">Natural terrain</option><option value="flight">Bounded flight</option><option value="room">莊園豪宅</option><option value="swim">Tidal Pool</option><option value="pool">Bounded pool</option></select>
         <fieldset id="swim-controls" hidden><legend>Swimming</legend>
           <label for="swim-pose">游泳姿態</label>
           <select id="swim-pose"><option value="breaststroke">蛙式</option><option value="dive">一般潛水</option><option value="jellyfish">水母漂浮</option></select>

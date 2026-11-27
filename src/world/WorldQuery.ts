@@ -17,7 +17,7 @@ export interface SurfaceOptions { maxRise?: number }
 export interface WorldQuery {
   readonly capabilities: {
     readonly geometry: 'planar-extrusion' | 'ground-volume';
-    readonly motion: readonly ('ground' | 'flight')[];
+    readonly motion: readonly ('ground' | 'flight' | 'swim')[];
     readonly horizontalRaycast: true;
   };
   sweep(position: Point3, displacement: Point3, capsule: Capsule): QueryResult<QueryHit | null>;

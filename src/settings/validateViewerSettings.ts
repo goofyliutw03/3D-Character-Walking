@@ -32,7 +32,7 @@ export function validViewerSettings(value: unknown): value is ViewerSettings {
       if (!isEnvironmentId(id) || !scene || !['day','evening','night'].includes(scene.time) || !validSolar(scene.solar) || !Array.isArray(scene.lights)) return true;
       if (id === 'terrain') return scene.headlamp !== null || scene.lights.length !== 0 || !scene.terrain ||
         !['standard','low'].includes(scene.terrain.quality) || typeof scene.terrain.wind !== 'boolean';
-      if (id === 'city' || id === 'flight' || id === 'room' || id === 'swim') return scene.lights.length !== 0 || scene.headlamp !== null;
+      if (id === 'city' || id === 'flight' || id === 'room' || id === 'swim' || id === 'pool') return scene.lights.length !== 0 || scene.headlamp !== null;
       return !scene.headlamp || !validHeadlamp(scene.headlamp) || scene.lights.length !== 32 || new Set(scene.lights.map(l=>l.id)).size!==32 || scene.lights.some(l =>
         !/^(sun|ambient|torch-(?:[1-9]|10)|crystal-(?:[1-9]|1[0-9]|20))$/.test(l.id) ||
         !bool(l.settings.enabled,l.settings.effects) || !color(l.settings.color) || !range(l.settings.intensity,0,['sun','ambient'].includes(l.id)?2:3));

@@ -19,6 +19,7 @@ import type { NeedleRuntime } from './NeedleRuntime';
 import { Character } from '../character/Character';
 import { CharacterController } from '../character/CharacterController';
 import { FlightController } from '../character/FlightController';
+import { PoolSwimController } from '../character/PoolSwimController';
 import { SwimController, type SwimDepthDirection } from '../character/SwimController';
 import { defaultSwimAppearance, validSwimAppearance, type SwimAppearance } from '../character/SwimAppearance.ts';
 import { resetShadowResources, releaseSceneGpuResources } from './ContextResources';
@@ -68,7 +69,7 @@ export class ViewerApp {
   private readonly view: SceneRenderer;
   private readonly controls: OrbitControls;
   private readonly character: Character;
-  private movement: CharacterController | FlightController | SwimController;
+  private movement: CharacterController | FlightController | SwimController | PoolSwimController;
   private cameraSubmerged = false;
   private readonly swimCameraPosition = new Vector3();
   private readonly swimCameraAim = new Vector3();
@@ -145,7 +146,7 @@ export class ViewerApp {
     this.input = new InputManager(window, document, () => { this.navigation.cancel(); this.tour.cancel(); this.tap?.cancel(); },
       () => {
         this.stopSwimSpiral();
-        if (this.movement instanceof FlightController || this.movement instanceof SwimController) this.movement.stop();
+        if (this.movement instanceof FlightController || this.movement instanceof SwimController || this.movement instanceof PoolSwimController) this.movement.stop();
       });
     this.motion = this.movement.update(0, this.input.sample());
     this.city.updateLampShadowPosition(this.motion);
@@ -361,6 +362,10 @@ export class ViewerApp {
     this.syncCameraOffsets();
     this.cameras.update(this.getCameraSubject(), delta, immediate);
     this.updateObstruction(delta, immediate);
+    if (active.updateCamera) {
+      active.updateCamera(this.camera.position);
+      this.scenes.syncAppearance();
+    }
     if (active.swim) {
       this.cameraSubmerged = active.swim.updateCamera(this.camera.position);
       this.scenes.syncAppearance();
@@ -430,11 +435,12 @@ export class ViewerApp {
     this.view.environmentScan.start(this.motion);
   }
 
-  private createMovement(environment: Environment): CharacterController | FlightController | SwimController {
+  private createMovement(environment: Environment): CharacterController | FlightController | SwimController | PoolSwimController {
     const { id, walkableWorld, spawn, swim } = environment;
     const shape = characterCapsules[this.variant];
     if (swim) return new SwimController(walkableWorld, shape, spawn, swim.water, swim.exit);
     if (id === 'flight') return new FlightController(walkableWorld, shape);
+    if (id === 'pool') return new PoolSwimController(walkableWorld, shape);
     return new CharacterController(walkableWorld, shape, spawn);
   }
 
@@ -447,6 +453,7 @@ export class ViewerApp {
       : id === 'room' ? await (await import('../scene/ManorScene')).createManor()
       : id === 'flight' ? (await import('../scene/FlightScene')).createFlight()
       : id === 'swim' ? (await import('../scene/SwimScene')).createSwim()
+      : id === 'pool' ? (await import('../scene/PoolScene')).createPool()
       : id === 'terrain' ? (await import('../scene/TerrainScene')).createTerrain()
       : (await import('../scene/CaveScene')).createCave();
       try {
@@ -467,7 +474,7 @@ export class ViewerApp {
       this.swimCameraY = undefined;
       this.swimEyeHeight = undefined;
       this.cameraSubmerged = false;
-      this.input.setFlightControls(next.id === 'flight' || next.id === 'swim');
+      this.input.setFlightControls(next.id === 'flight' || next.id === 'swim' || next.id === 'pool');
       this.movement.setWalkSpeed(speed);
       this.movement.relocate({ ...next.spawn, y: 0 });
       this.motion = this.movement.snapshot;
@@ -858,6 +865,11 @@ export class ViewerApp {
   }
 
   leaveWater(): boolean {
+    if (!this.disposed && !this.contextLost && !document.hidden && this.movement instanceof PoolSwimController) {
+      const accepted = this.movement.climbOut();
+      if (accepted) { this.input.stop(); this.motion = this.movement.snapshot; this.characterReport?.(this.getCharacterStatus()); }
+      return accepted;
+    }
     if (this.disposed || this.contextLost || document.hidden || !(this.movement instanceof SwimController)) return false;
     if (!this.movement.canLeaveWater()) return false;
     this.input.stop();
@@ -869,6 +881,12 @@ export class ViewerApp {
   }
 
   getSwimStatus(): SwimStatus | null {
+    if (this.movement instanceof PoolSwimController) {
+      const swimming = this.movement.mode === 'swim';
+      return { swimming, climbing: false, bottom: false, waterLocation: swimming ? '02' : '00',
+        canClimb: this.movement.canClimb, atWaterline: swimming && this.movement.depth < this.movement.shape.height,
+        submerged: swimming, cameraSubmerged: this.cameraSubmerged, droppedTime: 0, rigged: !!this.assets.current };
+    }
     if (!(this.movement instanceof SwimController)) return null;
     return {
       swimming: this.movement.mode === 'swim', climbing: this.movement.mode === 'climb', bottom: this.movement.mode === 'bottom',

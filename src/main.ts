@@ -248,7 +248,7 @@ try {
   const syncEnvironment = (ready: boolean): void => {
     const active = viewer!.environmentId;
     const city = viewer!.cityFeatures;
-    const swim = active === 'swim';
+    const swim = active === 'swim' || active === 'pool';
     environment.value = active;
     viewport.dataset.environment = active;
     environmentStatus.textContent = ready ? (swim ? 'Tidal Pool ready.' : active === 'room' ? '莊園豪宅已就緒。' : city ? 'City street ready.' : active === 'flight' ? 'Flight ready.' : active === 'terrain' ? 'Terrain ready.' : 'Cave ready.') : 'Could not switch. Current environment kept.';
