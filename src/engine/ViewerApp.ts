@@ -41,6 +41,7 @@ import { GroundPicker } from '../navigation/GroundPicker';
 import { TapGesture } from '../input/TapGesture';
 import { MouseOrbitGesture } from '../input/MouseOrbitGesture';
 import { AutoRunControls, type LookSensitivity } from '../input/AutoRunControls';
+import { mouseSensitivity, validMouseSensitivity } from '../settings/MouseSensitivity';
 import { CameraInputManager } from '../input/CameraInputManager';
 import { CameraObstruction, type ObstructionMode } from '../camera/CameraObstruction';
 import { createSpraySource, type WaterSettings } from '../water/index.ts';
@@ -54,6 +55,7 @@ export interface SwimStatus { waterLocation: SwimController['waterLocation']; sw
 export interface CharacterStatus { flight: { mode: 'ground' | 'flight'; warning: string | null; droppedTime: number } | null; groundPenetration: boolean; autoRun: boolean; autoRunPaused: boolean; variant: CharacterVariant; action: MotionSnapshot['action']; running: boolean; following: boolean; firstPerson: boolean; cameraView: CameraView; navigation: NavigationStatus; tour: TourSnapshot; obstructionMode: ObstructionMode; motion: Readonly<MotionSnapshot>; walkSpeed: number; buildings: CityAssetState }
 
 export class ViewerApp {
+  private mouseGain: number = mouseSensitivity.defaultValue;
   private sceneSettings: Partial<Record<EnvironmentId, SceneSettings>> = {};
   private sceneDefaults: Partial<Record<EnvironmentId, SceneSettings>> = {};
   private projectileAim: ProjectileAim = 'target';
@@ -194,6 +196,9 @@ export class ViewerApp {
       },
     });
     const canvas = this.view.renderer.domElement;
+    canvas.addEventListener('pointerdown', event => {
+      this.controls.rotateSpeed = event.pointerType === 'mouse' ? this.mouseGain : 1;
+    }, { capture: true, signal: this.events.signal });
     this.cameraModes = new CameraModeManager(this.cameras, this.autoRun,
       () => this.getCameraSubject(), () => this.reducedMotion.matches, this.camera,
       () => this.cameraInput?.reset(), () => this.motion.action === 'idle');
@@ -226,6 +231,7 @@ export class ViewerApp {
       suspend: () => { this.stopSwimSpiral(); this.cameraModes.resetGestures(); this.autoRun.suspend(); this.characterReport?.(this.getCharacterStatus()); },
       toggle: () => this.setAutoRun(this.autoRun.inspecting || !this.autoRun.enabled ||
         this.cameraModes.inputMode === 'stationary-look'),
+      mouseSensitivity: () => this.mouseGain,
       depthEnabled: () => this.hasExternalSwimControls(),
       depth: direction => this.setSwimSpiral(direction),
     });
@@ -460,7 +466,7 @@ export class ViewerApp {
       try {
         const candidate = this.createMovement(next);
         next.swim?.water.shader.configure(this.getWaterSettings());
-        if (!candidate.relocate({ ...next.spawn, y: 0 })) throw Error('Invalid scene spawn');
+        if (!candidate.relocate({ ...next.spawn, y: next.spawn.y ?? 0 })) throw Error('Invalid scene spawn');
       } catch (error) { next.dispose(); throw error; }
       return next;
     }, next => {
@@ -477,7 +483,7 @@ export class ViewerApp {
       this.cameraSubmerged = false;
       this.input.setFlightControls(next.id === 'flight' || next.id === 'swim' || next.id === 'pool');
       this.movement.setWalkSpeed(speed);
-      this.movement.relocate({ ...next.spawn, y: 0 });
+      this.movement.relocate({ ...next.spawn, y: next.spawn.y ?? 0 });
       this.motion = this.movement.snapshot;
       this.navigation = new DestinationNavigation(next.walkableWorld, this.movement.shape);
       this.groundPicker = new GroundPicker(next.environment.children);
@@ -527,7 +533,7 @@ export class ViewerApp {
         yaw: this.autoRun.yaw, pitch: this.autoRun.pitch, zoom: this.autoRun.zoom,
       },
       obstruction: this.obstruction.mode, groundPenetration: this.groundPenetration,
-      sensitivity: this.autoRun.lookSensitivity, walkSpeed: this.movement.walkSpeed,
+      sensitivity: this.autoRun.lookSensitivity, mouseSensitivity: this.mouseGain, walkSpeed: this.movement.walkSpeed,
       expression: this.getExpression(), traffic: this.traffic.snapshot.settings, particles: this.particles.settings,
       projectileAim: this.projectileAim,
       water: this.getWaterSettings(), swimAppearance: this.getSwimAppearance(), waterLens: this.getWaterLensEnabled(), shadows: this.shadows,
@@ -550,6 +556,7 @@ export class ViewerApp {
         !this.setLampShadowDetection(settings.lampDetection.enabled, settings.lampDetection.radius) ||
         !this.setLampShadowSelection(settings.lamps)) throw Error('Invalid panel setting ranges');
     this.setWaterLensEnabled(settings.waterLens); this.setShadows(settings.shadows);
+    this.setMouseSensitivity(settings.mouseSensitivity ?? mouseSensitivity.defaultValue);
     this.setObstructionMode(settings.obstruction); this.setGroundPenetration(settings.groundPenetration);
     this.projectileAim = settings.projectileAim ?? 'target';
     this.particles.clear();
@@ -837,6 +844,8 @@ export class ViewerApp {
     if (this.movement instanceof SwimController) this.movement.stop(false);
   }
   getLookSensitivity(): LookSensitivity { return this.autoRun.lookSensitivity; }
+  getMouseSensitivity(): number { return this.mouseGain; }
+  setMouseSensitivity(value: number): void { if (validMouseSensitivity(value)) this.mouseGain = value; }
   configureLookSensitivity(patch: Partial<LookSensitivity>): boolean { return this.autoRun.configureSensitivity(patch); }
   getMouseLockStatus(): string { return this.cameraInput.lockStatus; }
   requestMouseLock(): void { this.cameraInput.requestLock(); }

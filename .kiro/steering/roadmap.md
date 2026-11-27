@@ -1,5 +1,7 @@
 # cc-sdd 規劃對應與待辦
 
+2026-11-27 main 收斂：依明確授權整合所有分支及本機未提交工作。bounded-swim 標準 spec 保留 Tidal Pool，原有限水池規格保存為同目錄 pool-*，功能由 pool／PoolSwimController 保留；兩組 task 編號不混用。完整來源、決策及剩餘驗收見 [交接清單](../../docs/handoff-2026-11-27.md)。既有六里程碑與外部待驗不因 merge 關閉，共用檔必須依序進行，不可平行。
+
 ## 目前有效摘要與判讀規則
 
 updated_at：2026-11-19（Asia/Taipei）。本次依使用者核准的 steering Sync 增補，不新增功能、里程碑或實作授權；保留既有使用者內容及歷史紀錄。

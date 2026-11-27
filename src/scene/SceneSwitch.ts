@@ -17,7 +17,7 @@ export interface Environment {
   readonly scene: Scene;
   readonly environment: Group;
   readonly walkableWorld: WalkableWorld;
-  readonly spawn: { x: number; z: number };
+  readonly spawn: { x: number; y?: number; z: number };
   readonly targetSpawn?: { x: number; z: number };
   readonly cityFeatures: boolean;
   readonly controls?: SceneControlPolicy;

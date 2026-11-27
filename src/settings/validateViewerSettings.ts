@@ -4,6 +4,7 @@ import { validSolar } from '../scene/SolarPosition.ts';
 import type { ViewerSettings } from './ViewerSettings';
 import { SceneObjectIndex } from '../inspector/SceneObjectIndex.ts';
 import { validSwimAppearance } from '../character/SwimAppearance.ts';
+import { validMouseSensitivity } from './MouseSensitivity.ts';
 const range = (v: number, min: number, max: number): boolean => Number.isFinite(v) && v >= min && v <= max;
 const color = (v: string): boolean => typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v);
 const bool = (...values: unknown[]): boolean => values.every(v => typeof v === 'boolean');
@@ -24,6 +25,7 @@ export function validViewerSettings(value: unknown): value is ViewerSettings {
       !Number.isFinite(pose.yaw) || !range(pose.pitch, -Math.PI / 2, Math.PI / 2) || !range(pose.zoom, .25, 4))) return false;
     if (s.projectileAim !== undefined && s.projectileAim !== 'target' && s.projectileAim !== 'camera') return false;
     if (s.swimAppearance !== undefined && !validSwimAppearance(s.swimAppearance)) return false;
+    if (s.mouseSensitivity !== undefined && !validMouseSensitivity(s.mouseSensitivity)) return false;
     if (!bool(t.enabled,t.paused,t.lod) || !Number.isInteger(t.npcCount) || !range(t.npcCount,0,24) || !Number.isInteger(t.vehicleCount) || !range(t.vehicleCount,0,8) ||
       !color(p.color) || !color(p.lightColor) || !bool(p.lightEnabled) || !range(p.speed,.5,30) || !range(p.size,.03,.5) || !range(p.lifetime,.1,10) || !Number.isInteger(p.maxCount) || !range(p.maxCount,1,128) || !range(p.lightIntensity,0,200) || !range(p.lightRadius,.1,30) || !range(p.lightDecay,0,4) ||
       !bool(w.enabled,w.paused) || !['low','standard'].includes(w.quality) || !range(w.waveStrength,0,2) || !range(w.flowSpeed,0,3) ||

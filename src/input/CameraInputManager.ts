@@ -1,6 +1,7 @@
 import type { CameraInputMode } from '../camera/CameraModeManager';
 
 interface Actions {
+  mouseSensitivity?(): number;
   lockEnabled?(): boolean;
   mode(): CameraInputMode;
   clearGesture(): void;
@@ -71,7 +72,8 @@ export class CameraInputManager {
     doc.addEventListener('mousemove', event => {
       if (!this.locked || !eligible()) return;
       event.stopImmediatePropagation();
-      actions.move(event.movementX, event.movementY, event.ctrlKey, event.timeStamp);
+      const gain = actions.mouseSensitivity?.() ?? 1;
+      actions.move(event.movementX * gain, event.movementY * gain, event.ctrlKey, event.timeStamp);
     }, options);
     const focused = (): boolean => canvas.ownerDocument.activeElement === canvas && !canvas.ownerDocument.hidden;
     const ownsGestures = (): boolean => {
@@ -181,7 +183,8 @@ export class CameraInputManager {
       event.stopImmediatePropagation();
       const current = { x: event.clientX, y: event.clientY, ctrl: event.ctrlKey, mode };
       if (this.previous && this.previous.ctrl === current.ctrl && this.previous.mode === mode) {
-        actions.move(current.x - this.previous.x, current.y - this.previous.y, current.ctrl, event.timeStamp);
+        const gain = actions.mouseSensitivity?.() ?? 1;
+        actions.move((current.x - this.previous.x) * gain, (current.y - this.previous.y) * gain, current.ctrl, event.timeStamp);
       }
       this.previous = current;
     }, options);

@@ -29,6 +29,7 @@ export interface SceneSettings {
 }
 export interface InspectorSettings { enabled: boolean; pattern: string; ranges: string; uncheckedPaths: string[]; expandedPaths: Record<string, boolean> }
 export interface ViewerSettings {
+  mouseSensitivity?: number;
   environment: EnvironmentId;
   scenes: Partial<Record<EnvironmentId, SceneSettings>>;
   variant: CharacterVariant;

@@ -142,12 +142,12 @@ const updateCharacterStatus = (state: CharacterStatus): void => {
     const label = swim.climbing ? 'Climbing onto the platform' : swimming ? (swim.atWaterline ? 'At the surface' : 'Swimming · underwater')
       : swim.bottom ? 'On the pool floor' : 'On the platform';
     const appearance = viewer!.getSwimAppearance();
-    const message = swimming ? label + ' · ' + (!swim.rigged ? 'Procedural preview'
+    const message = viewer!.environmentId === 'pool' ? (swimming ? 'Bounded pool · Swimming · Jump animation fallback' : 'Bounded pool · On deck') : swimming ? label + ' · ' + (!swim.rigged ? 'Procedural preview'
       : state.motion.speed < 1e-6 ? '立游' : swimPoseLabels[appearance.pose]) : label;
     const status = document.querySelector('#swim-status')!;
     if (status.textContent !== message) status.textContent = message;
     document.querySelector<HTMLButtonElement>('#swim-exit')!.disabled = !swim.canClimb;
-    const hint = !swim.canClimb && swimming ? 'Surface beside the edge of the gold platform to climb.' : '';
+    const hint = !swim.canClimb && swimming ? (viewer!.environmentId === 'pool' ? 'Surface beside the marked deck edge to climb.' : 'Surface beside the edge of the gold platform to climb.') : '';
     const climbHint = document.querySelector('#swim-climb-hint')!;
     if (climbHint.textContent !== hint) climbHint.textContent = hint;
   }
@@ -177,7 +177,7 @@ const updateCharacterStatus = (state: CharacterStatus): void => {
     arrived: 'Destination reached.', blocked: 'Cannot reach that spot. Tap clear ground.',
   };
   const navigationStatus = document.querySelector('#navigation-status')!;
-  const navigationMessage = swim ? 'Use the gold platform to enter and leave the pool.'
+  const navigationMessage = viewer?.environmentId === 'pool' ? 'Use the deck to enter; climb out at the marked edge.' : swim ? 'Use the gold platform to enter and leave the pool.'
     : state.flight ? 'Flight area: E / Space ↑ · Q ↓ · Shift boost · explicit Land within 2m. Ground navigation and auto run unavailable.' : navigationMessages[state.navigation];
   if (navigationStatus.textContent !== navigationMessage) navigationStatus.textContent = navigationMessage;
   document.querySelector<HTMLInputElement>('#follow')!.checked = state.following;
@@ -248,6 +248,7 @@ try {
     const active = viewer!.environmentId;
     const city = viewer!.cityFeatures;
     const swim = active === 'swim' || active === 'pool';
+    const pool = active === 'pool';
     environment.value = active;
     viewport.dataset.environment = active;
     environmentStatus.textContent = ready ? (swim ? 'Tidal Pool ready.' : active === 'room' ? '莊園豪宅已就緒。' : city ? 'City street ready.' : active === 'flight' ? 'Flight ready.' : active === 'terrain' ? 'Terrain ready.' : 'Cave ready.') : 'Could not switch. Current environment kept.';
@@ -257,6 +258,8 @@ try {
     const appearance = viewer!.getSwimAppearance();
     document.querySelector<HTMLSelectElement>('#swim-pose')!.value = appearance.pose;
     document.querySelector<HTMLSelectElement>('#swim-outfit')!.value = appearance.outfit;
+    document.querySelector<HTMLSelectElement>('#swim-pose')!.disabled = pool;
+    document.querySelector<HTMLSelectElement>('#swim-outfit')!.disabled = pool;
     document.querySelector<HTMLElement>('#flight-controls')!.hidden = active !== 'flight';
     document.querySelector<HTMLElement>('#flight-controls')!.inert = active !== 'flight';
     document.querySelector('#flight-result')!.textContent = '';
@@ -283,10 +286,10 @@ try {
     document.querySelector('#water-feature-hint')!.textContent = swim ? 'Water quality also controls plants and bubbles.' : 'A small cascade at the far end of the street. Walk around the stone basin.';
     document.querySelector<HTMLElement>('label[for="water-lens"]')!.hidden = swim;
     document.querySelector<HTMLElement>('#water-lens-hint')!.hidden = swim;
-    document.querySelector('.project-name')!.innerHTML = swim ? 'Tidal Pool <span>/</span> Validation area' : active === 'room' ? '莊園豪宅 <span>/</span> Manor estate' : city ? 'City street <span>/</span> Untitled scene' : active === 'flight' ? 'Bounded flight <span>/</span> Validation area' : active === 'terrain' ? 'Natural terrain <span>/</span> Validation area' : 'Underground <span>/</span> Validation area';
+    document.querySelector('.project-name')!.innerHTML = pool ? 'Bounded pool <span>/</span> Validation area' : swim ? 'Tidal Pool <span>/</span> Validation area' : active === 'room' ? '莊園豪宅 <span>/</span> Manor estate' : city ? 'City street <span>/</span> Untitled scene' : active === 'flight' ? 'Bounded flight <span>/</span> Validation area' : active === 'terrain' ? 'Natural terrain <span>/</span> Validation area' : 'Underground <span>/</span> Validation area';
     document.querySelector('.scene-title .eyebrow')!.textContent = swim ? 'THE POOL' : active === 'room' ? 'THE ESTATE' : city ? 'THE NEIGHBORHOOD' : active === 'flight' ? 'THE AIRSPACE' : active === 'terrain' ? 'THE HILLS' : 'UNDERGROUND';
-    document.querySelector('.scene-title h2')!.textContent = swim ? 'Tidal Pool' : active === 'room' ? '莊園豪宅' : city ? 'Maple Avenue' : active === 'flight' ? 'Sky Range' : active === 'terrain' ? 'Wind Meadow' : 'Rock Chamber';
-    document.querySelector('.scene-title p')!.textContent = swim ? 'Walk off the gold platform to swim.' : active === 'room' ? '從前庭進入莊園，沿樓梯探索地下室、四層樓和屋頂陽台，或穿過後門前往花園。' : city ? 'A quiet street. An open canvas.' : active === 'flight' ? 'Finite airspace. Clear landings. Procedural clouds.' : active === 'terrain' ? 'Rolling ground. Shared heights. Moving grass.' : 'A walkable chamber with solid walls.';
+    document.querySelector('.scene-title h2')!.textContent = pool ? 'Bounded pool' : swim ? 'Tidal Pool' : active === 'room' ? '莊園豪宅' : city ? 'Maple Avenue' : active === 'flight' ? 'Sky Range' : active === 'terrain' ? 'Wind Meadow' : 'Rock Chamber';
+    document.querySelector('.scene-title p')!.textContent = pool ? 'Enter from the deck. Climb out at the marked edge.' : swim ? 'Walk off the gold platform to swim.' : active === 'room' ? '從前庭進入莊園，沿樓梯探索地下室、四層樓和屋頂陽台，或穿過後門前往花園。' : city ? 'A quiet street. An open canvas.' : active === 'flight' ? 'Finite airspace. Clear landings. Procedural clouds.' : active === 'terrain' ? 'Rolling ground. Shared heights. Moving grass.' : 'A walkable chamber with solid walls.';
   };
   const changeEnvironment = async (): Promise<void> => {
     const id = isEnvironmentId(environment.value) ? environment.value : 'city';
@@ -442,6 +445,11 @@ try {
       if (input.checkValidity()) viewer?.configureLookSensitivity({ [key]: input.valueAsNumber });
     }, { signal: uiEvents.signal });
   }
+  const mouseSensitivity = document.querySelector<HTMLInputElement>('#mouse-sensitivity')!;
+  mouseSensitivity.addEventListener('input', () => {
+    viewer?.setMouseSensitivity(mouseSensitivity.valueAsNumber);
+    document.querySelector('#mouse-sensitivity-value')!.textContent = `${viewer!.getMouseSensitivity().toFixed(1)}×`;
+  }, { signal: uiEvents.signal });
   document.querySelector('#auto-run-resume')!.addEventListener('click', () => viewer?.setAutoRun(true), { signal: uiEvents.signal });
   document.querySelector('#touch-reverse')!.addEventListener('click', () => viewer?.reverseAutoRun(), { signal: uiEvents.signal });
   document.querySelector('#touch-look-reset')!.addEventListener('click', () => viewer?.resetCameraLook(), { signal: uiEvents.signal });
@@ -517,6 +525,8 @@ try {
     shadows.checked = settings.shadows;
     projectileAim.value = viewer!.getProjectileAim();
     document.querySelector<HTMLInputElement>('#walk-speed')!.value = String(settings.walkSpeed);
+    mouseSensitivity.value = String(viewer!.getMouseSensitivity());
+    document.querySelector('#mouse-sensitivity-value')!.textContent = `${viewer!.getMouseSensitivity().toFixed(1)}×`;
     for (const [key, sensitivity] of Object.entries(settings.sensitivity)) {
       document.querySelector<HTMLInputElement>(`#look-${key}`)!.value = String(sensitivity);
     }

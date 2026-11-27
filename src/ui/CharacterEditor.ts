@@ -6,6 +6,9 @@ export const characterEditorContent = `
 <label class="select-label" for="walk-speed">Manual walk speed · m/s</label>
 <input id="walk-speed" type="range" min="0.5" max="4" step="0.1" value="1.8" aria-describedby="walk-speed-value position-help">
 <output id="walk-speed-value" for="walk-speed">1.8 m/s</output>
+<label for="mouse-sensitivity">Mouse sensitivity · overall multiplier</label>
+<input id="mouse-sensitivity" type="range" min="0.5" max="2" step="0.1" value="1.5">
+<output id="mouse-sensitivity-value" for="mouse-sensitivity">1.5×</output>
 <div class="particle-settings">
 ${(['x','y','z'] as const).map(axis=>`<label for="position-${axis}">${axis.toUpperCase()} · m<input id="position-${axis}" type="number" step="any" value="${axis==='z'?5:axis==='y'?.075:0}"></label>`).join('')}
 </div>

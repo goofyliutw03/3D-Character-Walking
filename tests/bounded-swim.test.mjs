@@ -7,6 +7,16 @@ import { SceneSwitch } from '../src/scene/SceneSwitch.ts';
 import { pool } from '../src/world/PoolWorldQuery.ts';
 
 const still = { x: 0, z: 0, run: false, jump: false };
+test('pool scene spawn preserves elevated deck during viewer relocation', () => {
+  const scene = createPool();
+  try {
+    for (const shape of Object.values(characterCapsules)) {
+      const controller = new SwimController(scene.walkableWorld, shape);
+      assert.equal(controller.relocate({ ...scene.spawn, y: scene.spawn.y ?? 0 }), true);
+      assert.equal(controller.snapshot.y, pool.deck);
+    }
+  } finally { scene.dispose(); }
+});
 const sample = (swimmer, steps, input = {}, delta = 1 / 60) => {
   for (let i = 0; i < steps; i++) swimmer.update(delta, { ...still, ...input });
   return swimmer.snapshot;

@@ -1,5 +1,7 @@
 # Development plan
 
+2026-11-27：使用者明確授權全部 branches 的 commit／merge 至 main／push 與交接更新。保留既有整合版及本機有限水池、跨場景 Y 和 Release 版本資訊，決策／待驗與來源見 [main 交接清單](handoff-2026-11-27.md)。不新增里程碑，不將整合回歸視為跨設備或正式效能驗收。
+
 2026-11-24 TRAY-02／1V-1：dist 差異更新及復原已驗證，正式 4175 已切換。Windows 成功氣球與登入自啟由使用者實機驗收通過。見 [驗證紀錄](../.kiro/specs/release-system-tray/validation.md)。
 
 2026-11-18 TRAY-01／1V-0：使用者確認系統匣與 Browsing／Restart／Exit 已人工驗收；當時重新登入／重開機自啟仍待回報。

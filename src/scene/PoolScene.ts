@@ -86,7 +86,7 @@ export function createPool(): Environment {
   light();
 
   return {
-    id: 'pool', scene, environment, spawn: { x: 0, z: pool.exitZ }, cityFeatures: false,
+    id: 'pool', scene, environment, spawn: { x: 0, y: pool.deck, z: pool.exitZ }, cityFeatures: false,
     controls: sceneControlPolicy('open', { groundNavigation: false }),
     walkableWorld: {
       bounds: poolGeometry.bounds, obstacles: [], query,

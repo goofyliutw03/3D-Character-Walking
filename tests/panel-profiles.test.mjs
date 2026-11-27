@@ -25,6 +25,11 @@ test('storage fallback, refusal and serialized writes',async()=>{
 });
 import { validViewerSettings } from '../src/settings/validateViewerSettings.ts';
 const citySettings=()=>({environment:'city',scenes:{city:{time:'day',solar:{enabled:false,hour:12,season:'spring',latitude:25},lights:[],headlamp:null}},variant:'man',camera:'overview',following:false,obstruction:'zoom',groundPenetration:true,sensitivity:{thirdHorizontal:1,thirdVertical:1,firstHorizontal:1,firstVertical:1},walkSpeed:1.8,expression:{emotion:'none',speech:''},traffic:{enabled:false,paused:false,npcCount:6,vehicleCount:4,lod:true},particles:{color:'#66ddff',speed:8,size:.14,lifetime:3,maxCount:32,lightEnabled:true,lightColor:'#66ddff',lightIntensity:20,lightRadius:5,lightDecay:2},water:{enabled:true,paused:false,waveStrength:1,flowSpeed:1,quality:'standard'},waterLens:true,shadows:true,lamps:[2],lampDetection:{enabled:false,radius:10},inspector:{enabled:false,pattern:'',ranges:'',uncheckedPaths:[],expandedPaths:{}}});
+test('profile master mouse sensitivity is optional and bounded independently of per-axis settings',()=>{
+ assert.equal(validViewerSettings(citySettings()),true);
+ for(const value of [.5,1.5,2]) assert.equal(validViewerSettings({...citySettings(),mouseSensitivity:value}),true);
+ for(const value of [0,2.1,NaN,null,'1.5']) assert.equal(validViewerSettings({...citySettings(),mouseSensitivity:value}),false);
+});
 test('runtime contract rejects corrupt or out of range settings before applying',()=>{
  assert.equal(validViewerSettings(citySettings()),true);
  for(const mutate of [s=>s.walkSpeed=NaN,s=>s.sensitivity.firstVertical=0,s=>s.traffic.npcCount=25,s=>s.particles.lightIntensity=201,s=>s.water.quality='ultra',s=>s.scenes.city.solar.hour=24,s=>s.lampDetection.radius=-1,s=>s.expression.speech='x'.repeat(161),s=>delete s.scenes.city,s=>s.following=1]){

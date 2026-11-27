@@ -1,6 +1,6 @@
 # 團隊交接與環境入口
 
-更新：2026-11-11（Asia/Taipei）。
+更新：2026-11-27（Asia/Taipei）。最新接手基準為 main 與交付回覆的完整 SHA；見 [11-27 分支收斂交接清單](handoff-2026-11-27.md)。11-26 及更早交接分支均為歷史來源。
 
 ## 取得工作版本
 
@@ -37,13 +37,14 @@
 
 - 既有六里程碑功能及追加功能的證據，以各 spec validation 為準；M6 結束確認、跨 GPU／瀏覽器、手機與摺疊裝置等剩餘驗收見 [remaining-acceptance.md](remaining-acceptance.md) 及 [roadmap](../.kiro/steering/roadmap.md)。
 - viewer-performance 包含兩份來源不同的已交付工作：a0579d2 的 MediaQueryList 重用（原 tasks 1–3），及遠端 209f9ca 的 Inspector 快照重用與 PC 工程量測（重建 tasks 1–6）。後者維持標準 spec 檔名；前者完整保存為同目錄 `mql-*` 歷史文件，task 編號不可混用。見 [PC／Inspector 驗證](../.kiro/specs/viewer-performance/validation.md) 與 [MQL 驗證](../.kiro/specs/viewer-performance/mql-validation.md)。兩者原始量測均為各自版本，不代表合併後 FPS 增幅；手機、跨 GPU、完整 main 前景與正式效能門檻仍待驗。
-- release-system-tray 已完成 tasks 1–4、6 並納入 a0579d2；task 5（人物圖示、Browsing／Restart／Exit、重新登入／重開機）待人工驗收。最新補充紀錄見 [系統匣驗證](../.kiro/specs/release-system-tray/validation.md)，操作見 [release-tray.md](release-tray.md)。本機 Startup 捷徑不會隨 clone 自動安裝。
+- release-system-tray 標準 tasks 已完成；圖示／選單、登入自啟、更新成功通知及版本選單已有使用者驗收。見 [系統匣驗證](../.kiro/specs/release-system-tray/validation.md)，操作見 [release-tray.md](release-tray.md)。本機 Startup 捷徑不會隨 clone 自動安裝，新機自行驗證。
+- 本次 main 收斂保留七場景（city／cave／terrain／flight／room／swim／pool）、跨場景 Y、整體滑鼠倍率及既有方向靈敏度、兩套泳池。池體／動畫／設定限制與待驗事項見最新交接清單。
 - a0579d2 包含先前工作站 `.codex/config.toml` 調整；其路徑與本機服務設定不可直接假設適用另一台電腦。同一 checkout 的共用檔案須依序交接，不可同時修改。
 - 新工作先規劃並依專案授權規則確認；交接不新增功能或關閉未驗收項目。金鑰、憑證、個人設定與本機測量資料不得加入版本控制。
 
 ## 資產
 
-角色來源為 Quaternius，CC0 1.0；小孩比例與 Jump 為專案衍生。已納入 `public/assets/characters/`，原始選用 GLB 保存在 `tools/assets/source/`。來源、授權、雜湊及重建方式見 [ATTRIBUTION](../public/assets/characters/ATTRIBUTION.md)、[manifest](../public/assets/characters/asset-manifest.json) 與 [asset-pipeline.md](asset-pipeline.md)。一般建置不需外部下載或 Blender；未列其他額外必需資產。
+角色來源為 Quaternius，CC0 1.0；小孩比例與 Jump 為專案衍生。已納入 `public/assets/characters/`，原始選用 GLB 保存在 `tools/assets/source/`。來源、授權、雜湊及重建方式見 [ATTRIBUTION](../public/assets/characters/ATTRIBUTION.md)、[manifest](../public/assets/characters/asset-manifest.json) 與 [asset-pipeline.md](asset-pipeline.md)。另有 [城市 CC0 程序建築](../public/assets/city/ATTRIBUTION.md) 及 [專案自製客廳／莊園](../public/assets/environments/ATTRIBUTION.md)，後者未另宣稱 CC0 授權。一般建置不需 Blender。
 
 ## 2026-11-11 合併交接驗證
 
