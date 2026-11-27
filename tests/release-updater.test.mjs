@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
+import { createHash } from 'node:crypto';
 import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import net from 'node:net';
 import { tmpdir } from 'node:os';
@@ -20,10 +21,12 @@ test('dist updates switch an owned HTTP service and preserve it on rejected upda
   await new Promise(resolve => reservation.close(resolve));
   const service = createOwnedService(port);
   const notices = [];
+  const reports = [];
+  const report = async identity => { reports.push({ ...identity, instance: service.instance() }); };
   let rejectStart = false;
   let stops = 0;
   const updater = createUpdater({
-    release, queue, state,
+    release, queue, state, report,
     service: {
       async stop() { stops++; await service.stop(); },
       async start(...args) {
@@ -35,6 +38,12 @@ test('dist updates switch an owned HTTP service and preserve it on rejected upda
   });
   const fetchFile = name => fetch(`http://127.0.0.1:${port}/${name}`);
   const page = async () => (await fetchFile('')).text();
+  const assertReported = async (version, releaseDate) => {
+    const response = await fetchFile('');
+    const indexHash = createHash('sha256').update(Buffer.from(await response.arrayBuffer())).digest('hex');
+    assert.ok(response.headers.get('x-release-instance'));
+    assert.deepEqual(reports.at(-1), { version, releaseDate, indexHash, instance: response.headers.get('x-release-instance') });
+  };
   const readPointer = async () => JSON.parse(await readFile(path.join(state, 'active.json'), 'utf8'));
   try {
     await mkdir(release);
@@ -45,6 +54,7 @@ test('dist updates switch an owned HTTP service and preserve it on rejected upda
     await writeFile(path.join(dist, 'remove.js'), 'remove');
     await updater.initialize();
     assert.equal(await page(), 'legacy Release');
+    await assertReported(null, undefined);
 
     await mkdir(path.join(queue, '.pending-partial'), { recursive: true });
     assert.deepEqual(await publishedVersions(queue), []);
@@ -53,6 +63,8 @@ test('dist updates switch an owned HTTP service and preserve it on rejected upda
     assert.equal(first.baseVersion, null);
     assert.equal(await updater.check(), true);
     assert.equal(await page(), 'first dist');
+    await assertReported(first.targetVersion, first.releaseDate);
+    const firstInstance = reports.at(-1).instance;
     assert.equal(await publishPackage(dist, queue), null);
     const installed = await readPointer();
 
@@ -84,9 +96,12 @@ test('dist updates switch an owned HTTP service and preserve it on rejected upda
     assert.deepEqual(await readPointer(), installed);
     assert.equal(await page(), 'first dist');
     assert.equal(notices.length, 1);
+    await assertReported(first.targetVersion, first.releaseDate);
+    assert.notEqual(reports.at(-1).instance, firstInstance);
 
     assert.equal(await updater.check(), true);
     assert.equal(await page(), 'second dist');
+    await assertReported(second.targetVersion, second.releaseDate);
     assert.equal(await (await fetchFile('keep.js')).text(), 'keep');
     assert.equal(await (await fetchFile('new.js')).text(), 'new');
     assert.equal((await fetchFile('remove.js')).status, 404);
@@ -95,8 +110,11 @@ test('dist updates switch an owned HTTP service and preserve it on rejected upda
     assert.deepEqual((await readdir(state)).filter(name => name.startsWith('version-')), [(await readPointer()).directory]);
 
     await service.stop();
-    await createUpdater({ release, queue, state, service }).initialize();
+    assert.equal(service.instance(), undefined);
+    await assert.rejects(fetchFile(''));
+    await createUpdater({ release, queue, state, service, report }).initialize();
     assert.equal(await page(), 'second dist');
+    await assertReported(second.targetVersion, second.releaseDate);
     const events = (await readFile(path.join(state, 'update.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line));
     for (const event of ['add-file', 'replace-file', 'remove-file', 'healthy', 'cleanup', 'rollback-complete']) {
       assert.ok(events.some(entry => entry.event === event && entry.time), event);

@@ -29,8 +29,38 @@ function Stop-OwnedService {
     }
     if ($script:notification) {
         Remove-Item -LiteralPath $script:notification -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath "$script:notification.status" -ErrorAction SilentlyContinue
         $script:notification = $null
     }
+}
+function Get-ServedRelease {
+    if (-not $script:notification -or -not $script:service -or $script:service.HasExited) { return }
+    $response = $null
+    $sha256 = $null
+    try {
+        $status = Get-Content -LiteralPath "$script:notification.status" -Raw | ConvertFrom-Json
+        if (-not $status.instance -or $status.indexHash -notmatch '^[0-9a-f]{64}$') { return }
+        $request = [Net.HttpWebRequest]::Create("http://127.0.0.1:$Port/")
+        $request.Proxy = $null
+        $request.AllowAutoRedirect = $false
+        $request.Timeout = 1000
+        $request.ReadWriteTimeout = 1000
+        $response = $request.GetResponse()
+        if ($response.StatusCode -ne [Net.HttpStatusCode]::OK -or $response.Headers['X-Release-Instance'] -ne $status.instance) { return }
+        $sha256 = [Security.Cryptography.SHA256]::Create()
+        $hash = [BitConverter]::ToString($sha256.ComputeHash($response.GetResponseStream())).Replace('-', '')
+        if ($hash -eq $status.indexHash) { return $status }
+    } catch {
+        # The status file or HTTP service can be briefly unavailable during a switch.
+    } finally {
+        if ($response) { $response.Dispose() }
+        if ($sha256) { $sha256.Dispose() }
+    }
+}
+function Get-ReleaseLabel($status) {
+    if (-not $status) { return 'Unavailable' }
+    if ($status.version) { return $status.version }
+    return 'Unversioned Release'
 }
 function Start-OwnedService {
     try {
@@ -76,6 +106,22 @@ public static class TrayNative { [DllImport("user32.dll")] public static extern 
     [TrayNative]::DestroyIcon($handle) | Out-Null
     $pen.Dispose(); $graphics.Dispose(); $bitmap.Dispose()
     $menu = New-Object Windows.Forms.ContextMenuStrip
+    $version = $menu.Items.Add('Version')
+    $version.Enabled = $false
+    $details = $menu.Items.Add('Version details')
+    $menu.add_Opening({
+        $version.Text = "Version: $(Get-ReleaseLabel (Get-ServedRelease))"
+    })
+    $details.add_Click({
+        $status = Get-ServedRelease
+        $message = "Release: $(Get-ReleaseLabel $status)`nURL: http://127.0.0.1:$Port/"
+        if ($status) {
+            if ($status.releaseDate) { $message += "`nRelease date: $($status.releaseDate)" }
+            $message += "`nEntry SHA-256: $($status.indexHash)"
+        }
+        [Windows.Forms.MessageBox]::Show($message, 'Character Release version') | Out-Null
+    })
+    $menu.Items.Add([Windows.Forms.ToolStripSeparator]::new()) | Out-Null
     $browse = $menu.Items.Add('Browsing')
     $browse.Font = New-Object Drawing.Font($browse.Font, [Drawing.FontStyle]::Bold)
     $browse.add_Click({

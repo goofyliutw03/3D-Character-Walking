@@ -18,9 +18,11 @@ install 只建立目前使用者 Startup 捷徑，下次登入自動啟動；sta
 
 選單依序：
 
-1. **Browsing**：以預設瀏覽器開啟 `http://127.0.0.1:4175/`，亦支援雙擊圖示。
-2. **Restart**：先停止本功能建立的 Node 服務，再啟動。
-3. **Exit**：移除圖示、停止自有服務，保留下次登入自啟。
+1. **Version**：顯示目前 4175 已驗證的版本。初始 Release 副本尚無更新包版本時顯示 `Unversioned Release`。服務離線或切換尚未完成時可能顯示 `Unavailable`，可重新開啟選單查看。
+2. **Version details**：顯示版本、入口 SHA-256、網址，以及有紀錄時的 Release 日期。資訊以 4175 實際回應的入口為準。
+3. **Browsing**：以預設瀏覽器開啟 `http://127.0.0.1:4175/`，亦支援雙擊圖示。
+4. **Restart**：先停止本功能建立的更新控制器與 Node 服務，再啟動。
+5. **Exit**：移除圖示、停止自有服務，保留下次登入自啟。
 
 4175 在 loopback 提供每使用者的獨立版本。發布由 `./scripts/project.ps1 release` 依序執行 tests → build → Release 同步 → Update 差異包公開。4173／4174 可繼續使用，其中 4174 讀取外部 Release。切版後請重新整理 4175 的頁面。
 

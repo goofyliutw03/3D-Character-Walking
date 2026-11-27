@@ -15,7 +15,7 @@ export class InputManager {
   constructor(win: Window = window, doc: Document = document, private readonly onManual: () => void = () => {}, private readonly onStop: () => void = () => {}) {
     const signal = this.events.signal;
     win.addEventListener('keydown', event => {
-      if (!(gameKeys.has(event.code) || this.flightControls && ['KeyE','KeyQ'].includes(event.code)) || event.isComposing || this.editing(event.target) || event.altKey || event.ctrlKey || event.metaKey) return;
+      if (!(gameKeys.has(event.code) || this.flightControls && ['KeyE','KeyQ','KeyC'].includes(event.code)) || event.isComposing || this.editing(event.target) || event.altKey || event.ctrlKey || event.metaKey) return;
       event.preventDefault();
       if (event.repeat) return;
       this.onManual();
@@ -60,7 +60,7 @@ export class InputManager {
     const z = Number(pressed('backward', 'KeyS', 'ArrowDown')) - Number(pressed('forward', 'KeyW', 'ArrowUp'));
     const jump = this.jumpPending;
     this.jumpPending = false;
-    const vertical = Number(jump || pressed('up', 'KeyE', 'Space')) - Number(pressed('down', 'KeyQ'));
+    const vertical = Number(jump || pressed('up', 'KeyE', 'Space')) - Number(pressed('down', 'KeyQ') || this.keys.has('KeyC'));
     return { x, z, run: this.running, jump, ...(this.flightControls ? { vertical } : {}) };
   }
   get running(): boolean { return this.runToggle || this.keys.has('ShiftLeft') || this.keys.has('ShiftRight'); }

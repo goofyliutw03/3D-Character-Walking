@@ -22,6 +22,7 @@ async function atomicJson(file, value) {
 export function createOwnedService(port) {
   let child;
   let exited;
+  let instance;
   return {
     async start(directory, indexHash) {
       const token = randomUUID();
@@ -42,13 +43,17 @@ export function createOwnedService(port) {
         try {
           const response = await fetch(`http://127.0.0.1:${port}/`, { signal: AbortSignal.timeout(500) });
           const hash = createHash('sha256').update(Buffer.from(await response.arrayBuffer())).digest('hex');
-          if (!ended && response.ok && response.headers.get('x-release-instance') === token && hash === indexHash) return;
+          if (!ended && response.ok && response.headers.get('x-release-instance') === token && hash === indexHash) {
+            instance = token;
+            return;
+          }
         } catch { /* Retry until the owned server responds or exits. */ }
         await delay(100);
       }
       throw new Error(errors.trim() || 'Owned Node failed the HTTP index health check');
     },
     async stop() {
+      instance = undefined;
       if (!child) return;
       child.stdin.end();
       const timer = setTimeout(() => child.kill(), 2000);
@@ -62,10 +67,11 @@ export function createOwnedService(port) {
     running() {
       return !!child && child.exitCode === null && child.signalCode === null && child.pid !== undefined;
     },
+    instance() { return instance; },
   };
 }
 
-export function createUpdater({ release, queue, state, service, notify = async () => {} }) {
+export function createUpdater({ release, queue, state, service, notify = async () => {}, report = async () => {} }) {
   const pointer = path.join(state, 'active.json');
   const versionPath = version => path.join(state, version.directory);
   let active;
@@ -80,6 +86,15 @@ export function createUpdater({ release, queue, state, service, notify = async (
     await log('start', { version: version.version });
     await service.start(versionPath(version), new Map(version.files).get('index.html'));
     await log('healthy', { version: version.version });
+  }
+
+  async function reportActive() {
+    const { version, releaseDate, files } = active;
+    try {
+      await report({ version, releaseDate, indexHash: new Map(files).get('index.html') });
+    } catch (error) {
+      console.error(`Could not report active Release: ${error.message}`);
+    }
   }
 
   async function cleanup(version) {
@@ -122,6 +137,7 @@ export function createUpdater({ release, queue, state, service, notify = async (
         }
       }
       await start(active);
+      await reportActive();
     },
 
     async check() {
@@ -144,7 +160,7 @@ export function createUpdater({ release, queue, state, service, notify = async (
         const payload = path.join(queue, target, 'payload');
         if (!equal(await inventory(payload), changed)) throw new Error('Package payload SHA-256 or file list mismatch');
         const directory = await mkdtemp(path.join(state, 'version-'));
-        candidate = { version: target, directory: path.basename(directory), files: manifest.files };
+        candidate = { version: target, releaseDate: manifest.releaseDate, directory: path.basename(directory), files: manifest.files };
         const changedFiles = new Map(changed);
         const before = new Map(base);
         for (const [name, hash] of manifest.files) {
@@ -163,6 +179,7 @@ export function createUpdater({ release, queue, state, service, notify = async (
         await atomicJson(pointer, candidate);
         const previous = active;
         active = candidate;
+        await reportActive();
         try {
           await log('committed', { ...details, releaseDate: manifest.releaseDate });
           await cleanup(previous);
@@ -185,6 +202,7 @@ export function createUpdater({ release, queue, state, service, notify = async (
             await service.stop();
             await recoveryLog('rollback', { version: active.version });
             await service.start(versionPath(active), new Map(active.files).get('index.html'));
+            await reportActive();
             await recoveryLog('rollback-complete', { version: active.version });
           } catch (rollbackError) {
             await recoveryLog('rollback-failed', { error: rollbackError.message });
@@ -203,6 +221,7 @@ async function run(release, state, port, notification) {
   const updater = createUpdater({
     release, queue: path.join(path.dirname(release), 'Update'), state, service,
     notify: event => atomicJson(notification, event),
+    report: identity => notification && atomicJson(`${notification}.status`, { ...identity, instance: service.instance() }),
   });
   const shutdown = new AbortController();
   process.stdin.resume();

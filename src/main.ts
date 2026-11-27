@@ -163,8 +163,7 @@ const updateCharacterStatus = (state: CharacterStatus): void => {
   document.querySelector('#run')!.textContent = verticalMovement ? 'Boost' : 'Run';
   for (const id of ['mobile-auto-run','auto-run','auto-run-resume','touch-auto-run']) {
     const button = document.getElementById(id) as HTMLButtonElement | null;
-    if (button) button.disabled = !!state.flight ||
-      !!swim && state.cameraView !== 'first-person' && state.cameraView !== 'third-person' && state.cameraView !== 'fisheye';
+      if (button) button.disabled = swim?.climbing === true;
   }
   if (state.flight) {
     document.querySelector('#flight-status')!.textContent = `${state.flight.mode === 'flight' ? 'Flying · Jump animation fallback' : 'Landed · ground movement'} · ${state.motion.speed.toFixed(1)}m/s${state.flight.warning ? ' · Boundary warning: ' + state.flight.warning : ''} · discarded ${state.flight.droppedTime.toFixed(2)}s`;

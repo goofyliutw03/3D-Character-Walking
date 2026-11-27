@@ -1,4 +1,4 @@
-import { Scene, type Group, type Vector3 } from 'three';
+import { Scene, type Box3, type Group, type Vector3 } from 'three';
 import type { WalkableWorld } from '../character/motion';
 import type { SolarSettings } from './SolarPosition';
 import type { TimeOfDay } from './CityScene';
@@ -9,7 +9,7 @@ import { sceneControlPolicy, type SceneControlPolicy } from './SceneControlPolic
 import type { EnvironmentId } from './EnvironmentId.ts';
 import type { SwimExit } from '../character/SwimController.ts';
 import type { WaterVolume } from '../water/WaterVolume.ts';
-import type { Point3 } from '../world/WorldQuery.ts';
+import type { Capsule, Point3 } from '../world/WorldQuery.ts';
 export type { EnvironmentId } from './EnvironmentId.ts';
 export interface TerrainSettings { quality: 'standard' | 'low'; wind: boolean }
 export interface Environment {
@@ -29,6 +29,8 @@ export interface Environment {
   readonly swim?: {
     water: WaterVolume;
     exit: SwimExit;
+    nearBodyCollision(position: Point3, reach: number): boolean;
+    fitBody(body: Box3, position: Point3, capsule?: Capsule, holdDepth?: boolean): Point3 | undefined;
     constrainCamera(position: Vector3, clearance: number): void;
     updateCamera(position: Point3): boolean;
   };

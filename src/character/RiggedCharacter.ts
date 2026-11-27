@@ -33,6 +33,11 @@ export class RiggedCharacter {
   private selected: CharacterAction = 'idle';
   private disposed = false;
   private wasClimbing = false;
+  private readonly bodyBounds = new Box3();
+  sampleBodyBounds(): Box3 {
+    this.root.updateMatrixWorld(true);
+    return this.bodyBounds.makeEmpty().expandByObject(this.root, true);
+  }
   get action(): CharacterAction { return this.selected; }
   get height(): number { return this.definition.height; }
   get eyeHeight(): number {

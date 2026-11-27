@@ -20,7 +20,7 @@ import { Character } from '../character/Character';
 import { CharacterController } from '../character/CharacterController';
 import { FlightController } from '../character/FlightController';
 import { PoolSwimController } from '../character/PoolSwimController';
-import { SwimController, type SwimDepthDirection } from '../character/SwimController';
+import { SwimController, swimAutoDepth, type SwimDepthDirection } from '../character/SwimController';
 import { defaultSwimAppearance, validSwimAppearance, type SwimAppearance } from '../character/SwimAppearance.ts';
 import { resetShadowResources, releaseSceneGpuResources } from './ContextResources';
 import type { CharacterVariant, MotionSnapshot } from '../character/motion';
@@ -333,7 +333,8 @@ export class ViewerApp {
       : this.tour.snapshot.status === 'running' ? this.tour.sample(this.motion, delta)
       : this.navigation.status === 'running' ? this.navigation.sample(this.motion, delta) : manual;
     const speedOverride = automated ? (intent.run ? 4 : 1.8) : undefined;
-    this.motion = swim ? swim.update(frameDelta, intent, speedOverride, this.autoRun.running ? this.swimSpiral : undefined)
+    this.motion = swim ? swim.update(frameDelta, intent, speedOverride, this.autoRun.running ? this.swimSpiral : undefined,
+      this.autoRun.running && swim.submerged && !intent.vertical && !intent.jump ? swimAutoDepth(pitch) : undefined)
       : this.movement.update(this.movement instanceof CharacterController ? delta : frameDelta, intent, speedOverride);
     if (swim && this.swimSpiral) {
       this.autoRun.heading = this.motion.heading;
@@ -577,14 +578,11 @@ export class ViewerApp {
 
   setCamera(preset: CameraPreset): void {
     if (preset !== this.cameras.view) this.stopSwimSpiral();
-    if (this.movement instanceof SwimController && preset !== 'first-person' && preset !== 'third-person' && preset !== 'fisheye' && this.autoRun.enabled) {
-      this.setAutoRun(false);
-    }
     this.tap.cancel();
     this.mouseOrbit.cancel();
     this.cameraModes.select(preset);
     if (this.cameraModes.inputMode === 'standard' && this.cameraInput.lockActive) {
-      this.cameraInput.releaseLock(); this.autoRun.suspend();
+      this.cameraInput.releaseLock();
     }
     this.character.root.visible = !this.assets.current && this.cameras.characterVisible;
     if (this.assets.current) this.assets.current.root.visible = this.cameras.characterVisible;
@@ -803,7 +801,7 @@ export class ViewerApp {
   }
   setAutoRun(enabled: boolean): void {
     if (this.disposed || this.contextLost || document.hidden || (enabled && !this.cameraModes.autoRunEnabled)) return;
-    if (enabled && this.movement instanceof SwimController && !this.hasExternalSwimView()) return;
+    if (enabled && this.movement instanceof SwimController && this.movement.mode === 'climb') return;
     this.input.stop();
     this.navigation.cancel();
     this.tour.cancel();
@@ -907,6 +905,21 @@ export class ViewerApp {
     const swim = this.movement instanceof SwimController ? this.movement : null;
     model.update(this.motion, delta, swim ? this.swimAppearance : undefined, swim?.mode === 'swim',
       this.reducedMotion.matches, swim?.climbProgress);
+    const pool = this.scenes.active.swim;
+    swim?.setBodyReach(0);
+    if (!swim || !pool || !pool.nearBodyCollision(this.motion, model.height + .35)) return;
+    const body = model.sampleBodyBounds();
+    if (swim.mode === 'swim') {
+      const { x, z, heading } = this.motion;
+      const dx = Math.sin(heading), dz = Math.cos(heading);
+      const front = dx * ((dx < 0 ? body.min.x : body.max.x) - x) + dz * ((dz < 0 ? body.min.z : body.max.z) - z);
+      swim.setBodyReach(Math.max(0, front - swim.shape.radius + .1));
+    }
+    const holdDepth = this.autoRun.running && Math.abs(this.autoRun.pitch) <= 10 * Math.PI / 180 && !this.swimSpiral;
+    const fit = pool.fitBody(body, this.motion, swim.mode === 'swim' ? swim.shape : undefined, holdDepth);
+    if (!fit) return;
+    if (swim.fitBody(fit)) this.motion = swim.snapshot;
+    model.root.position.set(fit.x, fit.y, fit.z);
   }
   bindDirection(button: HTMLButtonElement, direction: MoveDirection): void { this.input.bindDirection(button, direction); }
   getCharacterStatus(): CharacterStatus {
