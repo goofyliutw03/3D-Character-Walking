@@ -340,7 +340,7 @@ export class ViewerApp {
       : this.navigation.status === 'running' ? this.navigation.sample(this.motion, delta) : manual;
     const speedOverride = automated ? (intent.run ? 4 : 1.8) : undefined;
     this.motion = swim ? swim.update(frameDelta, intent, speedOverride, this.autoRun.running ? this.swimSpiral : undefined,
-      this.autoRun.running && swim.submerged && !intent.vertical && !intent.jump ? swimAutoDepth(pitch) : undefined)
+      this.autoRun.running && swim.submerged && !manual.vertical && !manual.jump && !this.swimSpiral ? swimAutoDepth(pitch) : undefined)
       : this.movement.update(this.movement instanceof CharacterController ? delta : frameDelta, intent, speedOverride);
     if (swim && this.swimSpiral) {
       this.autoRun.heading = this.motion.heading;
