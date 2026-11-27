@@ -85,7 +85,12 @@ export function controlPanelContent(obstructionHint: string): string {
     ] },
     { id: 'scene', label: 'Scene display', open: false, children: [
       { id: 'environment', label: 'Environment', open: true, content: `<label class="select-label" for="environment">Active environment</label>
-        <select id="environment"><option value="city">City street</option><option value="cave">Rock chamber</option><option value="terrain">Natural terrain</option><option value="flight">Bounded flight</option></select>
+        <select id="environment"><option value="city">City street</option><option value="cave">Rock chamber</option><option value="terrain">Natural terrain</option><option value="flight">Bounded flight</option><option value="pool">Bounded pool</option></select>
+        <fieldset id="pool-controls" hidden inert><legend>Pool</legend>
+          <button id="pool-exit" type="button">Climb out at marked edge</button>
+          <p id="pool-status" class="hint" role="status"></p>
+          <p id="pool-result" class="hint" role="status"></p>
+        </fieldset>
         <fieldset id="flight-controls" hidden><legend>Flight mode</legend>
           <button id="flight-takeoff" type="button">Take off</button><button id="flight-land" type="button">Land below · 2m</button>
           <p class="hint">WASD / arrows: world directions. E / Space: ascend. Q: descend. Shift / Run: boost (24m/s); cruise 8m/s. Release to slow; Stop brakes. Upright posture uses the existing Jump animation fallback.</p>

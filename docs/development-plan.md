@@ -1,5 +1,6 @@
 # Development plan
 
+2026-11-18 [1Y-16] 使用者確認 1Y-15 並核准 [bounded-swim](../.kiro/specs/bounded-swim/)。有限水池驗證浮力、水阻、池底／池壁／池緣掃掠、指定池緣出水，以及共享權威水位的水下相機。驗證與交付狀態見該 spec。海域、地下水道與太空保留後批。
 2026-11-18 [1Y-15] 接續使用者確認1Y-14，執行 [bounded-flight](../.kiro/specs/bounded-flight/)：正常Environment入口、有界飛行／禁入／警戒、三維加減速與升降、連續膠囊掃掠及明確合法著陸、程序天空／網格雲、Profiles v1相容。固定步進僅flight；共用Context恢復缺口回修multi-scene-foundation。依序inline審閱、無委派／commit／push。驗證與交付狀態見該spec validation；水域／太空待本批結束確認，既有真機／效能驗收保留。
 
 2026-11-10 [1Y-14] 使用者確認1Y-13並核准第二批 [ground-volume-world-query](../.kiro/specs/ground-volume-world-query/)：地表同源支撐、洞穴有限三維盒／直立膠囊、洞頂／多層與角色淨空，依序inline審閱與逐項驗證。飛行／水域／太空與任意mesh剛體仍在後續；不概括關閉M6／真機待驗。共用檔必須依序進行，不可平行。

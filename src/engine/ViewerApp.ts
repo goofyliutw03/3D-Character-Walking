@@ -16,6 +16,7 @@ import { SceneRenderer, type RenderStats } from './SceneRenderer';
 import type { NeedleRuntime } from './NeedleRuntime';
 import { Character } from '../character/Character';
 import { CharacterController } from '../character/CharacterController';
+import { SwimController } from '../character/SwimController';
 import { FlightController } from '../character/FlightController';
 import { resetShadowResources, releaseSceneGpuResources } from './ContextResources';
 import type { CharacterVariant, MotionSnapshot } from '../character/motion';
@@ -45,7 +46,7 @@ import { TrafficView } from '../simulation/TrafficView.ts';
 import { CityBuildings, type CityAssetState } from '../scene/CityBuildings.ts';
 
 export type CameraPreset = CameraView;
-export interface CharacterStatus { flight: { mode: 'ground' | 'flight'; warning: string | null; droppedTime: number } | null; groundPenetration: boolean; autoRun: boolean; autoRunPaused: boolean; variant: CharacterVariant; action: MotionSnapshot['action']; running: boolean; following: boolean; firstPerson: boolean; cameraView: CameraView; navigation: NavigationStatus; tour: TourSnapshot; obstructionMode: ObstructionMode; motion: Readonly<MotionSnapshot>; walkSpeed: number; buildings: CityAssetState }
+export interface CharacterStatus { swim: { mode: 'ground' | 'swim'; depth: number } | null; flight: { mode: 'ground' | 'flight'; warning: string | null; droppedTime: number } | null; groundPenetration: boolean; autoRun: boolean; autoRunPaused: boolean; variant: CharacterVariant; action: MotionSnapshot['action']; running: boolean; following: boolean; firstPerson: boolean; cameraView: CameraView; navigation: NavigationStatus; tour: TourSnapshot; obstructionMode: ObstructionMode; motion: Readonly<MotionSnapshot>; walkSpeed: number; buildings: CityAssetState }
 
 export class ViewerApp {
   private sceneSettings: Partial<Record<EnvironmentId, SceneSettings>> = {};
@@ -62,7 +63,7 @@ export class ViewerApp {
   private readonly view: SceneRenderer;
   private readonly controls: OrbitControls;
   private readonly character: Character;
-  private movement: CharacterController | FlightController;
+  private movement: CharacterController | FlightController | SwimController;
   private readonly input: InputManager;
   private navigation: DestinationNavigation;
   private groundPicker: GroundPicker;
@@ -128,7 +129,7 @@ export class ViewerApp {
     this.navigation = new DestinationNavigation(this.city.walkableWorld);
     this.tour = new PathTour(this.city.walkableWorld);
     this.input = new InputManager(window, document, () => { this.navigation.cancel(); this.tour.cancel(); this.tap?.cancel(); },
-      () => { if (this.movement instanceof FlightController) this.movement.stop(); });
+      () => { if (this.movement instanceof FlightController || this.movement instanceof SwimController) this.movement.stop(); });
     this.motion = this.movement.update(0, this.input.sample());
     this.city.updateLampShadowPosition(this.motion);
     this.character.update(this.motion, 0);
@@ -301,7 +302,7 @@ export class ViewerApp {
       : this.autoRun.active ? { x: 0, z: 0, run: false, jump: false }
       : this.tour.snapshot.status === 'running' ? this.tour.sample(this.motion, delta)
       : this.navigation.status === 'running' ? this.navigation.sample(this.motion, delta) : manual;
-    this.motion = this.movement.update(this.movement instanceof FlightController ? frameDelta : delta, intent, automated ? (intent.run ? 4 : 1.8) : undefined);
+    this.motion = this.movement.update(this.movement instanceof FlightController || this.movement instanceof SwimController ? frameDelta : delta, intent, automated ? (intent.run ? 4 : 1.8) : undefined);
     if (active.cityFeatures) this.city.updateLampShadowPosition(this.motion);
     this.character.update(this.motion, delta);
     this.assets.current?.update(this.motion, delta);
@@ -323,6 +324,10 @@ export class ViewerApp {
     });
     this.cameras.update(this.getCameraSubject(), delta, immediate);
     this.updateObstruction(delta, immediate);
+    if (active.updateCamera) {
+      active.updateCamera(this.camera.position);
+      this.scenes.syncAppearance();
+    }
     active.headlamp?.update(this.getCameraSubject(), waterDelta, immediate,
       this.cameras.view === 'first-person' ? this.camera : undefined);
     if (this.solarReport) {
@@ -382,29 +387,36 @@ export class ViewerApp {
   get cityFeatures(): boolean { return this.scenes.active.cityFeatures; }
 
   async selectEnvironment(id: EnvironmentId): Promise<boolean> {
-    if (this.disposed || this.contextLost || !['city','terrain','cave','flight'].includes(id)) return false;
+    if (this.disposed || this.contextLost || !['city','terrain','cave','flight','pool'].includes(id)) return false;
     this.sceneSettings[this.environmentId] = this.captureSceneSettings();
+    let prepared: typeof this.movement;
+    let previous: typeof this.movement | undefined;
     return this.scenes.select(id, async () => {
       const next = id === 'city'
       ? this.cityEnvironment
+      : id === 'pool' ? (await import('../scene/PoolScene')).createPool()
       : id === 'flight' ? (await import('../scene/FlightScene')).createFlight()
       : id === 'terrain' ? (await import('../scene/TerrainScene')).createTerrain()
       : (await import('../scene/CaveScene')).createCave();
       try {
-        const candidate = next.id === 'flight' ? new FlightController(next.walkableWorld, characterCapsules[this.variant]) : new CharacterController(next.walkableWorld, characterCapsules[this.variant]);
-        if (!candidate.relocate({ ...next.spawn, y: 0 })) throw Error('Invalid scene spawn');
+        const capsule = characterCapsules[this.variant];
+        prepared = next.id === 'pool' ? new SwimController(next.walkableWorld, capsule)
+          : next.id === 'flight' ? new FlightController(next.walkableWorld, capsule)
+          : new CharacterController(next.walkableWorld, capsule);
+        if (!prepared.relocate({ y: 0, ...next.spawn })) throw Error('Invalid scene spawn');
       } catch (error) { next.dispose(); throw error; }
       return next;
     }, next => {
+      const restoring = previous !== undefined;
+      previous ??= this.movement;
       this.stop();
       this.sceneDefaults[next.id] ??= this.captureSceneSettings();
       const saved = this.sceneSettings[next.id];
       if (saved) this.applySceneSettings(saved);
-      const speed = this.movement.walkSpeed;
-      this.movement = next.id === 'flight' ? new FlightController(next.walkableWorld, characterCapsules[this.variant]) : new CharacterController(next.walkableWorld, characterCapsules[this.variant]);
-      this.input.setFlightControls(next.id === 'flight');
-      this.movement.setWalkSpeed(speed);
-      this.movement.relocate({ ...next.spawn, y: 0 });
+      if (!restoring && !prepared.setCapsule(characterCapsules[this.variant])) throw Error('Invalid scene spawn capsule');
+      prepared.setWalkSpeed(previous.walkSpeed);
+      this.movement = restoring ? previous : prepared;
+      this.input.setFlightControls(next.id === 'flight' || next.id === 'pool');
       this.motion = this.movement.snapshot;
       this.navigation = new DestinationNavigation(next.walkableWorld, this.movement.shape);
       this.groundPicker = new GroundPicker(next.environment.children);
@@ -428,7 +440,9 @@ export class ViewerApp {
       this.character.update(this.motion, 0);
       this.assets.current?.update(this.motion, 0);
       next.headlamp?.update(this.getCameraSubject(), 0, this.reducedMotion.matches);
-      this.view.renderer.domElement.setAttribute('aria-label', `Interactive ${id}`);
+      next.updateCamera?.(this.camera.position);
+      this.scenes.syncAppearance();
+      this.view.renderer.domElement.setAttribute('aria-label', `Interactive ${next.id}`);
     });
   }
 
@@ -641,6 +655,14 @@ export class ViewerApp {
     this.cameraModes.resetGestures(); this.autoRun.stop(); this.mouseOrbit.cancel(); this.cameras.endCharacterOrbit(true); this.input.stop();
     this.characterReport?.(this.getCharacterStatus());
   }
+  climbOutOfPool(): boolean {
+    if (this.disposed || this.contextLost || document.hidden || !(this.movement instanceof SwimController)) return false;
+    if (!this.movement.climbOut()) return false;
+    this.input.stop();
+    this.motion = this.movement.snapshot;
+    this.characterReport?.(this.getCharacterStatus());
+    return true;
+  }
   setFlightMode(mode: 'flight' | 'ground'): boolean {
     if (this.disposed || this.contextLost || document.hidden || !(this.movement instanceof FlightController)) return false;
     const accepted = mode === 'flight' ? this.movement.takeOff() : this.movement.land();
@@ -649,7 +671,7 @@ export class ViewerApp {
   }
   bindDirection(button: HTMLButtonElement, direction: MoveDirection): void { this.input.bindDirection(button, direction); }
   getCharacterStatus(): CharacterStatus {
-    return { flight: this.movement instanceof FlightController ? { mode: this.movement.mode, warning: this.movement.warning?.id ?? null, droppedTime: this.movement.droppedTime } : null, groundPenetration: this.groundPenetration, autoRun: this.autoRun.enabled, autoRunPaused: this.autoRun.enabled && !this.autoRun.running, variant: this.variant, action: this.motion.action, running: this.autoRun.running || this.input.running || this.navigation.status === 'running' || (this.tour.snapshot.status === 'running' && this.tour.snapshot.speed > 1.8), following: this.cameras.following, firstPerson: this.cameras.view === 'first-person', cameraView: this.cameras.view, navigation: this.navigation.status, tour: this.tour.snapshot, obstructionMode: this.obstruction.mode, motion: { ...this.motion }, walkSpeed: this.movement.walkSpeed, buildings: this.buildings.state };
+    return { swim: this.movement instanceof SwimController ? { mode: this.movement.mode, depth: this.movement.depth } : null, flight: this.movement instanceof FlightController ? { mode: this.movement.mode, warning: this.movement.warning?.id ?? null, droppedTime: this.movement.droppedTime } : null, groundPenetration: this.groundPenetration, autoRun: this.autoRun.enabled, autoRunPaused: this.autoRun.enabled && !this.autoRun.running, variant: this.variant, action: this.motion.action, running: this.autoRun.running || this.input.running || this.navigation.status === 'running' || (this.tour.snapshot.status === 'running' && this.tour.snapshot.speed > 1.8), following: this.cameras.following, firstPerson: this.cameras.view === 'first-person', cameraView: this.cameras.view, navigation: this.navigation.status, tour: this.tour.snapshot, obstructionMode: this.obstruction.mode, motion: { ...this.motion }, walkSpeed: this.movement.walkSpeed, buildings: this.buildings.state };
   }
   setShadows(enabled: boolean): void {
     this.shadows = enabled;

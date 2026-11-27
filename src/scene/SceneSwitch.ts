@@ -1,4 +1,5 @@
 import { Scene, type Group } from 'three';
+import type { Point3 } from '../world/WorldQuery';
 import type { WalkableWorld } from '../character/motion';
 import type { SolarSettings } from './SolarPosition';
 import type { TimeOfDay } from './CityScene';
@@ -6,14 +7,14 @@ import type { EnvironmentLight } from './EnvironmentLights';
 import type { Headlamp } from './Headlamp';
 import { sceneControlPolicy, type SceneControlPolicy } from './SceneControlPolicy.ts';
 
-export type EnvironmentId = 'city' | 'cave' | 'terrain' | 'flight';
+export type EnvironmentId = 'city' | 'cave' | 'terrain' | 'flight' | 'pool';
 export interface TerrainSettings { quality: 'standard' | 'low'; wind: boolean }
 export interface Environment {
   readonly id: EnvironmentId;
   readonly scene: Scene;
   readonly environment: Group;
   readonly walkableWorld: WalkableWorld;
-  readonly spawn: { x: number; z: number };
+  readonly spawn: { x: number; y?: number; z: number };
   readonly cityFeatures: boolean;
   readonly controls?: SceneControlPolicy;
   readonly ceiling?: number;
@@ -31,6 +32,7 @@ export interface Environment {
     setTime(time: TimeOfDay): boolean;
   };
   update?(delta: number, reducedMotion: boolean): void;
+  updateCamera?(position: Point3): void;
   dispose(): void;
 }
 

@@ -1,3 +1,5 @@
+2026-11-18 [1Y-16] 使用者確認 1Y-15 並核准 [bounded-swim](../specs/bounded-swim/)，含有限水池、乾濕轉換、膠囊掃掠、出水淨空、水下相機與雙 runtime 驗證。共用 WorldQuery、Viewer 與場景綁定依序修改。
+
 2026-11-10 [1Y-14] 使用者確認1Y-13並核准第二批 [ground-volume-world-query](../specs/ground-volume-world-query/)：地表同源支撐、洞穴有限三維盒／直立膠囊、洞頂／多層與角色淨空，依序inline審閱與逐項驗證。飛行／水域／太空與任意mesh剛體仍在後續；不概括關閉M6／真機待驗。共用檔必須依序進行，不可平行。
 
 2026-11-18 [1Y-15] 使用者確認1Y-14並接續 [bounded-flight](../specs/bounded-flight/)；三維有界飛行、桌面／觸控升降、膠囊高速掃掠、禁入與警戒、合法著陸及程序天空／雲。共用Context恢復補修由multi-scene-foundation擁有。共用檔必須依序進行，不可平行；無commit／push／模型切換，水域／太空待本批確認。實際驗證／Release／索引見validation。
