@@ -1,6 +1,7 @@
 import { isEnvironmentId } from './scene/EnvironmentId';
 import { bindEnvironmentLights } from './ui/EnvironmentLightControls';
 import { PanelProfiles, profileControlsContent } from './ui/PanelProfiles';
+import { fpsBoundary, fpsHealth, type FpsHealth } from './ui/FpsHealth';
 import { showTourStatus } from './ui/TourControls';
 import { bindCharacterEditor, showEditorState } from './ui/CharacterEditor';
 import { SolarControls } from './ui/SolarControls';
@@ -96,12 +97,36 @@ app.innerHTML = `
     </div>
   </main>
   <div class="asset-feedback"><div id="asset-status" class="asset-status" role="status" aria-live="polite" aria-atomic="true">Starting scene…</div></div>
-  <footer><span><span class="status-dot"></span> <span id="renderer-status" role="status">Starting scene…</span></span><span id="camera-status">Camera: Overview</span><span><span id="fps">—</span> FPS <span class="footer-divider">/</span> <span id="scene-metrics">1 unit = 1 meter</span></span></footer>
+  <footer><span><span class="status-dot"></span> <span id="renderer-status" role="status">Starting scene…</span></span><span id="camera-status">Camera: Overview</span><span id="fps-metrics"><span id="fps-light" role="status" aria-label="FPS 尚未取樣"></span><span id="fps">—</span> FPS <span class="footer-divider">/</span> <span id="scene-metrics"><span id="draw-count">—</span> draws · <span id="triangle-count">—</span> triangles</span></span></footer>
 `;
 const controlPanel = new ControlPanel(document.querySelector<HTMLElement>('main')!);
 const scene = document.querySelector<HTMLElement>('#scene')!;
 const status = document.querySelector<HTMLElement>('#renderer-status')!;
 const fps = document.querySelector<HTMLElement>('#fps')!;
+const fpsMetrics = document.querySelector<HTMLElement>('#fps-metrics')!;
+const fpsLight = document.querySelector<HTMLElement>('#fps-light')!;
+const fpsRecording = document.querySelector<HTMLInputElement>('#fps-recording')!;
+const fpsRecordingStatus = document.querySelector<HTMLElement>('#fps-recording-status')!;
+const drawCount = document.querySelector<HTMLElement>('#draw-count')!;
+const triangleCount = document.querySelector<HTMLElement>('#triangle-count')!;
+const sceneMetrics = document.querySelector<HTMLElement>('#scene-metrics')!;
+const fpsLabels: Record<FpsHealth, string> = { normal: 'FPS 正常', warning: 'FPS 警告', critical: 'FPS 嚴重' };
+let previousFps: number | undefined;
+function reportFps(value: number): void {
+  const state = fpsHealth(value);
+  fps.textContent = String(value);
+  fpsMetrics.dataset.health = state;
+  if (fpsLight.getAttribute('aria-label') !== fpsLabels[state]) fpsLight.setAttribute('aria-label', fpsLabels[state]);
+  const boundary = fpsBoundary(previousFps, value);
+  previousFps = value;
+  if (!boundary || !fpsRecording.checked || !panelProfiles) return;
+  try {
+    panelProfiles.downloadFpsSnapshot(boundary);
+    fpsRecordingStatus.textContent = `${value} FPS · 已送出 JSON 下載要求。`;
+  } catch (error) {
+    fpsRecordingStatus.textContent = `無法匯出 FPS 診斷 JSON：${error instanceof Error ? error.message : String(error)}`;
+  }
+}
 const error = document.querySelector<HTMLElement>('#scene-error')!;
 const assetStatus = document.querySelector<HTMLElement>('#asset-status')!;
 const viewport = document.querySelector<HTMLElement>('.viewport')!;
@@ -224,10 +249,10 @@ try {
     const element = document.querySelector('#traffic-status')!;
     if (element.textContent !== text) element.textContent = text;
   };
-  viewer = new ViewerApp(scene, message => { status.textContent = message; }, value => { fps.textContent = String(value); }, updateCharacterStatus, reportAsset, metrics => {
-    const element = document.querySelector<HTMLElement>('#scene-metrics')!;
-    element.textContent = `${metrics.drawCalls} draws · ${(metrics.triangles / 1000).toFixed(1)}k triangles`;
-    element.dataset.geometries = String(metrics.geometries); element.dataset.textures = String(metrics.textures);
+  viewer = new ViewerApp(scene, message => { status.textContent = message; }, reportFps, updateCharacterStatus, reportAsset, metrics => {
+    drawCount.textContent = String(metrics.drawCalls);
+    triangleCount.textContent = `${(metrics.triangles / 1000).toFixed(1)}k`;
+    sceneMetrics.dataset.geometries = String(metrics.geometries); sceneMetrics.dataset.textures = String(metrics.textures);
   }, state => {
     document.querySelector('#target-status')!.textContent = `Target · ${state.phase === 'ready' ? 'Rigged woman · Ready' : state.phase === 'error' ? 'Fallback · Could not load' : 'Loading · procedural preview'}`;
     document.querySelector<HTMLButtonElement>('#retry-target')!.hidden = state.phase !== 'error';
@@ -251,7 +276,7 @@ try {
     const pool = active === 'pool';
     environment.value = active;
     viewport.dataset.environment = active;
-    environmentStatus.textContent = ready ? (swim ? 'Tidal Pool ready.' : active === 'room' ? '莊園豪宅已就緒。' : city ? 'City street ready.' : active === 'flight' ? 'Flight ready.' : active === 'terrain' ? 'Terrain ready.' : 'Cave ready.') : 'Could not switch. Current environment kept.';
+    environmentStatus.textContent = ready ? (pool ? 'Bounded Pool ready.' : swim ? 'Tidal Pool ready.' : active === 'room' ? '莊園豪宅已就緒。' : city ? 'City street ready.' : active === 'flight' ? 'Flight ready.' : active === 'terrain' ? 'Terrain ready.' : 'Cave ready.') : 'Could not switch. Current environment kept.';
     document.querySelector<HTMLElement>('#swim-controls')!.hidden = !swim;
     document.querySelector<HTMLElement>('#swim-controls')!.inert = !swim;
     document.querySelector('#swim-result')!.textContent = '';

@@ -99,6 +99,7 @@ export async function createManor(): Promise<Environment> {
   scene.background = new Color('#ccd5d5');
   const environment = new Group();
   environment.name = 'Limestone manor';
+  environment.userData.reuseCameraFadeMaterials = true;
   model.userData.independentCameraBlockers = true;
   environment.add(model);
   scene.add(environment);

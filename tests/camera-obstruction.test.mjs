@@ -22,12 +22,13 @@ function setup() {
   return { environment, wall, desired, rendered, target, effect, tick, dispose };
 }
 
-test('obstruction 2.1–2.3: zoom approaches and returns smoothly after prolonged obstruction without corrupting desired', () => {
+test('obstruction 2.1–2.3: zoom clears a wall on the first frame and returns smoothly without corrupting desired', () => {
   const { environment, wall, desired, rendered, target, tick, dispose } = setup();
   try {
     const original = desired.position.clone(), focus = target.clone(), fullDistance = desired.position.distanceTo(focus);
     tick(); let previous = rendered.position.distanceTo(focus);
-    assert.ok(previous < fullDistance && previous > 3);
+    assert.ok(rendered.position.z > -2.5);
+    assert.ok(previous < fullDistance);
     for (let frame = 0; frame < 180; frame++) {
       tick(); const distance = rendered.position.distanceTo(focus); assert.ok(distance <= previous + 1e-9); previous = distance;
     }
@@ -38,6 +39,16 @@ test('obstruction 2.1–2.3: zoom approaches and returns smoothly after prolonge
     assert.ok(rendered.position.distanceTo(original) < 1e-8);
     desired.position.set(4, 4, -10); desired.lookAt(target); tick(true);
     assert.deepEqual(rendered.position, desired.position);
+  } finally { dispose(); }
+});
+
+test('zoom stays in front of a wall closer to the character than the clearance margin', () => {
+  const { wall, rendered, tick, dispose } = setup();
+  try {
+    wall.position.z = -0.6;
+    tick();
+    assert.ok(rendered.position.z > -0.1);
+    assert.ok(rendered.position.z < 0);
   } finally { dispose(); }
 });
 

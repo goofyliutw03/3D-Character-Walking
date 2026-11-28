@@ -463,6 +463,19 @@ footer>span:first-child {
   padding:0 10px;
   color:#c3c9b7
 }
+#fps-light {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-inline-end: 5px;
+  background: var(--fps-light-color, #a4a99b);
+}
+#fps-metrics[data-health="normal"] { --fps-light-color: #288647; }
+#fps-metrics[data-health="warning"] { --fps-light-color: #d49b00; }
+#fps-metrics[data-health="critical"] { --fps-light-color: #cb3535; }
+#fps-metrics[data-health="warning"] #draw-count { color: #8a6300; font-weight: 700; }
+#fps-metrics[data-health="critical"] #draw-count { color: #b5222a; font-weight: 700; }
 @media(min-height:950px) {
   aside {
     padding-top:40px

@@ -85,6 +85,9 @@ export function controlPanelContent(obstructionHint: string): string {
         ` }
     ] },
     { id: 'scene', label: 'Scene display', open: false, children: [
+      { id: 'fps-diagnostics', label: '效能記錄', open: true, content: `<label class="toggle-row" for="fps-recording"><span>自動下載 FPS 診斷 JSON</span><input id="fps-recording" type="checkbox" aria-describedby="fps-recording-hint"></label>
+        <p class="hint" id="fps-recording-hint">FPS 跨越 30 或 15 門檻時，記錄 Panel 與 3D 狀態。瀏覽器可能要求允許自動下載。</p>
+        <p class="hint" id="fps-recording-status" role="status"></p>` },
       { id: 'environment', label: 'Environment', open: true, content: `<label class="select-label" for="environment">Active environment</label>
         <select id="environment"><option value="city">City street</option><option value="cave">Rock chamber</option><option value="terrain">Natural terrain</option><option value="flight">Bounded flight</option><option value="room">莊園豪宅</option><option value="swim">Tidal Pool</option><option value="pool">Bounded pool</option></select>
         <fieldset id="swim-controls" hidden><legend>Swimming</legend>

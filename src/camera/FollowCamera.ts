@@ -25,7 +25,10 @@ export class FollowCamera {
       this.ray.set(target, this.direction);
       this.ray.far = distance;
       const hit = this.ray.intersectObjects(this.obstructions, true).find(hit => hit.object.userData.cameraObstruction !== false);
-      if (hit) camera.position.copy(target).addScaledVector(this.direction, Math.max(0.4, hit.distance - 0.25));
+      if (hit) {
+        const clearance = Math.min(0.25, hit.distance / 2);
+        camera.position.copy(target).addScaledVector(this.direction, hit.distance - clearance);
+      }
     }
   }
 }

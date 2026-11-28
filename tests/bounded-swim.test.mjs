@@ -40,11 +40,11 @@ test('pool surface, camera and shader use the same geometry and scene time', () 
   assert.equal(water.time, surface.material.uniforms.clock.value);
   scene.update(.05, true);
   assert.equal(query.time, water.time);
-  scene.updateCamera(center);
+  assert.equal(scene.updateCamera(center), true);
   assert.equal(scene.scene.fog.far, 12);
-  scene.updateCamera({ ...center, z: 7 });
+  assert.equal(scene.updateCamera({ ...center, z: 7 }), false);
   assert.equal(scene.scene.fog.far, 75);
-  scene.updateCamera({ ...center, y: pool.water });
+  assert.equal(scene.updateCamera({ ...center, y: pool.water }), false);
   assert.equal(scene.scene.fog.far, 75);
   scene.dispose();
 });

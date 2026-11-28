@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
-import { PerspectiveCamera, Vector3 } from 'three';
+import { Group, Mesh, PerspectiveCamera, Vector3 } from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { CharacterController } from '../src/character/CharacterController.ts';
 import { DestinationNavigation, segmentClear } from '../src/navigation/DestinationNavigation.ts';
@@ -17,6 +17,61 @@ const bytes = await readFile(new URL('../public/assets/environments/manor.glb', 
 const { scene } = await new GLTFLoader().parseAsync(Uint8Array.from(bytes).buffer, '');
 const world = manorWalkableWorld(scene);
 const point = (x, y, z) => ({ x, y, z });
+
+test('manor descent keeps the same transparent blockers for all character heights', () => {
+  const environment = new Group(), model = scene.clone();
+  environment.userData.reuseCameraFadeMaterials = true;
+  model.userData.independentCameraBlockers = true;
+  environment.add(model);
+  const meshes = [];
+  model.traverse(object => {
+    if (!(object instanceof Mesh)) return;
+    if (object.userData.collisionOnly === true) object.visible = false;
+    if (object.userData.groundPickThrough === true) object.userData.cameraObstruction = false;
+    meshes.push(object);
+  });
+  const originals = meshes.map(mesh => mesh.material);
+  const desired = new PerspectiveCamera(), rendered = desired.clone(), target = new Vector3();
+  let prepared = 0;
+  const effect = new CameraObstruction(environment, () => prepared++);
+  const reference = new CameraObstruction(environment);
+  const samples = [];
+  const flights = [...world.navigationPortals].sort((a, b) => b.upper.y - a.upper.y);
+  for (const height of [1.8, 1.65, 1.15]) {
+    for (const { lower, upper } of flights.filter(flight => flight.lower.y >= 0)) {
+      for (let step = 0; step <= 12; step++) {
+        const position = new Vector3(upper.x, upper.y, upper.z).lerp(new Vector3(lower.x, lower.y, lower.z), step / 12);
+        samples.push({ x: position.x, y: position.y, z: position.z, height });
+      }
+    }
+  }
+  const trace = obstruction => samples.map(subject => {
+    target.set(subject.x, subject.y + subject.height * 0.65, subject.z);
+    desired.position.set(target.x, target.y + 1.8, target.z - 4.5);
+    desired.lookAt(target);
+    obstruction.update(desired, rendered, target, subject, 1 / 60, false);
+    return meshes.flatMap((mesh, index) => mesh.material === originals[index] ? [] : [index]);
+  });
+  try {
+    effect.setMode('transparent');
+    const actual = trace(effect);
+    assert.ok(actual.some(blockers => blockers.length > 0));
+    const preparedOnFirstDescent = prepared;
+    assert.ok(preparedOnFirstDescent > 0);
+    assert.deepEqual(trace(effect), actual);
+    assert.equal(prepared, preparedOnFirstDescent);
+    effect.setMode('xray');
+    assert.ok(meshes.every((mesh, index) => mesh.material === originals[index]));
+
+    // Forwarding the custom raycast bypasses the broad phase without changing the exact intersection.
+    for (const mesh of meshes) mesh.raycast = function (...args) { Mesh.prototype.raycast.call(this, ...args); };
+    reference.setMode('transparent');
+    assert.deepEqual(trace(reference), actual);
+  } finally {
+    effect.dispose();
+    reference.dispose();
+  }
+});
 
 test('the real second-floor headboard blocks a running jump from behind', () => {
   const character = new CharacterController(world);

@@ -123,6 +123,7 @@ export function createPool(): Environment {
       haze.color.copy(scene.background);
       haze.near = wet ? .45 : 28;
       haze.far = wet ? 12 : 75;
+      return wet;
     },
     dispose() {
       for (const mesh of solids) mesh.geometry.dispose();

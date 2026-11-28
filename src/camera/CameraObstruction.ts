@@ -1,4 +1,4 @@
-import { Mesh, PerspectiveCamera, Raycaster, Vector3, type Box3, type Group, type Material, type Object3D } from 'three';
+import { Box3, Mesh, PerspectiveCamera, Raycaster, Sphere, Vector3, type Group, type Material, type Object3D } from 'three';
 import type { CameraSubject } from './CameraController';
 import { FollowCamera } from './FollowCamera.ts';
 import { SceneAppearance } from '../scene/SceneAppearance.ts';
@@ -17,9 +17,13 @@ export class CameraObstruction {
   private readonly origin = new Vector3();
   private readonly direction = new Vector3();
   private readonly ray = new Raycaster();
+  private readonly sightlineBounds = new Box3();
+  private readonly meshSphere = new Sphere();
+  private readonly blockersFound = new Set<Object3D>();
+  private readonly hits: ReturnType<Raycaster['intersectObjects']> = [];
   get mode(): ObstructionMode { return this.selected; }
   constructor(private readonly environment: Group, prepareMaterial?: (material: Material) => void) {
-    this.appearance = new SceneAppearance(environment, prepareMaterial);
+    this.appearance = new SceneAppearance(environment, prepareMaterial, environment.userData.reuseCameraFadeMaterials === true);
   }
 
   setMode(mode: ObstructionMode): void {
@@ -40,7 +44,11 @@ export class CameraObstruction {
     if (zoom || transparent) {
       this.environment.updateWorldMatrix(true, true);
       this.visibleMeshes.length = 0;
-      this.environment.traverseVisible(object => { if (object instanceof Mesh && object.userData.cameraObstruction !== false) this.visibleMeshes.push(object); });
+      if (transparent) this.setSightlineBounds(rendered.position, subject);
+      this.environment.traverseVisible(object => {
+        if (!(object instanceof Mesh) || object.userData.cameraObstruction === false) return;
+        if (!transparent || this.inSightlineBounds(object)) this.visibleMeshes.push(object);
+      });
     }
     if (zoom) {
       this.probe.position.copy(rendered.position);
@@ -48,7 +56,8 @@ export class CameraObstruction {
       const distance = rendered.position.distanceTo(this.focus);
       const destination = distance > 0 ? Math.min(1, this.probe.position.distanceTo(this.focus) / distance) : 1;
       const amount = immediate ? 1 : 1 - Math.exp(-8 * Math.min(Math.max(delta, 0), 0.05));
-      this.fraction += (destination - this.fraction) * amount;
+      // Apply tighter limits before rendering and smooth the return to the desired pose.
+      this.fraction = Math.min(destination, this.fraction + (destination - this.fraction) * amount);
       if (Math.abs(destination - this.fraction) < 1e-8) this.fraction = destination;
       if (this.fraction < 1) {
         rendered.position.lerp(this.focus, 1 - this.fraction);
@@ -62,8 +71,24 @@ export class CameraObstruction {
     else this.appearance.apply('normal');
     rendered.updateMatrixWorld(true);
   }
+  private setSightlineBounds(camera: Vector3, subject: CameraSubject): void {
+    // Enclose all five segments, including both shoulder offsets.
+    const shoulder = subject.height * 0.18;
+    this.sightlineBounds.min.set(subject.x - shoulder, subject.y + subject.height * 0.05, subject.z - shoulder);
+    this.sightlineBounds.max.set(subject.x + shoulder, subject.y + subject.height * 0.98, subject.z + shoulder);
+    this.sightlineBounds.expandByPoint(camera);
+  }
+  private inSightlineBounds(mesh: Mesh): boolean {
+    // Custom raycasts and deformable meshes own their own intersection bounds.
+    if (mesh.constructor !== Mesh || mesh.raycast !== Mesh.prototype.raycast || mesh.geometry.morphAttributes.position?.length)
+      return true;
+    if (mesh.geometry.boundingSphere === null) mesh.geometry.computeBoundingSphere();
+    this.meshSphere.copy(mesh.geometry.boundingSphere!).applyMatrix4(mesh.matrixWorld);
+    return this.sightlineBounds.intersectsSphere(this.meshSphere);
+  }
   private blockers(camera: Vector3, subject: CameraSubject): Set<Object3D> {
-    const result = new Set<Object3D>();
+    const result = this.blockersFound;
+    result.clear();
     const dx = camera.x - subject.x, dz = camera.z - subject.z;
     const horizontal = Math.hypot(dx, dz) || 1;
     const shoulder = subject.height * 0.18;
@@ -74,13 +99,15 @@ export class CameraObstruction {
       if (distance < 0.02) continue;
       this.ray.set(this.origin, this.direction.divideScalar(distance));
       this.ray.near = 0.01; this.ray.far = distance;
-      for (const hit of this.ray.intersectObjects(this.visibleMeshes, false)) {
+      this.hits.length = 0;
+      for (const hit of this.ray.intersectObjects(this.visibleMeshes, false, this.hits)) {
         let root = hit.object;
         while (root.parent && root.parent !== this.environment && !root.parent.userData.independentCameraBlockers)
           root = root.parent;
         result.add(root);
       }
     }
+    this.hits.length = 0;
     return result;
   }
   dispose(): void { this.appearance.dispose(); this.fraction = 1; }

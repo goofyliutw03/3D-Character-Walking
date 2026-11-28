@@ -4,6 +4,7 @@ import { validViewerSettings } from '../settings/validateViewerSettings';
 import { ProfileHistory, parseProfiles } from '../settings/PanelProfiles';
 import { ProfileStorage } from '../settings/ProfileStorage';
 import type { ControlPanel } from './ControlPanel';
+import type { FpsBoundary } from './FpsHealth';
 
 interface PanelSettings {
   runtime: ViewerSettings;
@@ -58,6 +59,14 @@ export class PanelProfiles {
     for (const el of this.fields()) fields[el.id] = el instanceof HTMLInputElement && el.type === 'checkbox' ? el.checked : el.value;
     return { runtime: this.viewer.getPanelSettings(), fields,
       layout: { ...this.panel.getSettings(), open: Object.fromEntries(this.details().map(el=>[el.id,el.open])) } };
+  }
+  downloadFpsSnapshot(boundary: FpsBoundary): void {
+    const panel = this.capture();
+    const capturedAt = new Date().toISOString();
+    const debug = this.viewer.capture3DDebug(panel.runtime);
+    const timestamp = capturedAt.replace(/[:.]/g, '-');
+    downloadDebugJson(`fps-${boundary.from}-to-${boundary.to}-${timestamp}`,
+      JSON.stringify({ version: 1, capturedAt, performance: boundary, panel, ...debug }, null, 2));
   }
   private valid = (value: unknown): value is PanelSettings => {
     if (!value || typeof value !== 'object') return false;

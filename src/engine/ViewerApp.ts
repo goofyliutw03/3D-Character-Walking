@@ -114,7 +114,7 @@ export class ViewerApp {
   private solarHeading = 0;
   private readonly solarDirection = new Vector3();
   private lastTime = 0;
-  private sampleTime = 0;
+  private sampleTime?: number;
   private frameCount = 0;
   private contextLost = false;
   private disposed = false;
@@ -279,7 +279,12 @@ export class ViewerApp {
       const valid = this.scenes.active.walkableWorld.query?.overlap(this.motion, this.movement.shape);
       if (valid && (!valid.ok || valid.value)) { this.report('Recovery position invalid. Reload to recover.'); return; }
       this.contextLost = false; this.lastTime = 0; this.report('WebGL2 · connection restored'); }, { signal: this.events.signal });
-    document.addEventListener('visibilitychange', () => { this.lastTime = 0; if (document.hidden) this.stop(); }, { signal: this.events.signal });
+    document.addEventListener('visibilitychange', () => {
+      this.lastTime = 0;
+      this.sampleTime = undefined;
+      this.frameCount = 0;
+      if (document.hidden) this.stop();
+    }, { signal: this.events.signal });
     if (new URLSearchParams(location.search).get('engine') === 'legacy') {
       this.view.renderer.setAnimationLoop(time => this.update(time));
     } else {
@@ -370,7 +375,7 @@ export class ViewerApp {
     this.cameras.update(this.getCameraSubject(), delta, immediate);
     this.updateObstruction(delta, immediate);
     if (active.updateCamera) {
-      active.updateCamera(this.camera.position);
+      this.cameraSubmerged = active.updateCamera(this.camera.position);
       this.scenes.syncAppearance();
     }
     if (active.swim) {
@@ -427,11 +432,16 @@ export class ViewerApp {
     const render = () => this.view.render(this.scenes.root, this.cameras.fisheyeAmount, xray);
     if (this.needleReady && this.needle) this.needle.render(render);
     else render();
+    if (this.sampleTime === undefined) {
+      this.sampleTime = time;
+      return;
+    }
     this.frameCount++;
     if (time - this.sampleTime >= 1000) {
-      this.fps(Math.round(this.frameCount * 1000 / (time - this.sampleTime)));
-      this.metricsReport?.(this.view.stats);
+      const fps = Math.round(this.frameCount * 1000 / (time - this.sampleTime));
       this.frameCount = 0; this.sampleTime = time;
+      this.metricsReport?.(this.view.stats);
+      this.fps(fps);
     }
   }
   get environmentId(): EnvironmentId { return this.scenes.active.id; }
